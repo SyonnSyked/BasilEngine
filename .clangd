@@ -1,0 +1,4 @@
+CompileFlags:
+  Add:
+    - -IC:/raylib/raylib/src
+    - -IC:/dev/BasilsTools/Include
