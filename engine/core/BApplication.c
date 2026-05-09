@@ -1,4 +1,7 @@
 #include "BApplication.h"
+#include "BLog.h"
+#include "BTime.h"
+#include "../debug/BConsole.h"
 
 #include <raylib.h>
 
@@ -12,6 +15,8 @@ bool BApplication_Init(
         return false;
 
     app->callbacks = callbacks;
+
+    config = BEngineConfig_Default();
 
     if (!BEngine_Init(&app->engine, config))
         return false;
@@ -38,7 +43,13 @@ int BApplication_Run(BApplication* app)
 
     while (!BEngine_ShouldClose(&app->engine))
     {
-        float deltaTime = GetFrameTime();
+        float deltaTime = BTime_GetDeltaTime();
+        BTime_Update();
+        BConsole_Update();
+        if (BTime_GetFrameCount() == 60)
+        {
+            BLog_InfoF("Frame test reached. Current FPS: %d", BTime_GetFPS());
+        }
 
         if (app->callbacks.onUpdate != 0)
             app->callbacks.onUpdate(app->callbacks.userData, &app->engine, deltaTime);

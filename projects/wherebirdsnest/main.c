@@ -39,7 +39,7 @@ static bool WhereBirdsNest_OnStart(void* userData, BEngine* engine)
         &game->canvas,
         cabinArt,
         sizeof(cabinArt) / sizeof(cabinArt[0]),
-        0
+       0
     );
 }
 
@@ -80,10 +80,10 @@ int main(void)
     WhereBirdsNestGame game;
 
     BEngineConfig config = BEngineConfig_Default();
-    config.windowWidth = 800;
-    config.windowHeight = 450;
-    config.windowTitle = "Where Birds Nest - BasilEngine";
-    config.targetFPS = 60;
+    config.windowConfig.width = 800;
+    config.windowConfig.height = 450;
+    config.windowConfig.title = "Where Birds Nest - BasilEngine";
+    config.windowConfig.targetFPS = 60;
 
     BApplicationCallbacks callbacks;
     callbacks.onStart = WhereBirdsNest_OnStart;

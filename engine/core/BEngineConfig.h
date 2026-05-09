@@ -5,12 +5,11 @@
 extern "C" {
 #endif
 
+#include "BWindow.h"
+
 typedef struct BEngineConfig
 {
-    int windowWidth;
-    int windowHeight;
-    const char* windowTitle;
-    int targetFPS;
+    BWindowConfig windowConfig;
 } BEngineConfig;
 
 BEngineConfig BEngineConfig_Default(void);

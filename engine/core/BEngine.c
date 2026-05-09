@@ -1,15 +1,18 @@
 #include "BEngine.h"
+#include "BLog.h"
+#include "../debug/BConsole.h"
 
 #include <raylib.h>
 
-BEngineConfig BEngineConfig_Default(void)
+
+BEngineConfig BEngineConfig_Default()
 {
     BEngineConfig config;
 
-    config.windowWidth = 800;
-    config.windowHeight = 450;
-    config.windowTitle = "BasilEngine Application";
-    config.targetFPS = 60;
+    config.windowConfig.width = 1600;
+    config.windowConfig.height = 900;
+    config.windowConfig.title = "BasilEngine Application";
+    config.windowConfig.targetFPS = 60;
 
     return config;
 }
@@ -19,19 +22,8 @@ bool BEngine_Init(BEngine* engine, BEngineConfig config)
     if (engine == 0)
         return false;
 
-    if (config.windowWidth <= 0)
-        config.windowWidth = 800;
-
-    if (config.windowHeight <= 0)
-        config.windowHeight = 450;
-
-    if (config.windowTitle == 0)
-        config.windowTitle = "BasilEngine Application";
-
-    if (config.targetFPS <= 0)
-        config.targetFPS = 60;
-
-    InitWindow(config.windowWidth, config.windowHeight, config.windowTitle);
+    if (!BWindow_Init(config.windowConfig))
+        return false;
 
     if (!IsWindowReady())
     {
@@ -40,12 +32,17 @@ bool BEngine_Init(BEngine* engine, BEngineConfig config)
         return false;
     }
 
-    SetTargetFPS(config.targetFPS);
 
     engine->config = config;
     engine->isInitialized = true;
     engine->isRunning = true;
 
+
+    BLog_Info("Engine_Init() successful...");
+
+    BLog_InfoF("Window size: %d x %d", config.windowConfig.width, config.windowConfig.height);
+    BLog_InfoF("Target FPS: %d", config.windowConfig.targetFPS);
+    BConsole_Init();
     return true;
 }
 
@@ -54,7 +51,8 @@ void BEngine_BeginFrame(BEngine* engine)
     if (engine == 0 || !engine->isInitialized)
         return;
 
-    BeginDrawing();
+    BWindwow_BeginFrame();
+    BConsole_Draw();
 }
 
 void BEngine_EndFrame(BEngine* engine)
@@ -62,7 +60,7 @@ void BEngine_EndFrame(BEngine* engine)
     if (engine == 0 || !engine->isInitialized)
         return;
 
-    EndDrawing();
+    BWindow_EndFrame();
 }
 
 bool BEngine_ShouldClose(const BEngine* engine)
@@ -70,7 +68,7 @@ bool BEngine_ShouldClose(const BEngine* engine)
     if (engine == 0 || !engine->isInitialized)
         return true;
 
-    return WindowShouldClose();
+    return BWindow_ShouldClose();
 }
 
 void BEngine_Shutdown(BEngine* engine)
@@ -78,8 +76,11 @@ void BEngine_Shutdown(BEngine* engine)
     if (engine == 0 || !engine->isInitialized)
         return;
 
-    CloseWindow();
 
     engine->isRunning = false;
     engine->isInitialized = false;
+
+    BLog_Info("BasilEngine shutting down...");
+    BConsole_Shutdown();
+    BWindow_Shutdown();
 }
