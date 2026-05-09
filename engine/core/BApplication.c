@@ -41,7 +41,7 @@ int BApplication_Run(BApplication* app)
     if (app == 0 || !app->engine.isInitialized)
         return 1;
 
-    while (!BEngine_ShouldClose(&app->engine))
+    while (!BEngine_ShouldClose(&app->engine) && !BEngine_IsQuitRequested())
     {
         float deltaTime = BTime_GetDeltaTime();
         BTime_Update();

@@ -5,6 +5,8 @@
 #include <raylib.h>
 
 
+static bool g_QuitRequested = false;
+
 BEngineConfig BEngineConfig_Default()
 {
     BEngineConfig config;
@@ -83,4 +85,14 @@ void BEngine_Shutdown(BEngine* engine)
     BLog_Info("BasilEngine shutting down...");
     BConsole_Shutdown();
     BWindow_Shutdown();
+}
+
+void BEngine_RequestQuit()
+{
+    g_QuitRequested = true;
+}
+
+bool BEngine_IsQuitRequested()
+{
+    return g_QuitRequested;
 }

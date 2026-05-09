@@ -2,6 +2,7 @@
 #include "BConsole.h"
 #include "BLog.h"
 #include "BTime.h"
+#include "BEngine.h"
 #include "raylib.h"
 
 static bool g_ConsoleOpen = false;
@@ -48,6 +49,23 @@ static void BConsole_ExecuteCommand(const char* command)
     else if (strcmp(command, "close") == 0)
     {
         g_ConsoleOpen = false;
+    }
+    else if (strncmp(command, "echo ", 5) == 0)
+    {
+        const char* message = command + 5;
+
+        if (message[0] == '\0')
+        {
+            BLog_Info("Usage: echo <message>");
+            return;
+        }
+
+        BLog_InfoF("%s", message);
+    }
+    else if (strcmp(command, "quit") == 0)
+    {
+        BLog_Info("Quit requested from console...");
+        BEngine_RequestQuit();
     }
     else
     {
