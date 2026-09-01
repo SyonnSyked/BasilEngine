@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.20)
 
 project(BasilEngine C CXX)
 
+include(CTest)
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
@@ -46,6 +48,12 @@ target_link_libraries(BasilEngine PUBLIC
     BasilsTools
 )
 
+if(MSVC)
+    target_compile_options(BasilEngine PRIVATE /W4)
+else()
+    target_compile_options(BasilEngine PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
 add_executable(WhereBirdsNest
     projects/WhereBirdsNest/main.c
 )
@@ -53,6 +61,18 @@ add_executable(WhereBirdsNest
 target_link_libraries(WhereBirdsNest PRIVATE
     BasilEngine
 )
+
+if(BUILD_TESTING)
+    add_executable(BInputTests
+        tests/BInputTests.c
+    )
+
+    target_link_libraries(BInputTests PRIVATE
+        BasilEngine
+    )
+
+    add_test(NAME BInputTests COMMAND BInputTests)
+endif()
 
 # Editor dependencies are kept available, but the editor target is not wired yet.
 # These will become part of the Day 2/Day 3 editor bootstrap pass.
