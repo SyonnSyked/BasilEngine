@@ -153,7 +153,14 @@ else()
 endif()
 
 add_executable(WhereBirdsNest
-    projects/WhereBirdsNest/main.c
+    projects/wherebirdsnest/main.c
+)
+
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/assets/wherebirdsnest")
+configure_file(
+    projects/wherebirdsnest/assets/arena.txt
+    "${CMAKE_CURRENT_BINARY_DIR}/assets/wherebirdsnest/arena.txt"
+    COPYONLY
 )
 
 target_link_libraries(WhereBirdsNest PRIVATE
@@ -161,6 +168,16 @@ target_link_libraries(WhereBirdsNest PRIVATE
 )
 
 if(BUILD_TESTING)
+    add_executable(AsciiCanvasTests
+        tests/AsciiCanvasTests.c
+    )
+
+    target_link_libraries(AsciiCanvasTests PRIVATE
+        BasilEngine
+    )
+
+    add_test(NAME AsciiCanvasTests COMMAND AsciiCanvasTests)
+
     add_executable(BInputTests
         tests/BInputTests.c
     )

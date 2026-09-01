@@ -18,6 +18,10 @@ platform.
 
 ## Milestone 1: Gameplay feasibility spike
 
+**Status:** In progress. Text-asset loading, continuous player movement, camera
+tracking, wall collision, and console input capture are implemented in the
+initial arena. Color layers, an enemy target, and a basic attack remain.
+
 - Load an environment from a text asset.
 - Render colored glyphs in world space.
 - Move a player smoothly using delta time.
@@ -89,4 +93,3 @@ editor session without restarting the editor or losing the last working module.
 
 **Exit condition:** Where Birds Nest provides a short, genuine action-RPG
 encounter and exposes the next set of engine requirements.
-
