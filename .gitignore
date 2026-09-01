@@ -10,6 +10,7 @@ thirdparty/rlimgui/
 # Build Directories
 # ---------------------------------------------------------
 build/
+build-*/
 Build/
 bin/
 lib/

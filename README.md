@@ -33,14 +33,33 @@ Prerequisites:
 - BasilsTools
 - Local Dear ImGui and rlImGui source trees
 
-The current preset refers to paths on the original development machine. Making
-dependency discovery reproducible and portable is part of Milestone 0.
+Configure dependency locations with `BASIL_RAYLIB_ROOT` and
+`BASIL_TOOLS_ROOT`. BasilEngine first looks for installed CMake packages, then
+pkg-config for raylib, and finally searches the supplied roots for headers and
+libraries.
 
 ```powershell
-cmake --preset ucrt64-debug
+cmake --preset ucrt64-debug `
+    -DBASIL_RAYLIB_ROOT=C:/path/to/raylib `
+    -DBASIL_TOOLS_ROOT=C:/path/to/BasilsTools
 cmake --build --preset ucrt64-debug
 ctest --test-dir build --output-on-failure
 ```
+
+On macOS or Linux, use any preferred generator and provide the same cache hints
+when the dependencies are not installed system-wide:
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug \
+  -DBASIL_RAYLIB_ROOT=/path/to/raylib \
+  -DBASIL_TOOLS_ROOT=/path/to/BasilsTools
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+Set `BASIL_BUILD_EDITOR_DEPS=ON` only when the local ImGui and rlImGui source
+trees are available. They remain off by default until an editor target uses
+them.
 
 The demo executable is generated at `build/WhereBirdsNest.exe`.
 
@@ -65,4 +84,3 @@ docs/                   Product, roadmap, and architecture decisions
 - Platform-specific behavior stays behind narrow interfaces.
 - New persistent data formats are versioned from their first revision.
 - Milestone branches should build and pass tests before integration.
-
