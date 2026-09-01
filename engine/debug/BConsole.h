@@ -10,6 +10,4 @@ void BConsole_Shutdown();
 
 bool BConsole_IsOpen();
 
-static void BConsole_ClearInput();
-
 #endif

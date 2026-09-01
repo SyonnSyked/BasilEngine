@@ -1,6 +1,7 @@
 #include "BEngine.h"
 #include "BLog.h"
 #include "../debug/BConsole.h"
+#include "../input/BInput.h"
 
 #include <raylib.h>
 
@@ -24,6 +25,8 @@ bool BEngine_Init(BEngine* engine, BEngineConfig config)
     if (engine == 0)
         return false;
 
+    g_QuitRequested = false;
+
     if (!BWindow_Init(config.windowConfig))
         return false;
 
@@ -45,6 +48,7 @@ bool BEngine_Init(BEngine* engine, BEngineConfig config)
     BLog_InfoF("Window size: %d x %d", config.windowConfig.width, config.windowConfig.height);
     BLog_InfoF("Target FPS: %d", config.windowConfig.targetFPS);
     BConsole_Init();
+    BInput_Init();
     return true;
 }
 
@@ -53,8 +57,7 @@ void BEngine_BeginFrame(BEngine* engine)
     if (engine == 0 || !engine->isInitialized)
         return;
 
-    BWindwow_BeginFrame();
-    BConsole_Draw();
+    BWindow_BeginFrame();
 }
 
 void BEngine_EndFrame(BEngine* engine)
@@ -84,6 +87,7 @@ void BEngine_Shutdown(BEngine* engine)
 
     BLog_Info("BasilEngine shutting down...");
     BConsole_Shutdown();
+    BInput_Shutdown();
     BWindow_Shutdown();
 }
 

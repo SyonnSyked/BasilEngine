@@ -4,6 +4,7 @@
 #include "BTime.h"
 #include "BEngine.h"
 #include "raylib.h"
+#include "../input/BInput.h"
 
 static bool g_ConsoleOpen = false;
 
@@ -11,6 +12,16 @@ static bool g_ConsoleOpen = false;
 
 static char g_InputBuffer[BCONSOLE_INPUT_MAX];
 static int g_InputLength = 0;
+
+static void BConsole_FlushCharInput()
+{
+    int key = GetCharPressed();
+
+    while (key > 0)
+    {
+        key = GetCharPressed();
+    }
+}
 
 void BConsole_Init()
 {
@@ -28,7 +39,7 @@ static void BConsole_ExecuteCommand(const char* command)
 
     if (strcmp(command, "help") == 0)
     {
-        BLog_Info("Commands: help, clear, fps, time, frame, close");
+        BLog_Info("Commands: help, clear, fps, time, frame, echo, close, quit");
     }
     else if (strcmp(command, "clear") == 0)
     {
@@ -80,12 +91,14 @@ static void BConsole_ClearInput() {
 
 void BConsole_Update()
 {
-    if (IsKeyPressed(KEY_GRAVE))
+    if (BInput_IsActionPressed("toggle_console"))
     {
         g_ConsoleOpen = !g_ConsoleOpen;
 
         if (g_ConsoleOpen)
         {
+            BConsole_ClearInput();
+            BConsole_FlushCharInput();
             BLog_Info("Console opened.");
         }
         else

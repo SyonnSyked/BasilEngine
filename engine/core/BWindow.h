@@ -18,7 +18,7 @@ void BWindow_Shutdown(void);
 
 bool BWindow_ShouldClose(void);
 
-void BWindwow_BeginFrame(void);
+void BWindow_BeginFrame(void);
 void BWindow_EndFrame(void);
 
 #endif

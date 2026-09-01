@@ -20,13 +20,15 @@ add_library(BasilEngine STATIC
     engine/core/BWindow.c
     engine/core/BTime.c 
     engine/core/BLog.c
-    engine/debug/BConsole.c
+    engine/debug/BConsole.c 
+    engine/input/BInput.c
 )
 
 target_include_directories(BasilEngine PUBLIC
     engine/core
     engine/rendering
     engine/debug
+    engine/input
     "${RAYLIB_INCLUDE_PATH}"
     "${BTOOL_INCLUDE_PATH}"
 )

@@ -16,8 +16,6 @@ bool BApplication_Init(
 
     app->callbacks = callbacks;
 
-    config = BEngineConfig_Default();
-
     if (!BEngine_Init(&app->engine, config))
         return false;
 
@@ -58,6 +56,8 @@ int BApplication_Run(BApplication* app)
 
         if (app->callbacks.onRender != 0)
             app->callbacks.onRender(app->callbacks.userData, &app->engine);
+
+        BConsole_Draw();
 
         BEngine_EndFrame(&app->engine);
     }

@@ -18,7 +18,7 @@ bool BWindow_ShouldClose() {
     return WindowShouldClose();
 }
 
-void BWindwow_BeginFrame() {
+void BWindow_BeginFrame() {
     BeginDrawing();
 }
 
