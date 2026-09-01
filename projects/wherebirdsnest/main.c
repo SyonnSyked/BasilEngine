@@ -12,7 +12,7 @@
 
 #define ARENA_WIDTH 48
 #define ARENA_HEIGHT 24
-#define PLAYER_RADIUS 0.28f
+#define PLAYER_RADIUS 0.45f
 #define PLAYER_SPEED 7.0f
 
 typedef struct WhereBirdsNestGame
@@ -159,7 +159,16 @@ static void WhereBirdsNest_OnRender(void* userData, BEngine* engine)
 
     ClearBackground((Color){ 9, 12, 10, 255 });
     AsciiCanvas_Draw(&game->canvas);
-    AsciiCanvas_DrawCharacter(&game->canvas, '@', game->playerPosition, GOLD);
+    AsciiCanvas_DrawCharacter(
+        &game->canvas,
+        '@',
+        (Vector2)
+        {
+            game->playerPosition.x - 0.5f,
+            game->playerPosition.y - 0.5f
+        },
+        GOLD
+    );
     DrawText("WASD move  |  ` console", 16, 16, 18, RAYWHITE);
 }
 
