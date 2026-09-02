@@ -3,7 +3,10 @@
 This document records the agreed direction for creating and opening independent
 BasilEngine projects. The versioned manifest, validation, JSON persistence,
 headless generator, and independent generated-project build are implemented.
-The BasilEditor workflow remains future work.
+The first BasilEditor project-browser slice is implemented. It creates and
+opens projects through the shared headless project APIs, tracks recent projects,
+accepts a manifest path on the command line, and displays an opened project's
+metadata. Native file dialogs and the editable workspace remain future work.
 
 ## User workflow
 
@@ -80,8 +83,21 @@ pinned versions. End users should not need to install these implementation
 dependencies separately or troubleshoot network downloads during ordinary
 project creation.
 
-Git repository initialization during project creation remains an open product
-decision. Generated projects will receive a suitable `.gitignore` regardless.
+Git repository initialization is optional during project creation and remains
+available from the opened-project overview. Generated projects receive a
+suitable `.gitignore` regardless. BasilEditor defaults project creation to
+`Documents/BasilEngine`, while allowing any location.
+
+## Editor launch behavior
+
+BasilEditor opens to the project browser when launched without arguments. It
+opens a project directly when passed a `.basilproject` path. The intended
+platform installers will associate that extension with BasilEditor. Each editor
+window owns one project; returning to the browser closes that project view.
+
+Older manifest schemas will be backed up and migrated when migrations exist.
+Manifests from a newer unsupported schema are refused with a compatibility
+error rather than being modified.
 
 ## Implementation order
 

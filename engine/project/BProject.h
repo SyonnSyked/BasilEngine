@@ -4,6 +4,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define BPROJECT_SCHEMA_VERSION 1
 #define BPROJECT_NAME_MAX 128
 #define BPROJECT_IDENTIFIER_MAX 64
@@ -53,5 +57,8 @@ bool BProject_Save(const BProject* project, const char* manifestPath, BProjectEr
 const char* BProject_LanguageModeToString(BProjectLanguageMode mode);
 bool BProject_LanguageModeFromString(const char* value, BProjectLanguageMode* outMode);
 
+#ifdef __cplusplus
+}
 #endif
 
+#endif

@@ -53,9 +53,10 @@ deferred.
 ## Milestone 3: Project and asset system
 
 **Status:** In progress. Versioned JSON manifests, validation, configurable
-C/C++ language rules, a headless empty-project generator, and independent build
-verification are implemented. Asset identifiers, startup-scene loading,
-file-change detection, and the editor-facing project browser remain.
+C/C++ language rules, a headless empty-project generator, independent build
+verification, and the first editor-facing project browser are implemented.
+Asset identifiers, startup-scene loading, native file dialogs, and file-change
+detection remain.
 
 - Add a versioned `.basilproject` manifest.
 - Use portable relative asset paths and stable asset identifiers.
@@ -67,6 +68,9 @@ engine source or machine-specific paths.
 
 ## Milestone 4: Editor foundation
 
+- **Status:** In progress. BasilEditor now has a graphical project browser,
+  New/Open/Recent workflows, an opened-project overview, and optional Git
+  initialization. The editable workspace panels remain.
 - Create a dockable editor application.
 - Add an ASCII viewport, hierarchy, inspector, asset browser, and log console.
 - Load, edit, save, play, and stop the reference scene.

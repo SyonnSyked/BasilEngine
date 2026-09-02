@@ -26,6 +26,8 @@ See the [project charter](docs/PROJECT_CHARTER.md), [roadmap](docs/ROADMAP.md),
 - Smooth world-space movement, camera tracking, and collision
 - A small `WhereBirdsNest` combat feasibility arena
 - Versioned JSON project manifests and a headless empty-project generator
+- A graphical BasilEditor project browser with New, Open, and Recent workflows
+- Optional Git initialization during or after project creation
 - Headless project, generated-build, input, canvas, and combat tests
 
 ## Reference demo
@@ -72,9 +74,20 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-Set `BASIL_BUILD_EDITOR_DEPS=ON` only when the local ImGui and rlImGui source
-trees are available. They remain off by default until an editor target uses
-them.
+Set `BASIL_BUILD_EDITOR_DEPS=ON` to build `BasilEditor` using the vendored ImGui
+and rlImGui source trees:
+
+```powershell
+cmake --preset ucrt64-debug -DBASIL_BUILD_EDITOR_DEPS=ON
+cmake --build --preset ucrt64-debug
+.\build\BasilEditor.exe
+```
+
+BasilEditor opens to its project browser. It can also open a project directly:
+
+```powershell
+.\build\BasilEditor.exe C:\Projects\MyGame\MyGame.basilproject
+```
 
 The demo executable is generated at `build/WhereBirdsNest.exe`.
 
@@ -115,7 +128,7 @@ cmake --build C:\Projects\MyGame\build
 ```text
 engine/                 Reusable runtime systems
 projects/wherebirdsnest Reference game and engine proving ground
-editor/                 Planned editor application
+editor/                 BasilEditor application
 tests/                  Headless engine tests
 thirdparty/             Local ImGui and rlImGui sources
 docs/                   Product, roadmap, and architecture decisions

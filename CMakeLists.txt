@@ -9,7 +9,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(BASIL_BUILD_EDITOR_DEPS "Build the currently unwired ImGui editor dependencies" OFF)
+option(BASIL_BUILD_EDITOR_DEPS "Build BasilEditor and its ImGui dependencies" OFF)
 option(BASIL_BUILD_PROJECT_TOOL "Build the headless BasilEngine project tool" ON)
 option(BASIL_BUILD_REFERENCE_GAME "Build the Where Birds Nest reference game" ON)
 
@@ -125,6 +125,7 @@ target_include_directories(cjson PUBLIC
 add_library(BasilProject STATIC
     engine/project/BProject.c
     engine/project/BProjectGenerator.c
+    engine/project/BRecentProjects.c
 )
 
 target_include_directories(BasilProject PUBLIC
@@ -239,6 +240,16 @@ if(BUILD_TESTING)
 
     add_test(NAME BProjectTests COMMAND BProjectTests)
 
+    add_executable(BRecentProjectsTests
+        tests/BRecentProjectsTests.c
+    )
+
+    target_link_libraries(BRecentProjectsTests PRIVATE
+        BasilProject
+    )
+
+    add_test(NAME BRecentProjectsTests COMMAND BRecentProjectsTests)
+
     if(BASIL_BUILD_PROJECT_TOOL)
         add_test(
             NAME BProjectToolInteractive
@@ -336,5 +347,26 @@ if(BASIL_BUILD_EDITOR_DEPS)
         imgui
         ${BASIL_RAYLIB_TARGET}
     )
+
+    add_executable(BasilEditor
+        editor/BasilEditor.cpp
+    )
+
+    target_link_libraries(BasilEditor PRIVATE
+        BasilProject
+        BasilEngine
+        rlimgui
+    )
+
+    # Current MSYS2 binutils can fail silently while linking the combined
+    # raylib/ImGui editor. Prefer LLVM's compatible MinGW linker when present.
+    if(MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        find_program(BASIL_LLD_LINKER NAMES ld.lld lld)
+        if(BASIL_LLD_LINKER)
+            target_link_options(BasilEditor PRIVATE -fuse-ld=lld)
+        endif()
+    endif()
+
+    basil_enable_warnings(BasilEditor)
 endif()
 
