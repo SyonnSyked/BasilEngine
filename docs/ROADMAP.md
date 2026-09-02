@@ -81,12 +81,15 @@ engine source or machine-specific paths.
   portable UI Config persistence is not. All planned foundation panel windows
   now exist. The startup Workspace loads into an editor session; flat entities
   can be created, selected, renamed, enabled/disabled, deleted, and safely saved.
-  Component, spatial, build, diagnostic, and terminal services remain.
+  Asynchronous CMake Build/Run, output capture, problem extraction, and native
+  Pause/Resume/Stop process control are implemented. Component/spatial runtime,
+  in-Viewport play, source navigation, and terminal services remain.
 - Create a dockable editor application. **Implemented.**
 - Add an ASCII viewport, hierarchy, inspector, asset browser, and log console.
   **Panel scaffolds implemented; editing and rendering behavior remains.**
 - Load, edit, save, play, and stop the reference Workspace. **Startup loading,
-  first entity editing, and safe save implemented; play/stop remains.**
+  first entity editing, safe save, and standalone process controls implemented;
+  runtime Workspace consumption and in-Viewport play remain.**
 - Add a slim default UI Config and portable JSON UI Config persistence.
   **Default model implemented; persistence remains.**
 - Establish the restrained cyberpunk visual system and bundled monospace font.
@@ -95,10 +98,11 @@ engine source or machine-specific paths.
 **Exit condition:** The reference-game test room can be meaningfully edited and
 saved without hand-editing its Workspace representation.
 
-The next implementation slice adds editor Build and Run controls around the
-generated CMake workflow, captures build output and diagnostics, and launches
-the Project while preserving the last successful build. Development Play inside
-the Viewport remains a later extension of that reliable external run path.
+The next implementation slice connects the generated runtime to Project and
+Workspace loading, introduces the first transform/renderable component data,
+and proves that editor-authored entities appear in the running application.
+That shared runtime path is required before standalone Run can evolve into
+in-Viewport development play.
 
 ## Milestone 5: Project creation
 

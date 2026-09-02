@@ -123,8 +123,9 @@ This is not a commitment to exact dimensions.
 - Additional panels and environment settings are easy to discover.
 - The Terminal is easy to expand and collapse.
 
-Planned core panels are Workspace Hierarchy, Inspector, Asset Browser, Console,
-Build Output, Problems, Terminal, and Code Editor.
+The core panel set is Workspace Hierarchy, Inspector, Asset Browser, Console,
+Build Output, Problems, Terminal, and Code Editor. The Code Editor remains
+planned; the other windows exist at scaffold level or better.
 
 The full-viewport dockspace, main Project/Workspace/View command surface,
 independently dockable Project Details and Workspace Viewport windows, stable
@@ -136,8 +137,8 @@ Terminal scaffold windows are also **implemented** and independently dockable.
 Hierarchy loads the startup Workspace and owns entity creation and selection;
 Inspector edits the selected entity's name and enabled state. Assets safely
 lists the real top-level asset directory, and Console reports current editor
-status. The remaining scaffolds state clearly when their build, diagnostic, or
-terminal services are not connected; those services remain planned.
+status. Build Output and Problems are connected to the asynchronous build
+service. Terminal still states clearly that shell hosting is not connected.
 
 Save Workspace and Ctrl+S are implemented with full-model validation,
 temporary-file writing, and a recovery `.bak`. The editor reports clean/dirty
@@ -221,11 +222,20 @@ are planned, not implemented.
 
 ## Development play
 
-The first development-play workflow is **confirmed** to run inside the editor
-Viewport, with Play, Stop, and Pause where supported. Editor and standalone
-runtime must use the same Project, Workspace, asset, and serialization code.
-A separate game window may become an option but is not the initial default.
-Hot reload follows only after the runtime module boundary is stable.
+The first final-form development-play workflow is **confirmed** to run inside
+the editor Viewport, with Play, Stop, and Pause where supported. Editor and
+standalone runtime must use the same Project, Workspace, asset, and
+serialization code. A separate game window may remain an option but is not the
+intended final default. Hot reload follows only after the runtime module
+boundary is stable.
+
+An asynchronous standalone-process bridge is **implemented** as the reliable
+precursor to that workflow. Build configures and compiles the Project through
+its editable CMake files; Run builds and launches it; Pause/Resume and Stop
+control the native process. Output and detected failures feed their dockable
+panels without blocking the editor. The current generated runtime does not yet
+consume Workspace entities, and the game window is not embedded in the
+Viewport, so this bridge must not be described as in-editor development play.
 
 ## Notifications
 
@@ -237,6 +247,10 @@ The following behavior is **confirmed**:
 - Actionable failures make the Problems panel immediately visible.
 - Build and terminal output remains available for inspection.
 - Diagnostics navigate to the relevant source file and line.
+
+Build-output capture, automatic Problems visibility on failure, and compact
+status notifications are **implemented**. Diagnostic source navigation remains
+planned until the code editor/file-opening service exists.
 
 ## Visual identity
 

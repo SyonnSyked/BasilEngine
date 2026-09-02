@@ -38,6 +38,8 @@ the [visual-foundation closeout](docs/EDITOR_VISUAL_FOUNDATION.md).
   Terminal scaffolds with honest service states
 - Editable startup Workspaces with stable entity IDs, selection, Inspector
   changes, dirty-state protection, and backup-assisted saves
+- Asynchronous CMake Build and Run controls with streamed output, extracted
+  problems, and native Pause, Resume, and Stop process control
 - Geometric circuit-leaf application branding and embedded Windows icon
 - Persistent global interface-scale presets from 100% through 175%
 - Optional Git initialization during or after project creation

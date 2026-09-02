@@ -1,0 +1,14 @@
+#ifndef BASIL_EDITOR_BUILD_CONFIG_H
+#define BASIL_EDITOR_BUILD_CONFIG_H
+
+inline constexpr const char* BEDITOR_CMAKE_COMMAND = R"basil(@CMAKE_COMMAND@)basil";
+inline constexpr const char* BEDITOR_CMAKE_GENERATOR = R"basil(@CMAKE_GENERATOR@)basil";
+inline constexpr const char* BEDITOR_CMAKE_BUILD_TYPE = R"basil(@CMAKE_BUILD_TYPE@)basil";
+inline constexpr const char* BEDITOR_CMAKE_TOOLCHAIN_FILE = R"basil(@CMAKE_TOOLCHAIN_FILE@)basil";
+inline constexpr const char* BEDITOR_C_COMPILER = R"basil(@CMAKE_C_COMPILER@)basil";
+inline constexpr const char* BEDITOR_CXX_COMPILER = R"basil(@CMAKE_CXX_COMPILER@)basil";
+inline constexpr const char* BEDITOR_ENGINE_SOURCE_DIR = R"basil(@CMAKE_CURRENT_SOURCE_DIR@)basil";
+inline constexpr const char* BEDITOR_RAYLIB_ROOT = R"basil(@BASIL_RAYLIB_ROOT@)basil";
+inline constexpr const char* BEDITOR_TOOLS_ROOT = R"basil(@BASIL_TOOLS_ROOT@)basil";
+
+#endif

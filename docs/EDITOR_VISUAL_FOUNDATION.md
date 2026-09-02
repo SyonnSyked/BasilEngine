@@ -80,12 +80,15 @@ handoff:
 3. Introduce Workspace Hierarchy, Inspector, Asset Browser, Console, and
    Viewport panel scaffolds backed by shared services rather than local widget
    state. **Scaffolds completed:** panels consume shared Project/UI Config state
-   where it exists; deeper Workspace/build/terminal services remain separate.
+   where it exists; build output and problems are now connected, while terminal
+   hosting remains separate.
 4. Load, create, edit, and save one empty Workspace reliably before additive
    Workspace behavior or development play is attempted. **Completed:** the
    generated startup Workspace supports flat entity editing and safe save.
 5. Add build/run integration only after the Project and Workspace paths are
-   represented consistently in both editor and runtime code.
+   represented consistently in both editor and runtime code. **Partially
+   completed:** asynchronous standalone build/run and process controls exist;
+   runtime Workspace consumption remains the next integration boundary.
 
 The `.basilworkspace` extension and empty-file schema are now contracts.
 Entity/component serialization and additive semantics still require explicit

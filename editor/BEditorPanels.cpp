@@ -220,24 +220,54 @@ void DrawConsole(BEditorUIConfig& config, const std::string& message, bool isErr
     ImGui::End();
 }
 
-void DrawBuildOutput(BEditorUIConfig& config)
+void DrawBuildOutput(BEditorUIConfig& config, const BEditorBuildService& service)
 {
     if (!config.showBuildOutput)
         return;
 
     if (ImGui::Begin(BEditorPanel_Name(BEditorPanel::BuildOutput), &config.showBuildOutput))
-        DrawPanelState("BUILD SERVICE // OFFLINE", "Build output will stream here after build/run integration.");
+    {
+        const BEditorThemePalette& palette = BEditorTheme_GetPalette();
+        ImVec4 stateColor = service.State() == BEditorBuildState::Failed ? palette.error :
+            service.IsBusy() ? palette.warning : palette.success;
+        ImGui::TextColored(stateColor, "BUILD SERVICE // %s", service.StateLabel());
+        ImGui::Separator();
+        ImGui::BeginChild("##BuildOutputStream", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_HorizontalScrollbar);
+
+        if (service.Output().empty())
+            ImGui::TextDisabled("Build output will appear here.");
+        else
+            ImGui::TextUnformatted(service.Output().c_str());
+
+        ImGui::EndChild();
+    }
 
     ImGui::End();
 }
 
-void DrawProblems(BEditorUIConfig& config)
+void DrawProblems(BEditorUIConfig& config, const BEditorBuildService& service)
 {
     if (!config.showProblems)
         return;
 
     if (ImGui::Begin(BEditorPanel_Name(BEditorPanel::Problems), &config.showProblems))
-        DrawPanelState("DIAGNOSTICS // CLEAR", "No diagnostic provider is connected yet.");
+    {
+        const BEditorThemePalette& palette = BEditorTheme_GetPalette();
+        ImGui::TextColored(
+            service.Problems().empty() ? palette.success : palette.error,
+            "DIAGNOSTICS // %zu",
+            service.Problems().size()
+        );
+        ImGui::Separator();
+
+        if (service.Problems().empty())
+            ImGui::TextDisabled("No build errors detected.");
+        else
+        {
+            for (const std::string& problem : service.Problems())
+                ImGui::BulletText("%s", problem.c_str());
+        }
+    }
 
     ImGui::End();
 }
@@ -270,6 +300,7 @@ BEditorPanelFeedback BEditorPanels_DrawScaffolds(
     BEditorUIConfig& config,
     const BProject& project,
     BEditorWorkspaceSession& workspaceSession,
+    const BEditorBuildService& buildService,
     const fs::path& projectRoot,
     const std::string& editorMessage,
     bool messageIsError
@@ -283,8 +314,8 @@ BEditorPanelFeedback BEditorPanels_DrawScaffolds(
 
     DrawAssets(config, projectRoot);
     DrawConsole(config, editorMessage, messageIsError);
-    DrawBuildOutput(config);
-    DrawProblems(config);
+    DrawBuildOutput(config, buildService);
+    DrawProblems(config, buildService);
     DrawTerminal(config, projectRoot);
     return feedback;
 }

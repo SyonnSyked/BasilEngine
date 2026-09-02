@@ -2,6 +2,7 @@
 #define BASIL_EDITOR_PANELS_H
 
 #include "BEditorUIConfig.h"
+#include "BEditorBuildService.h"
 #include "BEditorWorkspaceSession.h"
 #include "BProject.h"
 
@@ -18,6 +19,7 @@ BEditorPanelFeedback BEditorPanels_DrawScaffolds(
     BEditorUIConfig& config,
     const BProject& project,
     BEditorWorkspaceSession& workspaceSession,
+    const BEditorBuildService& buildService,
     const std::filesystem::path& projectRoot,
     const std::string& editorMessage,
     bool messageIsError

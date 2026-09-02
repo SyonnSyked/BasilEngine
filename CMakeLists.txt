@@ -345,6 +345,12 @@ endif()
 if(BASIL_BUILD_EDITOR_DEPS)
     enable_language(CXX)
 
+    configure_file(
+        editor/BEditorBuildConfig.h.in
+        "${CMAKE_CURRENT_BINARY_DIR}/generated/BEditorBuildConfig.h"
+        @ONLY
+    )
+
     if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/imgui/imgui.cpp"
         OR NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/rlimgui/rlImGui.cpp")
         message(FATAL_ERROR
@@ -380,6 +386,7 @@ if(BASIL_BUILD_EDITOR_DEPS)
 
     add_executable(BasilEditor
         editor/BasilEditor.cpp
+        editor/BEditorBuildService.cpp
         editor/BEditorGit.cpp
         editor/BEditorPanels.cpp
         editor/BEditorPreferences.cpp
@@ -412,6 +419,10 @@ if(BASIL_BUILD_EDITOR_DEPS)
         BasilEngine
         rlimgui
         cjson
+    )
+
+    target_include_directories(BasilEditor PRIVATE
+        "${CMAKE_CURRENT_BINARY_DIR}/generated"
     )
 
     # Current MSYS2 binutils can fail silently while linking the combined
@@ -509,6 +520,29 @@ if(BASIL_BUILD_EDITOR_DEPS)
 
         basil_enable_warnings(BEditorWorkspaceSessionTests)
         add_test(NAME BEditorWorkspaceSessionTests COMMAND BEditorWorkspaceSessionTests)
+
+        add_executable(BEditorBuildServiceTests
+            tests/BEditorBuildServiceTests.cpp
+            editor/BEditorBuildService.cpp
+        )
+
+        target_include_directories(BEditorBuildServiceTests PRIVATE
+            editor
+            "${CMAKE_CURRENT_BINARY_DIR}/generated"
+        )
+
+        target_link_libraries(BEditorBuildServiceTests PRIVATE
+            BasilProject
+        )
+
+        if(MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            target_link_options(BEditorBuildServiceTests PRIVATE
+                -static -static-libgcc -static-libstdc++
+            )
+        endif()
+
+        basil_enable_warnings(BEditorBuildServiceTests)
+        add_test(NAME BEditorBuildServiceTests COMMAND BEditorBuildServiceTests)
     endif()
 
     add_custom_command(TARGET BasilEditor POST_BUILD

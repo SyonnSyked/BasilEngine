@@ -2,6 +2,7 @@
 #include "BProjectGenerator.h"
 #include "BRecentProjects.h"
 #include "BEditorGit.h"
+#include "BEditorBuildService.h"
 #include "BEditorPanels.h"
 #include "BEditorPreferences.h"
 #include "BEditorTheme.h"
@@ -44,6 +45,8 @@ struct EditorState
     BEditorUIConfig uiConfig = BEditorUIConfig_Default();
     BEditorWorkspaceSession workspaceSession;
     bool confirmProjectClose = false;
+    BEditorBuildService buildService;
+    BEditorBuildState observedBuildState = BEditorBuildState::Idle;
     std::string message;
     bool messageIsError = false;
 };
@@ -440,6 +443,12 @@ static void DrawProjectBrowser(EditorState& state)
 
 static void ReturnToProjectBrowser(EditorState& state)
 {
+    if (state.buildService.IsBusy())
+    {
+        SetMessage(state, "Stop the active build or game before closing the Project.", true);
+        return;
+    }
+
     if (state.workspaceSession.IsDirty())
     {
         state.confirmProjectClose = true;
@@ -457,6 +466,30 @@ static bool SaveWorkspace(EditorState& state)
     bool succeeded = state.workspaceSession.Save(error);
     SetMessage(state, succeeded ? "Workspace saved. A recovery backup was retained." : error.c_str(), !succeeded);
     return succeeded;
+}
+
+static void StartProjectBuild(EditorState& state, bool runAfterBuild)
+{
+    if (state.workspaceSession.IsDirty() && !SaveWorkspace(state))
+        return;
+
+    std::string error;
+    bool started = state.buildService.StartBuild(
+        state.manifestPath.parent_path(),
+        state.project,
+        runAfterBuild,
+        error
+    );
+
+    if (!started)
+    {
+        SetMessage(state, error.c_str(), true);
+        return;
+    }
+
+    state.uiConfig.showBuildOutput = true;
+    state.observedBuildState = state.buildService.State();
+    SetMessage(state, runAfterBuild ? "Project build started; the game will run after success." : "Project build started.", false);
 }
 
 static void DrawEditorMenuBar(EditorState& state)
@@ -519,9 +552,44 @@ static void DrawEditorMenuBar(EditorState& state)
         ImGui::EndMenu();
     }
 
-    ImGui::BeginDisabled();
-    ImGui::MenuItem("Build");
-    ImGui::MenuItem("Run");
+    ImGui::BeginDisabled(state.buildService.IsBusy());
+
+    if (ImGui::MenuItem("Build"))
+        StartProjectBuild(state, false);
+
+    if (ImGui::MenuItem("Run"))
+        StartProjectBuild(state, true);
+
+    ImGui::EndDisabled();
+
+    ImGui::BeginDisabled(!state.buildService.IsGameActive());
+
+    if (state.buildService.State() == BEditorBuildState::Paused)
+    {
+        if (ImGui::MenuItem("Resume"))
+        {
+            std::string error;
+            bool succeeded = state.buildService.Resume(error);
+            SetMessage(state, succeeded ? "Game resumed." : error.c_str(), !succeeded);
+        }
+    }
+    else if (ImGui::MenuItem("Pause"))
+    {
+        std::string error;
+        bool succeeded = state.buildService.Pause(error);
+        SetMessage(state, succeeded ? "Game paused." : error.c_str(), !succeeded);
+    }
+
+    ImGui::EndDisabled();
+    ImGui::BeginDisabled(!state.buildService.IsBusy());
+
+    if (ImGui::MenuItem("Stop"))
+    {
+        std::string error;
+        bool succeeded = state.buildService.Stop(error);
+        SetMessage(state, succeeded ? "Active process stopped." : error.c_str(), !succeeded);
+    }
+
     ImGui::EndDisabled();
 
     if (ImGui::MenuItem("Terminal"))
@@ -654,6 +722,27 @@ static void DrawEditorShell(EditorState& state)
         state.nextGitRefreshTime = currentTime + 1.0;
     }
 
+    state.buildService.Update();
+    BEditorBuildState buildState = state.buildService.State();
+
+    if (buildState != state.observedBuildState)
+    {
+        state.observedBuildState = buildState;
+
+        if (buildState == BEditorBuildState::Failed)
+        {
+            state.uiConfig.showBuildOutput = true;
+            state.uiConfig.showProblems = true;
+            SetMessage(state, "Build or game process failed. Inspect Build Output and Problems.", true);
+        }
+        else if (buildState == BEditorBuildState::BuildSucceeded)
+            SetMessage(state, "Project build succeeded.", false);
+        else if (buildState == BEditorBuildState::Running)
+            SetMessage(state, "Project is running.", false);
+        else if (buildState == BEditorBuildState::Completed)
+            SetMessage(state, "Project process completed.", false);
+    }
+
     DrawEditorMenuBar(state);
 
     if (state.workspaceSession.IsLoaded() &&
@@ -680,6 +769,7 @@ static void DrawEditorShell(EditorState& state)
         state.uiConfig,
         state.project,
         state.workspaceSession,
+        state.buildService,
         state.manifestPath.parent_path(),
         state.message,
         state.messageIsError

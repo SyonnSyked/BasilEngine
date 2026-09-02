@@ -94,6 +94,19 @@ temporary file, preserve the previous file as `.bak`, and then replace the
 destination. Returning to the Project Browser with changes requires an explicit
 save, discard, or cancel choice.
 
+The editor Build command configures and builds the generated, user-editable
+`CMakeLists.txt` asynchronously using the toolchain with which BasilEditor was
+built. Run first performs that same build, then launches the resulting Project
+as a separate development process. Build Output streams combined standard
+output/error, Problems extracts compiler/linker/CMake error lines, and the menu
+controls the real process through Pause, Resume, and Stop. An active build or
+game must be stopped before returning to the Project Browser.
+
+This standalone process workflow is implemented and tested, but it is not the
+final in-editor development-play model: generated runtimes do not yet load the
+Workspace entity file, and their rendering is not yet hosted in the editor
+Viewport.
+
 Schema version 2 rejects unknown and duplicate fields rather than accepting
 data it cannot preserve. Empty schema-version-1 Workspace files remain loadable
 and are represented as version 2 in memory; their first save retains the
@@ -144,7 +157,7 @@ error rather than being modified.
 6. New/Open Project interface
 7. Versioned empty Workspace format and starter generation
 8. Startup Workspace loading and first entity editing **Implemented**
-9. Build and Run controls
+9. Asynchronous Build, Run, Pause/Resume, and Stop controls **Implemented**
 
 Project generation remains a testable headless engine/tooling capability rather
 than logic embedded directly in an ImGui event handler.
