@@ -18,9 +18,10 @@ platform.
 
 ## Milestone 1: Gameplay feasibility spike
 
-**Status:** In progress. Text-asset loading, continuous player movement, camera
-tracking, wall collision, and console input capture are implemented in the
-initial arena. Color layers, an enemy target, and a basic attack remain.
+**Status:** In progress. Text-asset loading, per-cell foreground/background
+colors, continuous player movement, camera tracking, wall collision, and console
+input capture are implemented in the initial arena. An enemy target and a basic
+attack remain.
 
 - Load an environment from a text asset.
 - Render colored glyphs in world space.

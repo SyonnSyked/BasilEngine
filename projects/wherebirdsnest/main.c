@@ -22,6 +22,48 @@ typedef struct WhereBirdsNestGame
     bool canvasInitialized;
 } WhereBirdsNestGame;
 
+static void WhereBirdsNest_ApplyArenaPalette(WhereBirdsNestGame* game)
+{
+    const Color wallForeground = (Color){ 191, 149, 91, 255 };
+    const Color wallBackground = (Color){ 45, 30, 22, 255 };
+    const Color floorForeground = (Color){ 76, 67, 52, 255 };
+    const Color floorBackground = (Color){ 18, 20, 17, 255 };
+
+    for (size_t y = 0; y < ARENA_HEIGHT; ++y)
+    {
+        for (size_t x = 0; x < ARENA_WIDTH; ++x)
+        {
+            int character = 0;
+
+            if (!AsciiCanvas_GetCharacter(&game->canvas, x, y, 0, &character, 0))
+                continue;
+
+            if (character == '#')
+            {
+                AsciiCanvas_SetCellColors(
+                    &game->canvas,
+                    x,
+                    y,
+                    0,
+                    wallForeground,
+                    wallBackground
+                );
+            }
+            else if (character == '.')
+            {
+                AsciiCanvas_SetCellColors(
+                    &game->canvas,
+                    x,
+                    y,
+                    0,
+                    floorForeground,
+                    floorBackground
+                );
+            }
+        }
+    }
+}
+
 static bool WhereBirdsNest_IsBlocked(
     const WhereBirdsNestGame* game,
     float x,
@@ -98,6 +140,7 @@ static bool WhereBirdsNest_OnStart(void* userData, BEngine* engine)
     if (!AsciiCanvas_LoadLayerFromFile(&game->canvas, assetPath, 0))
         return false;
 
+    WhereBirdsNest_ApplyArenaPalette(game);
     game->playerPosition = (Vector2){ 2.5f, 2.5f };
     return true;
 }

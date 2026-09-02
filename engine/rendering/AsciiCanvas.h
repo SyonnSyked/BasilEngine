@@ -12,9 +12,16 @@
 extern "C" {
 #endif
 
+typedef struct AsciiCellStyle
+{
+    Color foreground;
+    Color background;
+} AsciiCellStyle;
+
 typedef struct AsciiCanvas
 {
     BGrid grid;
+    AsciiCellStyle* styles;
 
     int originX;
     int originY;
@@ -68,6 +75,24 @@ bool AsciiCanvas_GetCharacter(
     size_t layer,
     int* outCharacter,
     bool* outVisible
+);
+
+bool AsciiCanvas_SetCellColors(
+    AsciiCanvas* canvas,
+    size_t x,
+    size_t y,
+    size_t layer,
+    Color foreground,
+    Color background
+);
+
+bool AsciiCanvas_GetCellColors(
+    const AsciiCanvas* canvas,
+    size_t x,
+    size_t y,
+    size_t layer,
+    Color* outForeground,
+    Color* outBackground
 );
 
 void AsciiCanvas_SetOrigin(AsciiCanvas* canvas, int originX, int originY);
