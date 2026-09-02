@@ -230,6 +230,13 @@ geometry, and non-compounding scale application are **implemented** in the
 BasilEditor theme module. Current and future panels should consume that module
 rather than define unrelated local themes.
 
+The implemented Project Browser and Project Overview consume this visual
+system. The browser uses a restrained system rail, terminal-style status
+language, structured Project actions, and clear full-width forms. The overview
+uses a compact Project data/control column beside a dominant placeholder
+Viewport. That placeholder communicates the planned next stage without
+presenting Workspace editing as implemented.
+
 Global editor preferences are stored as versioned JSON in BasilEngine's user
 configuration directory. Missing preferences use safe defaults. Malformed or
 unsupported preferences are rejected with a visible explanation while the

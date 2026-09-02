@@ -70,7 +70,9 @@ engine source or machine-specific paths.
 
 - **Status:** In progress. BasilEditor now has a graphical project browser,
   New/Open/Recent workflows, an opened-project overview, and optional Git
-  initialization. The editable content panels remain.
+  initialization. Its current screens use the centralized NetRunner theme,
+  bundled typography, and persistent scale preferences. The editable content
+  panels remain.
 - Create a dockable editor application.
 - Add an ASCII viewport, hierarchy, inspector, asset browser, and log console.
 - Load, edit, save, play, and stop the reference Workspace.

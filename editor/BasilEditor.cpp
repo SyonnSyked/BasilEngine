@@ -163,9 +163,18 @@ static void DrawMessage(const EditorState& state)
 
     const BEditorThemePalette& palette = BEditorTheme_GetPalette();
     ImVec4 color = state.messageIsError ? palette.error : palette.success;
+    ImVec4 background = color;
+    background.w = 0.10f;
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, background);
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(color.x, color.y, color.z, 0.60f));
+    ImGui::BeginChild("##StatusMessage", ImVec2(0.0f, ImGui::GetTextLineHeightWithSpacing() * 2.2f), true);
     ImGui::PushStyleColor(ImGuiCol_Text, color);
+    ImGui::TextUnformatted(state.messageIsError ? "[!] SYSTEM NOTICE" : "[+] STATUS");
+    ImGui::SameLine();
     ImGui::TextWrapped("%s", state.message.c_str());
     ImGui::PopStyleColor();
+    ImGui::EndChild();
+    ImGui::PopStyleColor(2);
 }
 
 static void DrawInterfaceScale(EditorState& state)
@@ -198,113 +207,261 @@ static void DrawInterfaceScale(EditorState& state)
         SetMessage(state, "Interface scale saved.", false);
 }
 
+static void DrawHeading(const char* text)
+{
+    ImFont* bold = BEditorTheme_GetBoldFont();
+
+    if (bold != nullptr)
+        ImGui::PushFont(bold);
+
+    ImGui::TextUnformatted(text);
+
+    if (bold != nullptr)
+        ImGui::PopFont();
+}
+
+static void DrawBrandRail(EditorState& state)
+{
+    const BEditorThemePalette& palette = BEditorTheme_GetPalette();
+    float width = 250.0f * state.preferences.interfaceScale;
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, palette.surface);
+    ImGui::BeginChild("##BrandRail", ImVec2(width, 0.0f), true);
+    ImGui::TextColored(palette.cyan, "[ BASIL//EDITOR ]");
+    ImGui::Spacing();
+    DrawHeading("BASILENGINE");
+    ImGui::TextColored(palette.violet, "ASCII SYSTEMS WORKBENCH");
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+    ImGui::TextDisabled("PROJECT LINK");
+    ImGui::TextColored(palette.success, "● ONLINE");
+    ImGui::Spacing();
+    ImGui::TextDisabled("RUNTIME TARGET");
+    ImGui::TextUnformatted("C11 // C++26");
+    ImGui::Spacing();
+    ImGui::TextDisabled("PROJECT ROOT");
+    ImGui::TextWrapped("%s", state.parentDirectory);
+    ImGui::Dummy(ImVec2(0.0f, 18.0f * state.preferences.interfaceScale));
+    ImGui::SeparatorText("DISPLAY");
+    DrawInterfaceScale(state);
+
+    float remaining = ImGui::GetContentRegionAvail().y;
+    if (remaining > ImGui::GetTextLineHeightWithSpacing() * 3.0f)
+        ImGui::Dummy(ImVec2(0.0f, remaining - ImGui::GetTextLineHeightWithSpacing() * 2.0f));
+
+    ImGui::TextDisabled("BUILD CHANNEL // DEV");
+    ImGui::TextColored(palette.cyan, "> awaiting operator input_");
+    ImGui::EndChild();
+    ImGui::PopStyleColor();
+}
+
+static void DrawRecentProjects(EditorState& state)
+{
+    if (state.recent.count == 0)
+    {
+        ImGui::Spacing();
+        ImGui::TextDisabled("NO PROJECT LINKS RECORDED");
+        ImGui::TextWrapped("Create a new Project or open an existing .basilproject manifest to establish a recent link.");
+        return;
+    }
+
+    bool removed = false;
+
+    for (size_t i = 0; i < state.recent.count && !removed; ++i)
+    {
+        ImGui::PushID(static_cast<int>(i));
+        fs::path path(state.recent.paths[i]);
+        ImGui::BeginChild("##RecentProject", ImVec2(0.0f, ImGui::GetTextLineHeightWithSpacing() * 4.6f), true);
+        DrawHeading(path.stem().string().c_str());
+        ImGui::TextDisabled("%s", state.recent.paths[i]);
+        ImGui::Spacing();
+
+        if (ImGui::Button("OPEN LINK", ImVec2(150.0f * state.preferences.interfaceScale, 0.0f)))
+            OpenProject(state, path);
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("REMOVE"))
+        {
+            BRecentProjects_Remove(&state.recent, i);
+            SaveRecentProjects(state);
+            removed = true;
+        }
+
+        ImGui::EndChild();
+        ImGui::Spacing();
+        ImGui::PopID();
+    }
+}
+
+static void DrawOpenProject(EditorState& state)
+{
+    ImGui::TextDisabled("MANIFEST ENDPOINT");
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::InputText("##ManifestPath", state.openPath, sizeof(state.openPath));
+    ImGui::Spacing();
+
+    if (ImGui::Button("OPEN PROJECT LINK", ImVec2(-1.0f, 0.0f)))
+        OpenProject(state, state.openPath);
+
+    ImGui::Spacing();
+    ImGui::TextDisabled("Native platform file selection arrives with the platform-integration stage.");
+}
+
+static void DrawNewProject(EditorState& state)
+{
+    const char* modes[] = { "C only", "C++ only", "C and C++" };
+    const char* cStandards[] = { "C90", "C99", "C11", "C17", "C23" };
+    const char* cppStandards[] = { "C++98", "C++11", "C++14", "C++17", "C++20", "C++23", "C++26" };
+
+    ImGui::TextDisabled("PROJECT IDENTITY");
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::InputText("Display name", state.projectName, sizeof(state.projectName));
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::InputText("Code identifier", state.identifier, sizeof(state.identifier));
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::InputText("Project location", state.parentDirectory, sizeof(state.parentDirectory));
+    ImGui::Spacing();
+    ImGui::SeparatorText("LANGUAGE MATRIX");
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::Combo("Languages", &state.languageMode, modes, IM_ARRAYSIZE(modes));
+
+    if (state.languageMode != static_cast<int>(BPROJECT_LANGUAGE_CPP))
+    {
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::Combo("C standard", &state.cStandardIndex, cStandards, IM_ARRAYSIZE(cStandards));
+    }
+
+    if (state.languageMode != static_cast<int>(BPROJECT_LANGUAGE_C))
+    {
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::Combo("C++ standard", &state.cppStandardIndex, cppStandards, IM_ARRAYSIZE(cppStandards));
+    }
+
+    ImGui::Checkbox("Initialize a Git repository", &state.initializeGit);
+    ImGui::Spacing();
+
+    if (ImGui::Button("GENERATE + OPEN PROJECT", ImVec2(-1.0f, 0.0f)))
+        CreateProject(state);
+}
+
 static void DrawProjectBrowser(EditorState& state)
 {
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
-    ImGui::Begin("BasilEngine Project Browser", nullptr,
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    ImGui::Begin("BasilEngine Project Browser", nullptr, ImGuiWindowFlags_NoTitleBar |
         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
-    ImGui::TextUnformatted("BasilEngine");
-    ImGui::TextDisabled("Create a project or open an existing .basilproject manifest.");
+    DrawBrandRail(state);
+    ImGui::SameLine(0.0f, 0.0f);
+    ImGui::BeginChild("##ProjectBrowserContent", ImVec2(0.0f, 0.0f), false);
+    ImGui::Dummy(ImVec2(0.0f, 12.0f * state.preferences.interfaceScale));
+    ImGui::TextDisabled("BASIL NETWORK // PROJECT ACCESS");
+    DrawHeading("PROJECT BROWSER");
+    ImGui::TextDisabled("Create a clean Project or reconnect to an existing manifest.");
+    ImGui::Spacing();
     ImGui::Separator();
 
     if (ImGui::BeginTabBar("ProjectActions"))
     {
-        if (ImGui::BeginTabItem("Recent Projects"))
+        if (ImGui::BeginTabItem("RECENT LINKS"))
         {
-            if (state.recent.count == 0)
-                ImGui::TextDisabled("No recent projects yet.");
-
-            for (size_t i = 0; i < state.recent.count; ++i)
-            {
-                ImGui::PushID(static_cast<int>(i));
-                fs::path path(state.recent.paths[i]);
-                if (ImGui::Button(path.stem().string().c_str(), ImVec2(220, 0)))
-                    OpenProject(state, path);
-                ImGui::SameLine();
-                ImGui::TextDisabled("%s", state.recent.paths[i]);
-                ImGui::SameLine();
-                if (ImGui::SmallButton("Remove"))
-                {
-                    BRecentProjects_Remove(&state.recent, i);
-                    SaveRecentProjects(state);
-                    --i;
-                }
-                ImGui::PopID();
-            }
+            ImGui::Spacing();
+            DrawRecentProjects(state);
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Open Project"))
+        if (ImGui::BeginTabItem("OPEN PROJECT"))
         {
-            ImGui::InputText("Manifest path", state.openPath, sizeof(state.openPath));
-            ImGui::SameLine();
-            if (ImGui::Button("Open"))
-                OpenProject(state, state.openPath);
-            ImGui::TextDisabled("Enter the path to a .basilproject file. A native file picker will follow in the platform-integration stage.");
+            ImGui::Spacing();
+            DrawOpenProject(state);
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("New Project"))
+        if (ImGui::BeginTabItem("NEW PROJECT"))
         {
-            ImGui::InputText("Project name", state.projectName, sizeof(state.projectName));
-            ImGui::InputText("Code identifier", state.identifier, sizeof(state.identifier));
-            ImGui::InputText("Location", state.parentDirectory, sizeof(state.parentDirectory));
-            const char* modes[] = { "C only", "C++ only", "C and C++" };
-            const char* cStandards[] = { "C90", "C99", "C11", "C17", "C23" };
-            const char* cppStandards[] = { "C++98", "C++11", "C++14", "C++17", "C++20", "C++23", "C++26" };
-            ImGui::Combo("Languages", &state.languageMode, modes, IM_ARRAYSIZE(modes));
-            if (state.languageMode != static_cast<int>(BPROJECT_LANGUAGE_CPP))
-                ImGui::Combo("C standard", &state.cStandardIndex, cStandards, IM_ARRAYSIZE(cStandards));
-            if (state.languageMode != static_cast<int>(BPROJECT_LANGUAGE_C))
-                ImGui::Combo("C++ standard", &state.cppStandardIndex, cppStandards, IM_ARRAYSIZE(cppStandards));
-            ImGui::Checkbox("Initialize a Git repository", &state.initializeGit);
-            if (ImGui::Button("Create and Open Project"))
-                CreateProject(state);
+            ImGui::Spacing();
+            DrawNewProject(state);
             ImGui::EndTabItem();
         }
 
         ImGui::EndTabBar();
     }
 
-    ImGui::Separator();
-    DrawMessage(state);
     ImGui::Spacing();
-    DrawInterfaceScale(state);
+    DrawMessage(state);
+    ImGui::EndChild();
     ImGui::End();
+    ImGui::PopStyleVar();
 }
 
 static void DrawProjectOverview(EditorState& state)
 {
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
-    ImGui::Begin("Project Overview", nullptr,
+    ImGui::Begin("Project Overview", nullptr, ImGuiWindowFlags_NoTitleBar |
         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-    ImGui::Text("%s", state.project.name);
-    ImGui::Separator();
-    ImGui::Text("Manifest: %s", state.manifestPath.string().c_str());
-    ImGui::Text("Identifier: %s", state.project.identifier);
-    ImGui::Text("Languages: %s", BProject_LanguageModeToString(state.project.languageMode));
-    ImGui::Text("C standard: %d", state.project.cStandard);
-    ImGui::Text("C++ standard: %d", state.project.cppStandard);
-    ImGui::Spacing();
-    if (ImGui::Button("Initialize Git Here"))
-    {
-        bool succeeded = InitializeGit(state.manifestPath.parent_path());
-        SetMessage(state, succeeded ? "Git repository initialized." : "Git initialization failed. Verify that Git is installed and available on PATH.", !succeeded);
-    }
+    const BEditorThemePalette& palette = BEditorTheme_GetPalette();
+    ImGui::TextColored(palette.cyan, "[ PROJECT//ACTIVE ]");
     ImGui::SameLine();
-    if (ImGui::Button("Back to Project Browser"))
+    DrawHeading(state.project.name);
+    ImGui::SameLine(ImGui::GetWindowWidth() - 210.0f * state.preferences.interfaceScale);
+
+    if (ImGui::Button("< PROJECT BROWSER"))
     {
         state.projectOpen = false;
         SetWindowTitle("BasilEditor");
     }
+
+    ImGui::Separator();
+
+    if (ImGui::BeginTable("##ProjectOverviewLayout", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV))
+    {
+        ImGui::TableSetupColumn("ProjectData", ImGuiTableColumnFlags_WidthFixed, 310.0f * state.preferences.interfaceScale);
+        ImGui::TableSetupColumn("ViewportPreview", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableNextColumn();
+        ImGui::TextDisabled("PROJECT MANIFEST");
+        ImGui::TextWrapped("%s", state.manifestPath.string().c_str());
+        ImGui::Spacing();
+        ImGui::SeparatorText("IDENTITY");
+        ImGui::TextDisabled("CODE IDENTIFIER");
+        ImGui::TextUnformatted(state.project.identifier);
+        ImGui::TextDisabled("LANGUAGE MODE");
+        ImGui::TextUnformatted(BProject_LanguageModeToString(state.project.languageMode));
+        ImGui::TextDisabled("LANGUAGE STANDARDS");
+        ImGui::Text("C%d // C++%d", state.project.cStandard, state.project.cppStandard);
+        ImGui::Spacing();
+        ImGui::SeparatorText("PROJECT OPERATIONS");
+
+        if (ImGui::Button("INITIALIZE GIT", ImVec2(-1.0f, 0.0f)))
+        {
+            bool succeeded = InitializeGit(state.manifestPath.parent_path());
+            SetMessage(state, succeeded ? "Git repository initialized." : "Git initialization failed. Verify that Git is installed and available on PATH.", !succeeded);
+        }
+
+        ImGui::Spacing();
+        DrawInterfaceScale(state);
+        ImGui::TableNextColumn();
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, palette.background);
+        ImGui::BeginChild("##FutureViewport", ImVec2(0.0f, -ImGui::GetTextLineHeightWithSpacing() * 3.5f), true);
+        ImGui::TextColored(palette.violet, "WORKSPACE VIEWPORT // OFFLINE");
+        ImGui::Separator();
+        ImGui::SetCursorPosY(ImGui::GetWindowHeight() * 0.42f);
+        float labelWidth = ImGui::CalcTextSize("[ NO WORKSPACE LOADED ]").x;
+        ImGui::SetCursorPosX((ImGui::GetWindowWidth() - labelWidth) * 0.5f);
+        ImGui::TextColored(palette.cyan, "[ NO WORKSPACE LOADED ]");
+        ImGui::SetCursorPosX(ImGui::GetWindowWidth() * 0.25f);
+        ImGui::TextDisabled("Workspace editing and in-editor play arrive in the next functional stage.");
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
+        DrawMessage(state);
+        ImGui::EndTable();
+    }
+
     ImGui::Spacing();
-    ImGui::TextDisabled("Workspace editing, build, and run controls arrive in the next editor stages.");
-    DrawMessage(state);
-    ImGui::Spacing();
-    DrawInterfaceScale(state);
+    ImGui::TextDisabled("BASIL NETWORK // PROJECT LINK STABLE // EDITOR FOUNDATION ACTIVE");
     ImGui::End();
 }
 
