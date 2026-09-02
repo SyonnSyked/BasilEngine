@@ -364,6 +364,25 @@ if(BUILD_TESTING)
         )
     endif()
 
+    add_test(
+        NAME WhereBirdsNestProject
+        COMMAND ${CMAKE_COMMAND}
+            -DENGINE_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+            -DREFERENCE_PROJECT=${CMAKE_CURRENT_SOURCE_DIR}/projects/wherebirdsnest
+            -DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/where-birds-nest-project-test
+            -DTEST_GENERATOR=${CMAKE_GENERATOR}
+            -DTEST_C_COMPILER=${CMAKE_C_COMPILER}
+            -DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+            -DTEST_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+            -DRAYLIB_ROOT=${BASIL_RAYLIB_ROOT}
+            -DTOOLS_ROOT=${BASIL_TOOLS_ROOT}
+            -DRAYLIB_INCLUDE_DIR=${BASIL_RAYLIB_INCLUDE_DIR}
+            -DRAYLIB_LIBRARY=${BASIL_RAYLIB_LIBRARY}
+            -DTOOLS_INCLUDE_DIR=${BASIL_TOOLS_INCLUDE_DIR}
+            -DTOOLS_LIBRARY=${BASIL_TOOLS_LIBRARY}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/WhereBirdsNestProject.cmake
+    )
+
     add_executable(WBNCombatTests
         tests/WBNCombatTests.c
         projects/wherebirdsnest/WBNCombat.c

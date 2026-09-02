@@ -108,11 +108,11 @@ engine source or machine-specific paths.
 **Exit condition:** The reference-game test room can be meaningfully edited and
 saved without hand-editing its Workspace representation.
 
-The active implementation slice now has a complete shared path from generated
-runtime Project discovery through Workspace/Text Sprite interpretation and
-standalone presentation. Editor component authoring, the explicit Run contract,
-and Viewport reuse remain. Its accepted contract and progress are recorded in
-`RUNTIME_WORKSPACE_BRIDGE.md`.
+The Runtime Workspace Bridge slice is implemented: generated runtime discovery,
+Workspace/Text Sprite interpretation, standalone presentation, editor component
+authoring, validated explicit-manifest Run, shared-data Viewport preview, and a
+Where Birds Nest reference room all use the same path. Its contract and closeout
+evidence are recorded in `RUNTIME_WORKSPACE_BRIDGE.md`.
 
 ## Milestone 5: Project creation
 

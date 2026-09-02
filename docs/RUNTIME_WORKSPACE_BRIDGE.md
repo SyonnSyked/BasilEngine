@@ -1,6 +1,6 @@
 # Runtime Workspace Bridge Technical Design
 
-**Status:** Accepted; implementation in progress (Steps 1–8 complete)
+**Status:** Implemented; automated closeout complete, Windows visual review pending
 **Design date:** 2026-09-02  
 **Target slice:** BasilEditor-authored entities render in a generated standalone
 Project through shared C runtime APIs
@@ -589,8 +589,11 @@ Each step must build, pass its focused tests, and leave a reviewable commit.
    guides, pan/zoom, manual asset refresh, and toggleable editor-only markers
    and labels for spatial entities without active renderables. It does not host
    gameplay.
-9. **Reference proof and audit:** author a small Where Birds Nest room through
-   the same path, run the full matrix, and update the scope checkpoint.
+9. **Reference proof and audit — Implemented:** Where Birds Nest now includes an
+   editor-openable Project and Workspace-authored test room using a Text Sprite
+   environment, player Text Sprite, layered enemy glyph, and empty marker. Its
+   in-place and relocated builds validate through the shared runtime path, and
+   the recurring scope audit is updated.
 
 If lifecycle conversion proves too large for one reviewable commit, step 1 may
 be divided into internal storage and caller migration, but no two competing

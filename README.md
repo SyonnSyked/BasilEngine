@@ -33,6 +33,8 @@ technical contract for that next slice is the
 - Plain-text ASCII asset loading and runtime glyph editing
 - Smooth world-space movement, camera tracking, and collision
 - A small `WhereBirdsNest` combat feasibility arena
+- An editor-openable Where Birds Nest reference Project with a Workspace-authored
+  layered test room, Text Sprite environment/player, glyph enemy, and empty marker
 - Versioned JSON Project and empty-Workspace formats with a headless generator
 - A graphical BasilEditor project browser with New, Open, and Recent workflows
 - A centralized cyberpunk editor theme with bundled JetBrains Mono typography
@@ -74,6 +76,10 @@ technical contract for that next slice is the
 - Attack the `D` target with `Space` when in range.
 - Open the developer console with the backtick/grave key.
 - Enter `help` in the console to list commands.
+
+The separate editor-authored reference Project can be opened from
+`projects/wherebirdsnest/WhereBirdsNest.basilproject`. It intentionally coexists
+with the combat spike until gameplay is migrated onto the reusable runtime model.
 
 ## Building on the current Windows development machine
 

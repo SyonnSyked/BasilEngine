@@ -135,6 +135,13 @@ editor presentation: grid/origin guides, selection outlines, pan/zoom, manual
 asset refresh, and toggleable markers/name labels for enabled spatial entities
 without an active renderable. Preview failure retains the last valid draw list.
 
+Where Birds Nest provides the first maintained reference Project at
+`projects/wherebirdsnest/WhereBirdsNest.basilproject`. Its startup Workspace is
+ordinary schema-3 data and demonstrates a layered environment Text Sprite,
+multi-line player Text Sprite, enemy glyph, and transform-only editor marker.
+The older hand-coded combat arena remains a separate feasibility spike until a
+later gameplay-model migration is justified.
+
 BasilEditor loads the startup Workspace into an explicitly owned, lifecycle-safe
 document held by the editor session. Loads and clones are transactional, so a
 failed operation cannot partially replace the last valid document. Hierarchy

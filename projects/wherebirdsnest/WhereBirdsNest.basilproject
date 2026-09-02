@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 2,
+  "name": "Where Birds Nest",
+  "identifier": "WhereBirdsNest",
+  "languages": {
+    "mode": "c",
+    "cStandard": 11,
+    "cppStandard": 26
+  },
+  "startupWorkspace": "workspaces/Main.basilworkspace"
+}
