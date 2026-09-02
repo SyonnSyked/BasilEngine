@@ -8,7 +8,7 @@ float BTime_GetDeltaTime() {
 }
 
 float BTime_GetTime() {
-    return GetTime();
+    return (float)GetTime();
 }
 
 int BTime_GetFPS() {

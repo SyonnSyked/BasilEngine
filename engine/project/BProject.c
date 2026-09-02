@@ -4,6 +4,7 @@
 
 #include <ctype.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -75,14 +76,16 @@ static char* BProject_ReadFile(const char* path, BProjectError* error)
 
     long length = ftell(file);
 
-    if (length < 0 || fseek(file, 0, SEEK_SET) != 0)
+    if (length < 0 || (uintmax_t)length > SIZE_MAX - 1 ||
+        fseek(file, 0, SEEK_SET) != 0)
     {
         fclose(file);
         BProject_Fail(error, BPROJECT_ERROR_IO, "Could not read the project manifest.");
         return 0;
     }
 
-    char* contents = (char*)malloc((size_t)length + 1);
+    size_t fileLength = (size_t)length;
+    char* contents = (char*)calloc(fileLength + 1, 1);
 
     if (contents == 0)
     {
@@ -91,17 +94,16 @@ static char* BProject_ReadFile(const char* path, BProjectError* error)
         return 0;
     }
 
-    size_t bytesRead = fread(contents, 1, (size_t)length, file);
+    size_t bytesRead = fread(contents, 1, fileLength, file);
     fclose(file);
 
-    if (bytesRead != (size_t)length)
+    if (bytesRead != fileLength)
     {
         free(contents);
         BProject_Fail(error, BPROJECT_ERROR_IO, "Could not read the complete manifest.");
         return 0;
     }
 
-    contents[bytesRead] = '\0';
     return contents;
 }
 
@@ -212,17 +214,23 @@ bool BProject_Load(const char* manifestPath, BProject* outProject, BProjectError
     cJSON* identifier = cJSON_GetObjectItemCaseSensitive(root, "identifier");
     cJSON* languages = cJSON_GetObjectItemCaseSensitive(root, "languages");
     cJSON* startupScene = cJSON_GetObjectItemCaseSensitive(root, "startupScene");
-    cJSON* mode = cJSON_IsObject(languages) ? cJSON_GetObjectItemCaseSensitive(languages, "mode") : 0;
-    cJSON* cStandard = cJSON_IsObject(languages) ? cJSON_GetObjectItemCaseSensitive(languages, "cStandard") : 0;
-    cJSON* cppStandard = cJSON_IsObject(languages) ? cJSON_GetObjectItemCaseSensitive(languages, "cppStandard") : 0;
 
     if (!cJSON_IsNumber(schemaVersion) || !cJSON_IsString(name) ||
-        !cJSON_IsString(identifier) || !cJSON_IsString(mode) ||
-        !cJSON_IsNumber(cStandard) || !cJSON_IsNumber(cppStandard) ||
+        !cJSON_IsString(identifier) || !cJSON_IsObject(languages) ||
         !cJSON_IsString(startupScene))
     {
         cJSON_Delete(root);
         return BProject_Fail(error, BPROJECT_ERROR_INVALID_MANIFEST, "Manifest is missing required fields or contains incorrect field types.");
+    }
+
+    cJSON* mode = cJSON_GetObjectItemCaseSensitive(languages, "mode");
+    cJSON* cStandard = cJSON_GetObjectItemCaseSensitive(languages, "cStandard");
+    cJSON* cppStandard = cJSON_GetObjectItemCaseSensitive(languages, "cppStandard");
+
+    if (!cJSON_IsString(mode) || !cJSON_IsNumber(cStandard) || !cJSON_IsNumber(cppStandard))
+    {
+        cJSON_Delete(root);
+        return BProject_Fail(error, BPROJECT_ERROR_INVALID_MANIFEST, "Manifest language settings are missing or contain incorrect field types.");
     }
 
     if (schemaVersion->valuedouble != (double)schemaVersion->valueint ||
