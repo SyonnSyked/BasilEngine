@@ -26,8 +26,109 @@ static bool ParseStandard(const char* value, int* outStandard)
     return true;
 }
 
+static bool ReadLine(const char* prompt, char* output, size_t outputSize)
+{
+    printf("%s", prompt);
+    fflush(stdout);
+
+    if (fgets(output, (int)outputSize, stdin) == 0)
+        return false;
+
+    output[strcspn(output, "\r\n")] = '\0';
+    return true;
+}
+
+static void WaitForEnter(void)
+{
+    char input[8];
+    printf("Press Enter to close...");
+    fflush(stdout);
+    (void)fgets(input, sizeof(input), stdin);
+}
+
+static int RunInteractive(void)
+{
+    char name[BPROJECT_NAME_MAX];
+    char identifier[BPROJECT_IDENTIFIER_MAX];
+    char parentDirectory[BPROJECT_PATH_MAX];
+    char language[16];
+    char standard[16];
+
+    printf("BasilEngine Project Creator\n\n");
+
+    if (!ReadLine("Project name: ", name, sizeof(name)) || name[0] == '\0' ||
+        !ReadLine("Project identifier (letters, numbers, underscore): ", identifier, sizeof(identifier)) ||
+        identifier[0] == '\0' ||
+        !ReadLine("Parent directory: ", parentDirectory, sizeof(parentDirectory)) ||
+        parentDirectory[0] == '\0' ||
+        !ReadLine("Language [mixed/c/cpp] (default mixed): ", language, sizeof(language)))
+    {
+        fprintf(stderr, "Project creation cancelled: required input was not provided.\n");
+        WaitForEnter();
+        return 1;
+    }
+
+    BProject project = BProject_Default(name, identifier);
+
+    if (language[0] != '\0' &&
+        !BProject_LanguageModeFromString(language, &project.languageMode))
+    {
+        fprintf(stderr, "Unknown language mode: %s\n", language);
+        WaitForEnter();
+        return 1;
+    }
+
+    if (project.languageMode != BPROJECT_LANGUAGE_CPP)
+    {
+        if (!ReadLine("C standard (default 11): ", standard, sizeof(standard)))
+        {
+            WaitForEnter();
+            return 1;
+        }
+
+        if (standard[0] != '\0' && !ParseStandard(standard, &project.cStandard))
+        {
+            fprintf(stderr, "Invalid C standard: %s\n", standard);
+            WaitForEnter();
+            return 1;
+        }
+    }
+
+    if (project.languageMode != BPROJECT_LANGUAGE_C)
+    {
+        if (!ReadLine("C++ standard (default 26): ", standard, sizeof(standard)))
+        {
+            WaitForEnter();
+            return 1;
+        }
+
+        if (standard[0] != '\0' && !ParseStandard(standard, &project.cppStandard))
+        {
+            fprintf(stderr, "Invalid C++ standard: %s\n", standard);
+            WaitForEnter();
+            return 1;
+        }
+    }
+
+    BProjectError error;
+
+    if (!BProjectGenerator_Create(&project, parentDirectory, &error))
+    {
+        fprintf(stderr, "Project creation failed: %s\n", error.message);
+        WaitForEnter();
+        return 1;
+    }
+
+    printf("\nCreated project '%s' at %s/%s\n", project.name, parentDirectory, project.identifier);
+    WaitForEnter();
+    return 0;
+}
+
 int main(int argumentCount, char** arguments)
 {
+    if (argumentCount == 1)
+        return RunInteractive();
+
     if (argumentCount < 5 || strcmp(arguments[1], "create") != 0)
     {
         PrintUsage(arguments[0]);

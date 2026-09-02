@@ -241,6 +241,15 @@ if(BUILD_TESTING)
 
     if(BASIL_BUILD_PROJECT_TOOL)
         add_test(
+            NAME BProjectToolInteractive
+            COMMAND ${CMAKE_COMMAND}
+                -DPROJECT_TOOL=$<TARGET_FILE:BasilProjectTool>
+                -DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/interactive-project-tool-test
+                -DINPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/project-tool-interactive-input.txt
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/BProjectToolInteractive.cmake
+        )
+
+        add_test(
             NAME GeneratedProjectBuild
             COMMAND ${CMAKE_COMMAND}
                 -DPROJECT_TOOL=$<TARGET_FILE:BasilProjectTool>

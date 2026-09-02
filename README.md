@@ -87,6 +87,9 @@ C11/C++26 is the default:
 .\build\BasilProjectTool.exe create "My Game" MyGame C:\Projects
 ```
 
+Launching `BasilProjectTool.exe` without command-line arguments opens an
+interactive console wizard and waits for confirmation before closing.
+
 Language rules can be selected without editing the generator:
 
 ```powershell
