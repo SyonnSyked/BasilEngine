@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "actions": [
+    { "name": "move_up", "device": "keyboard", "code": 87 },
+    { "name": "move_down", "device": "keyboard", "code": 83 },
+    { "name": "move_left", "device": "keyboard", "code": 65 },
+    { "name": "move_right", "device": "keyboard", "code": 68 },
+    { "name": "confirm", "device": "keyboard", "code": 257 },
+    { "name": "cancel", "device": "keyboard", "code": 256 },
+    { "name": "primary_action", "device": "mouse", "code": 0 }
+  ]
+}

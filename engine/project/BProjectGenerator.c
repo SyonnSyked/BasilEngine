@@ -358,6 +358,18 @@ bool BProjectGenerator_Create(
         return false;
     }
 
+    if (!BProjectGenerator_Path(path, sizeof(path), root, ".basil/input.json", error) ||
+        !BProjectGenerator_WriteText(path,
+            "{\n  \"schemaVersion\": 1,\n  \"actions\": [\n"
+            "    { \"name\": \"move_up\", \"device\": \"keyboard\", \"code\": 87 },\n"
+            "    { \"name\": \"move_down\", \"device\": \"keyboard\", \"code\": 83 },\n"
+            "    { \"name\": \"move_left\", \"device\": \"keyboard\", \"code\": 65 },\n"
+            "    { \"name\": \"move_right\", \"device\": \"keyboard\", \"code\": 68 },\n"
+            "    { \"name\": \"confirm\", \"device\": \"keyboard\", \"code\": 257 },\n"
+            "    { \"name\": \"cancel\", \"device\": \"keyboard\", \"code\": 256 },\n"
+            "    { \"name\": \"primary_action\", \"device\": \"mouse\", \"code\": 0 }\n"
+            "  ]\n}\n", error)) return false;
+
     if (!BProjectGenerator_Path(path, sizeof(path), root, "CMakeLists.txt", error) ||
         !BProjectGenerator_WriteCMake(project, path, error))
     {

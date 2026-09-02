@@ -22,6 +22,12 @@ the Project terminates the child process. Windows PowerShell is the alpha defaul
 
 ## Stage 5 Windows exit check
 
+**Result (2026-09-02): Accepted for alpha progression.** The primary editor,
+build/run, Problems navigation, external-edit, and terminal workflows operated
+successfully in the hands-on pass. Minor usability defects may be catalogued
+and repaired during later alpha audits; no blocking data-loss or workflow fault
+was observed.
+
 1. Create or open a generated Project and open `source/game.c` or `game.cpp` in
    Code Editor.
 2. Make a small valid edit, Save All, Build, Run, Stop, edit again, and rerun.

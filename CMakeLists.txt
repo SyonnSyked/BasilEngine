@@ -197,6 +197,7 @@ target_link_libraries(BasilEngine PUBLIC
     ${BASIL_TOOLS_TARGET}
     ${CMAKE_DL_LIBS}
 )
+target_link_libraries(BasilEngine PRIVATE cjson)
 
 # A raw static archive does not carry raylib's platform link requirements.
 # Proper CMake and pkg-config targets provide these transitively.

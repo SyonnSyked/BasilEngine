@@ -6,6 +6,7 @@
 #include "BProjectContext.h"
 #include "BGameModule.h"
 #include "BDynamicLibrary.h"
+#include "BInput.h"
 
 #include <raylib.h>
 #include <stdbool.h>
@@ -119,8 +120,12 @@ static Color Runtime_Color(BAsciiColor color)
 
 static bool Runtime_OnStart(void* userData, BEngine* engine)
 {
-    (void)userData;
     (void)engine;
+    BGeneratedRuntimeState* state = userData;
+    char path[BPROJECT_PATH_MAX + 32]; char error[BDIAGNOSTIC_MESSAGE_MAX];
+    int written = snprintf(path, sizeof(path), "%s/.basil/input.json", state->context.projectRoot);
+    if (written < 0 || (size_t)written >= sizeof(path)) { snprintf(state->errorMessage, sizeof(state->errorMessage), "Input action map path is too long."); return false; }
+    if (!BInput_LoadActionMap(path, error, sizeof(error))) { snprintf(state->errorMessage, sizeof(state->errorMessage), "%s", error); return false; }
     return true;
 }
 
@@ -128,6 +133,7 @@ static void Runtime_OnUpdate(void* userData, BEngine* engine, float deltaTime)
 {
     (void)engine;
     BGeneratedRuntimeState* state = userData;
+    BInput_SetFocusSuppressed(!IsWindowFocused());
     if (state->moduleInitialized && state->gameModule.onUpdate) state->gameModule.onUpdate(state->gameState, deltaTime);
     if (state->drawDirty)
     {

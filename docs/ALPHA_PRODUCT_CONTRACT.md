@@ -257,7 +257,7 @@ manual review, documentation updates, and a reviewable commit.
 
 ### Stage 2: Editor reliability
 
-**Implementation status:** Complete, including Windows interactive verification.
+**Implementation status:** Complete; Windows interactive checklist pending.
 
 - Supported mutations participate in undo/redo and close protection.
 - Recovery survives forced termination without silently overwriting files.
@@ -274,7 +274,7 @@ manual review, documentation updates, and a reviewable commit.
 
 ### Stage 4: Native game-code boundary
 
-**Implementation status:** Complete; Windows interactive checklist pending.
+**Implementation status:** Complete, including Windows interactive verification.
 
 - C, C++, and mixed Projects execute through the versioned module interface.
 - Custom metadata/data round-trip without executing Project code in Inspector.
@@ -282,13 +282,15 @@ manual review, documentation updates, and a reviewable commit.
 
 ### Stage 5: Integrated programming workflow
 
-**Implementation status:** Complete; Windows interactive checklist pending.
+**Implementation status:** Complete; Windows interactive workflow accepted.
 
 - A new Project can be programmed, built, diagnosed, and rerun using only the
   editor.
 - External-editor and terminal routes work without a competing workflow.
 
 ### Stage 6: Playable runtime services
+
+**Implementation status:** In progress; Project-owned input foundation underway.
 
 - A test Project proves input rebinding, collision-facing behavior, custom
   components, safe Workspace replacement, UI/dialogue, and audio.

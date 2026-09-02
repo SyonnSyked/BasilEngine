@@ -25,6 +25,21 @@ int main(void)
     failures += Check(BInput_RebindAction("test_action", 456), "action can be rebound");
     failures += Check(BInput_GetActionKey("test_action") == 456, "rebound key is retained");
     failures += Check(!BInput_RebindAction("missing", 456), "unknown action cannot be rebound");
+    failures += Check(BInput_RegisterMouseAction("primary", 0), "mouse action registers");
+    failures += Check(BInput_GetActionDevice("primary") == BINPUT_DEVICE_MOUSE, "mouse binding kind retained");
+    BInput_SetFocusSuppressed(true);
+    failures += Check(BInput_IsFocusSuppressed() && !BInput_IsActionDown("move_up"), "focus suppression blocks action state");
+    BInput_SetFocusSuppressed(false);
+
+    const char* mapPath = "BInputMapTest.json";
+    FILE* map = fopen(mapPath, "wb");
+    fputs("{\"schemaVersion\":1,\"actions\":[{\"name\":\"attack\",\"device\":\"mouse\",\"code\":1},{\"name\":\"dash\",\"device\":\"keyboard\",\"code\":32}]}", map); fclose(map);
+    char error[256];
+    failures += Check(BInput_LoadActionMap(mapPath, error, sizeof(error)), "Project action map loads");
+    failures += Check(BInput_GetActionCount() == 2 && BInput_GetActionDevice("attack") == BINPUT_DEVICE_MOUSE, "Project map replaces bindings transactionally");
+    map = fopen(mapPath, "wb"); fputs("{bad", map); fclose(map);
+    failures += Check(!BInput_LoadActionMap(mapPath, error, sizeof(error)) && BInput_HasAction("dash"), "malformed map preserves last valid bindings");
+    remove(mapPath);
 
     BInput_Shutdown();
     failures += Check(BInput_GetActionCount() == 0, "shutdown clears actions");
@@ -34,4 +49,3 @@ int main(void)
 
     return failures == 0 ? 0 : 1;
 }
-
