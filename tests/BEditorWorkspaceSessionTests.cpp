@@ -25,6 +25,15 @@ int main()
             std::chrono::steady_clock::now().time_since_epoch().count()
         ));
     fs::create_directories(root / "workspaces");
+    fs::create_directories(root / "assets" / "sprites");
+    {
+        std::FILE* sprite = std::fopen((root / "assets" / "sprites" / "ship.txt").string().c_str(), "wb");
+        if (sprite != nullptr)
+        {
+            std::fputs("/\\\n<@>\n", sprite);
+            std::fclose(sprite);
+        }
+    }
     fs::path workspacePath = root / "workspaces" / "Main.basilworkspace";
     BWorkspaceDocument initial{};
     BDiagnosticList diagnostics{};
@@ -57,27 +66,66 @@ int main()
     failures += Check(session.AddEntity(error), "session adds entity");
     failures += Check(session.IsDirty(), "adding marks session dirty");
     failures += Check(session.SelectedEntity() != nullptr, "added entity is selected");
+    failures += Check(
+        session.SelectedEntity()->componentCount == 2 &&
+            BWorkspaceEntity_FindComponentConst(session.SelectedEntity(), BWORKSPACE_TRANSFORM2D_TYPE) != nullptr &&
+            BWorkspaceEntity_FindComponentConst(session.SelectedEntity(), BWORKSPACE_ASCII_RENDERABLE_TYPE) != nullptr,
+        "normal entity is immediately visible with Transform2D and ASCII Renderable"
+    );
 
     BWorkspaceEntity* selected = session.MutableSelectedEntity();
-    selected->name[0] = '\0';
-    session.MarkDirty();
-    failures += Check(!session.Save(error), "invalid entity edit is not saved");
-    failures += Check(session.IsDirty(), "failed save preserves dirty state");
-    std::snprintf(selected->name, sizeof(selected->name), "Edited Entity");
-    session.MarkDirty();
+    std::string originalName = selected->name;
+    failures += Check(!session.SetSelectedName("", error), "invalid entity name is rejected at mutation time");
+    failures += Check(std::string(selected->name) == originalName, "invalid name preserves the last valid value");
+    failures += Check(session.SetSelectedName("Edited Entity", error), "validated entity name is applied");
+    failures += Check(session.SetSelectedEnabled(false, error), "enabled state uses shared mutation API");
+    failures += Check(session.SetSelectedTransform({ 12.5f, -4.25f }, error), "position uses shared mutation API");
+    BWorkspaceComponent* renderComponent = BWorkspaceEntity_FindComponent(selected, BWORKSPACE_ASCII_RENDERABLE_TYPE);
+    BAsciiRenderable editedRenderable = renderComponent->data.asciiRenderable;
+    editedRenderable.glyph = '#';
+    editedRenderable.layer = 17;
+    editedRenderable.anchor = BASCII_ANCHOR_TOP_LEFT;
+    failures += Check(session.SetSelectedRenderable(editedRenderable, error), "renderable fields use shared mutation API");
+    BAsciiRenderable invalidRenderable = editedRenderable;
+    invalidRenderable.glyph = '\t';
+    failures += Check(!session.SetSelectedRenderable(invalidRenderable, error), "invalid renderable edit is rejected");
+    failures += Check(renderComponent->data.asciiRenderable.glyph == '#', "invalid renderable preserves the last valid value");
     failures += Check(session.Save(error), "session saves edits");
     failures += Check(!session.IsDirty(), "save clears dirty state");
     failures += Check(session.Reload(error), "session reloads saved Workspace");
     failures += Check(
         session.Workspace().entityCount == 1 &&
-            std::string(session.Workspace().entities[0].name) == "Edited Entity",
-        "saved entity round trips"
+            std::string(session.Workspace().entities[0].name) == "Edited Entity" &&
+            !session.Workspace().entities[0].enabled,
+        "saved entity and component edits round trip"
     );
 
     session.Select(0);
     failures += Check(session.RemoveSelectedEntity(error), "session removes selected entity");
     failures += Check(session.Workspace().entityCount == 0, "removed entity leaves Workspace empty");
     failures += Check(session.SelectedEntity() == nullptr, "remove clears selection");
+    failures += Check(session.AddTextSpriteEntity("assets/sprites/ship.txt", error), "session adds Text Sprite entity");
+    const BWorkspaceComponent* textRenderable = BWorkspaceEntity_FindComponentConst(
+        session.SelectedEntity(), BWORKSPACE_ASCII_RENDERABLE_TYPE
+    );
+    failures += Check(
+        textRenderable != nullptr && textRenderable->data.asciiRenderable.sourceKind == BASCII_SOURCE_TEXT_SPRITE &&
+            std::string(textRenderable->data.asciiRenderable.textSpritePath) == "assets/sprites/ship.txt",
+        "Text Sprite entity stores a portable Project-relative asset path"
+    );
+    failures += Check(!session.AddTextSpriteEntity("../escape.txt", error), "escaping Text Sprite path is rejected");
+    failures += Check(session.Workspace().entityCount == 1, "failed Text Sprite creation rolls back completely");
+    failures += Check(session.AddEmptyEntity(error), "session adds explicit empty entity");
+    failures += Check(
+        session.SelectedEntity()->componentCount == 1 &&
+            BWorkspaceEntity_FindComponentConst(session.SelectedEntity(), BWORKSPACE_TRANSFORM2D_TYPE) != nullptr &&
+            BWorkspaceEntity_FindComponentConst(session.SelectedEntity(), BWORKSPACE_ASCII_RENDERABLE_TYPE) == nullptr,
+        "empty entity contains only Transform2D"
+    );
+    failures += Check(session.RemoveSelectedEntity(error), "empty entity can be removed");
+    session.Select(0);
+    failures += Check(session.RemoveSelectedEntity(error), "Text Sprite entity can be removed");
+    failures += Check(session.Workspace().entityCount == 0, "authoring fixture returns to empty state");
 
     fs::remove_all(root);
 

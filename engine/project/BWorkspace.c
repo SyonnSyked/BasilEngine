@@ -653,6 +653,36 @@ bool BWorkspaceDocument_RemoveEntity(BWorkspaceDocument* document, size_t index,
     return true;
 }
 
+bool BWorkspaceDocument_SetEntityName(
+    BWorkspaceDocument* document,
+    size_t entityIndex,
+    const char* name,
+    BDiagnosticList* diagnostics
+)
+{
+    BWorkspaceDocument_ClearError(diagnostics);
+    if (document == 0 || entityIndex >= document->entityCount || name == 0)
+        return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_ARGUMENT, "Workspace, entity, and name are required.");
+    if (name[0] == '\0' || strlen(name) >= BWORKSPACE_ENTITY_NAME_MAX)
+        return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA, "Entity name is empty or too long.");
+    snprintf(document->entities[entityIndex].name, sizeof(document->entities[entityIndex].name), "%s", name);
+    return true;
+}
+
+bool BWorkspaceDocument_SetEntityEnabled(
+    BWorkspaceDocument* document,
+    size_t entityIndex,
+    bool enabled,
+    BDiagnosticList* diagnostics
+)
+{
+    BWorkspaceDocument_ClearError(diagnostics);
+    if (document == 0 || entityIndex >= document->entityCount)
+        return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_ARGUMENT, "Workspace and entity are required.");
+    document->entities[entityIndex].enabled = enabled;
+    return true;
+}
+
 BWorkspaceComponent* BWorkspaceEntity_FindComponent(BWorkspaceEntity* entity, const char* type)
 {
     if (entity == 0 || type == 0)
@@ -780,6 +810,48 @@ bool BWorkspaceDocument_AddAsciiRenderable(
     component.kind = BWORKSPACE_COMPONENT_ASCII_RENDERABLE;
     component.data.asciiRenderable = *renderable;
     return BWorkspaceDocument_AppendComponent(document, entityIndex, &component, diagnostics);
+}
+
+bool BWorkspaceDocument_SetTransform2D(
+    BWorkspaceDocument* document,
+    size_t entityIndex,
+    BTransform2D transform,
+    BDiagnosticList* diagnostics
+)
+{
+    BWorkspaceDocument_ClearError(diagnostics);
+    if (document == 0 || entityIndex >= document->entityCount)
+        return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_ARGUMENT, "Workspace and entity are required.");
+    if (!isfinite(transform.x) || !isfinite(transform.y))
+        return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA, "Transform2D position must be finite.");
+    BWorkspaceComponent* component = BWorkspaceEntity_FindComponent(&document->entities[entityIndex], BWORKSPACE_TRANSFORM2D_TYPE);
+    if (component == 0 || component->kind != BWORKSPACE_COMPONENT_TRANSFORM2D)
+        return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA, "Entity does not contain a supported Transform2D component.");
+    component->data.transform2d = transform;
+    return true;
+}
+
+bool BWorkspaceDocument_SetAsciiRenderable(
+    BWorkspaceDocument* document,
+    size_t entityIndex,
+    const BAsciiRenderable* renderable,
+    BDiagnosticList* diagnostics
+)
+{
+    BWorkspaceDocument_ClearError(diagnostics);
+    if (document == 0 || entityIndex >= document->entityCount || renderable == 0)
+        return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_ARGUMENT, "Workspace, entity, and ASCII Renderable are required.");
+    BWorkspaceComponent* component = BWorkspaceEntity_FindComponent(&document->entities[entityIndex], BWORKSPACE_ASCII_RENDERABLE_TYPE);
+    if (component == 0 || component->kind != BWORKSPACE_COMPONENT_ASCII_RENDERABLE)
+        return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA, "Entity does not contain a supported ASCII Renderable component.");
+    BAsciiRenderable previous = component->data.asciiRenderable;
+    component->data.asciiRenderable = *renderable;
+    if (!BWorkspaceDocument_Validate(document, diagnostics))
+    {
+        component->data.asciiRenderable = previous;
+        return false;
+    }
+    return true;
 }
 
 bool BWorkspaceDocument_RemoveComponent(

@@ -1,6 +1,6 @@
 # Runtime Workspace Bridge Technical Design
 
-**Status:** Accepted; implementation in progress (Steps 1–5 complete)
+**Status:** Accepted; implementation in progress (Steps 1–6 complete)
 **Design date:** 2026-09-02  
 **Target slice:** BasilEditor-authored entities render in a generated standalone
 Project through shared C runtime APIs
@@ -575,8 +575,11 @@ Each step must build, pass its focused tests, and leave a reviewable commit.
    load its startup Workspace and Text Sprites, render the draw list, and
    present stable empty/error states. A non-graphical validation mode supports
    relocation, direct-discovery, and failure-path integration tests.
-6. **Editor authoring:** add creation choices and focused Inspector fields using
-   the shared C mutation APIs.
+6. **Editor authoring — Implemented:** the Hierarchy creates printable glyph,
+   recursively discovered Project Text Sprite, and explicit empty entities. The
+   Inspector edits identity, enabled state, position, source, colors, layer,
+   anchor, visibility, and transparent spaces through transactional shared C
+   mutation APIs.
 7. **Run contract:** validate Text Sprites, autosave, launch with `--project`, and
    route structured diagnostics.
 8. **Viewport preview:** render the same draw list with empty-entity markers and

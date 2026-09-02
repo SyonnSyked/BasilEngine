@@ -27,7 +27,14 @@ public:
     bool Reload(std::string& error);
     bool Save(std::string& error);
     bool AddEntity(std::string& error);
+    bool AddGlyphEntity(char glyph, std::string& error);
+    bool AddTextSpriteEntity(const std::string& relativePath, std::string& error);
+    bool AddEmptyEntity(std::string& error);
     bool RemoveSelectedEntity(std::string& error);
+    bool SetSelectedName(const std::string& name, std::string& error);
+    bool SetSelectedEnabled(bool enabled, std::string& error);
+    bool SetSelectedTransform(BTransform2D transform, std::string& error);
+    bool SetSelectedRenderable(const BAsciiRenderable& renderable, std::string& error);
 
     bool IsLoaded() const;
     bool IsDirty() const;
@@ -35,6 +42,7 @@ public:
     void MarkDirty();
 
     const std::filesystem::path& Path() const;
+    const std::filesystem::path& ProjectRoot() const;
     const BWorkspaceDocument& Workspace() const;
     BWorkspaceDocument& MutableWorkspace();
 
@@ -45,6 +53,7 @@ public:
 
 private:
     BWorkspaceDocument workspace_{};
+    std::filesystem::path projectRoot_;
     std::filesystem::path path_;
     std::size_t selectedIndex_ = NoSelection;
     bool loaded_ = false;

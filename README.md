@@ -52,6 +52,8 @@ technical contract for that next slice is the
   layer, visibility, transparency, color, and source-entity semantics
 - Generated runtimes that discover or accept their Project manifest, load the
   startup Workspace, render its draw list, and show stable empty/error states
+- Editor authoring for visible glyphs, Project Text Sprites, and empty entities,
+  with validated Transform2D and ASCII Renderable Inspector controls
 - Asynchronous CMake Build and Run controls with streamed output, extracted
   problems, and native Pause, Resume, and Stop process control
 - Geometric circuit-leaf application branding and embedded Windows icon

@@ -5,6 +5,9 @@
 #include "imgui.h"
 
 #include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
 #include <system_error>
 #include <vector>
 
@@ -19,6 +22,30 @@ void DrawPanelState(const char* state, const char* explanation)
     ImGui::Separator();
     ImGui::Spacing();
     ImGui::TextDisabled("%s", explanation);
+}
+
+std::vector<std::string> FindTextSprites(const fs::path& projectRoot)
+{
+    std::vector<std::string> paths;
+    std::error_code error;
+    fs::path assetRoot = projectRoot / "assets";
+    if (!fs::is_directory(assetRoot, error))
+        return paths;
+    for (fs::recursive_directory_iterator iterator(assetRoot, error), end;
+        !error && iterator != end; iterator.increment(error))
+    {
+        std::error_code typeError;
+        if (iterator->is_regular_file(typeError) && iterator->path().extension() == ".txt")
+            paths.push_back(iterator->path().lexically_relative(projectRoot).generic_string());
+    }
+    std::sort(paths.begin(), paths.end());
+    return paths;
+}
+
+void SetFeedback(BEditorPanelFeedback& feedback, bool succeeded, const char* success, const std::string& error)
+{
+    feedback.message = succeeded ? success : error;
+    feedback.isError = !succeeded;
 }
 
 BEditorPanelFeedback DrawWorkspaceHierarchy(
@@ -55,11 +82,51 @@ BEditorPanelFeedback DrawWorkspaceHierarchy(
         }
 
         if (ImGui::Button("+ ADD ENTITY", ImVec2(-1.0f, 0.0f)))
+            ImGui::OpenPopup("AddEntityPopup");
+
+        if (ImGui::BeginPopup("AddEntityPopup"))
         {
-            std::string error;
-            bool succeeded = session.AddEntity(error);
-            feedback.message = succeeded ? "Workspace entity created." : error;
-            feedback.isError = !succeeded;
+            ImGui::TextColored(palette.violet, "VISIBLE GLYPH");
+            for (int glyph = 0x20; glyph <= 0x7e; ++glyph)
+            {
+                char label[16];
+                std::snprintf(label, sizeof(label), "%c##glyph%d", glyph == ' ' ? '_' : glyph, glyph);
+                if (ImGui::SmallButton(label))
+                {
+                    std::string error;
+                    bool succeeded = session.AddGlyphEntity(static_cast<char>(glyph), error);
+                    SetFeedback(feedback, succeeded, "Visible glyph entity created.", error);
+                    if (succeeded)
+                        ImGui::CloseCurrentPopup();
+                }
+                if ((glyph - 0x20) % 12 != 11 && glyph != 0x7e)
+                    ImGui::SameLine();
+            }
+            ImGui::SeparatorText("TEXT SPRITES");
+            std::vector<std::string> sprites = FindTextSprites(session.ProjectRoot());
+            if (sprites.empty())
+                ImGui::TextDisabled("No .txt assets found under assets/.");
+            for (const std::string& path : sprites)
+            {
+                if (ImGui::Selectable(path.c_str()))
+                {
+                    std::string error;
+                    bool succeeded = session.AddTextSpriteEntity(path, error);
+                    SetFeedback(feedback, succeeded, "Text Sprite entity created.", error);
+                    if (succeeded)
+                        ImGui::CloseCurrentPopup();
+                }
+            }
+            ImGui::Separator();
+            if (ImGui::Selectable("EMPTY ENTITY // TRANSFORM ONLY"))
+            {
+                std::string error;
+                bool succeeded = session.AddEmptyEntity(error);
+                SetFeedback(feedback, succeeded, "Empty entity created.", error);
+                if (succeeded)
+                    ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
         }
 
         ImGui::Spacing();
@@ -116,16 +183,130 @@ BEditorPanelFeedback DrawInspector(BEditorUIConfig& config, BEditorWorkspaceSess
             ImGui::TextWrapped("%s", entity->id);
             ImGui::Spacing();
 
-            if (ImGui::InputText("Name", entity->name, sizeof(entity->name)))
+            static char editedName[BWORKSPACE_ENTITY_NAME_MAX]{};
+            static char editedEntityId[BWORKSPACE_ENTITY_ID_MAX]{};
+            if (std::strcmp(editedEntityId, entity->id) != 0)
             {
-                session.MarkDirty();
-                feedback.message = "Entity name modified.";
+                std::snprintf(editedEntityId, sizeof(editedEntityId), "%s", entity->id);
+                std::snprintf(editedName, sizeof(editedName), "%s", entity->name);
+            }
+            if (ImGui::InputText("Name", editedName, sizeof(editedName), ImGuiInputTextFlags_EnterReturnsTrue))
+            {
+                std::string error;
+                bool succeeded = session.SetSelectedName(editedName, error);
+                if (!succeeded)
+                    std::snprintf(editedName, sizeof(editedName), "%s", entity->name);
+                SetFeedback(feedback, succeeded, "Entity name modified.", error);
             }
 
-            if (ImGui::Checkbox("Enabled", &entity->enabled))
+            bool enabled = entity->enabled;
+            if (ImGui::Checkbox("Enabled", &enabled))
             {
-                session.MarkDirty();
-                feedback.message = "Entity enabled state modified.";
+                std::string error;
+                SetFeedback(feedback, session.SetSelectedEnabled(enabled, error), "Entity enabled state modified.", error);
+            }
+
+            BWorkspaceComponent* transform = BWorkspaceEntity_FindComponent(entity, BWORKSPACE_TRANSFORM2D_TYPE);
+            BWorkspaceComponent* renderComponent = BWorkspaceEntity_FindComponent(entity, BWORKSPACE_ASCII_RENDERABLE_TYPE);
+            if (transform != nullptr)
+            {
+                ImGui::SeparatorText("TRANSFORM2D");
+                float position[2] = { transform->data.transform2d.x, transform->data.transform2d.y };
+                if (ImGui::DragFloat2("Position", position, 0.1f))
+                {
+                    std::string error;
+                    SetFeedback(feedback, session.SetSelectedTransform({ position[0], position[1] }, error), "Position modified.", error);
+                }
+            }
+
+            if (renderComponent != nullptr)
+            {
+                ImGui::SeparatorText("ASCII RENDERABLE");
+                BAsciiRenderable renderable = renderComponent->data.asciiRenderable;
+                const char* kinds[] = { "Glyph", "Text Sprite" };
+                int kind = static_cast<int>(renderable.sourceKind);
+                bool changed = ImGui::Combo("Source", &kind, kinds, 2);
+                if (changed)
+                {
+                    renderable.sourceKind = static_cast<BAsciiSourceKind>(kind);
+                    if (renderable.sourceKind == BASCII_SOURCE_GLYPH && (renderable.glyph < 0x20 || renderable.glyph > 0x7e))
+                        renderable.glyph = '@';
+                    std::vector<std::string> sprites = FindTextSprites(session.ProjectRoot());
+                    if (renderable.sourceKind == BASCII_SOURCE_TEXT_SPRITE && renderable.textSpritePath[0] == '\0' && !sprites.empty())
+                        std::snprintf(renderable.textSpritePath, sizeof(renderable.textSpritePath), "%s", sprites.front().c_str());
+                }
+
+                if (renderable.sourceKind == BASCII_SOURCE_GLYPH)
+                {
+                    int glyph = static_cast<unsigned char>(renderable.glyph) - 0x20;
+                    std::string preview(1, renderable.glyph == ' ' ? '_' : renderable.glyph);
+                    if (ImGui::BeginCombo("Glyph", preview.c_str()))
+                    {
+                        for (int value = 0x20; value <= 0x7e; ++value)
+                        {
+                            char label[8];
+                            std::snprintf(label, sizeof(label), "%c##inspect%d", value == ' ' ? '_' : value, value);
+                            if (ImGui::Selectable(label, glyph == value - 0x20))
+                            {
+                                renderable.glyph = static_cast<char>(value);
+                                changed = true;
+                            }
+                        }
+                        ImGui::EndCombo();
+                    }
+                }
+                else
+                {
+                    std::vector<std::string> sprites = FindTextSprites(session.ProjectRoot());
+                    if (ImGui::BeginCombo("Text Sprite", renderable.textSpritePath[0] ? renderable.textSpritePath : "SELECT .TXT ASSET"))
+                    {
+                        for (const std::string& path : sprites)
+                        {
+                            if (ImGui::Selectable(path.c_str(), path == renderable.textSpritePath))
+                            {
+                                std::snprintf(renderable.textSpritePath, sizeof(renderable.textSpritePath), "%s", path.c_str());
+                                changed = true;
+                            }
+                        }
+                        ImGui::EndCombo();
+                    }
+                }
+
+                float foreground[4] = { renderable.foreground.r / 255.0f, renderable.foreground.g / 255.0f, renderable.foreground.b / 255.0f, renderable.foreground.a / 255.0f };
+                float background[4] = { renderable.background.r / 255.0f, renderable.background.g / 255.0f, renderable.background.b / 255.0f, renderable.background.a / 255.0f };
+                if (ImGui::ColorEdit4("Foreground", foreground))
+                {
+                    renderable.foreground = { static_cast<unsigned char>(std::lround(foreground[0] * 255.0f)), static_cast<unsigned char>(std::lround(foreground[1] * 255.0f)), static_cast<unsigned char>(std::lround(foreground[2] * 255.0f)), static_cast<unsigned char>(std::lround(foreground[3] * 255.0f)) };
+                    changed = true;
+                }
+                if (ImGui::ColorEdit4("Background", background))
+                {
+                    renderable.background = { static_cast<unsigned char>(std::lround(background[0] * 255.0f)), static_cast<unsigned char>(std::lround(background[1] * 255.0f)), static_cast<unsigned char>(std::lround(background[2] * 255.0f)), static_cast<unsigned char>(std::lround(background[3] * 255.0f)) };
+                    changed = true;
+                }
+                int layer = renderable.layer;
+                if (ImGui::InputInt("Layer", &layer))
+                {
+                    if (layer >= -32768 && layer <= 32767)
+                    {
+                        renderable.layer = static_cast<short>(layer);
+                        changed = true;
+                    }
+                    else
+                    {
+                        feedback = { "Layer must be between -32768 and 32767.", true };
+                    }
+                }
+                const char* anchors[] = { "Bottom Center", "Center", "Top Left" };
+                int anchor = static_cast<int>(renderable.anchor);
+                if (ImGui::Combo("Anchor", &anchor, anchors, 3)) { renderable.anchor = static_cast<BAsciiAnchor>(anchor); changed = true; }
+                if (ImGui::Checkbox("Visible", &renderable.visible)) changed = true;
+                if (ImGui::Checkbox("Transparent Spaces", &renderable.transparentSpaces)) changed = true;
+                if (changed)
+                {
+                    std::string error;
+                    SetFeedback(feedback, session.SetSelectedRenderable(renderable, error), "ASCII Renderable modified.", error);
+                }
             }
 
             ImGui::Spacing();

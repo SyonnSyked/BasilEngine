@@ -35,8 +35,8 @@ review.
 | Smooth real-time action-RPG play | Delta-time movement, camera, collision, input routing, a target, attack cooldown, damage, and death exist | Feasibility spike complete in breadth; feel unvalidated | Conduct play-feel validation before treating combat APIs as stable |
 | C-first runtime with narrow C++ use | Runtime and public-facing systems are C11; BasilEditor uses C++ for ImGui integration | Aligned | Preserve the C boundary when component and future game-module APIs are introduced |
 | Windows, macOS, and Linux | Cross-platform code paths and CMake structure exist | Not fully verified | Windows is the active verified platform; macOS/Linux need native configure, build, test, and process-control verification |
-| Medium-ambition, practical editor | Browser, dock shell, core panels, Workspace entity editing, build/run controls, diagnostics, and preferences exist | Strong foundation | Component controls, Viewport content rendering, and later code workflow remain |
-| New empty Projects work without manual engine setup | Generator creates manifests, editable CMake, source, assets, and a starter Workspace; editor can create, open, edit, build, and launch them; generated runtimes consume the saved Workspace | End-to-end runtime path proven | Add focused component authoring and explicit pre-run validation/autosave |
+| Medium-ambition, practical editor | Browser, dock shell, core panels, glyph/Text Sprite/empty entity authoring, component Inspector controls, build/run controls, diagnostics, and preferences exist | Strong foundation | Viewport content rendering and later code workflow remain |
+| New empty Projects work without manual engine setup | Generator creates manifests, editable CMake, source, assets, and a starter Workspace; editor can author components, build, and launch; generated runtimes consume the saved Workspace | End-to-end runtime path proven | Add explicit pre-run asset validation and manifest launch arguments |
 | Editor and runtime use the same data and APIs | Project, Workspace, Text Sprite, and draw-list services are shared; generated runtimes consume their output | Aligned for standalone runtime | Reuse the draw list in the editor Viewport after authoring and Run-contract work |
 | Built-in coding and terminal workflow, with Neovim first-class | Build Output and Problems plumbing exist; terminal and code-editor panels are planned | Deliberately deferred | Implement only after the runtime/project boundary is stable; avoid building an IDE or terminal emulator prematurely |
 | Mature NetRunner visual identity | Central theme, electric-cyan/restrained-violet palette, bundled JetBrains Mono, scale preferences, dock layout, and application icon exist | Aligned | Apply the system consistently to future functional panels; avoid decorative expansion |
@@ -60,6 +60,8 @@ review.
 - Generated runtime discovery from explicit manifests, working directories, or
   executable ancestry; startup-Workspace loading; draw-list presentation; and
   stable empty/error states.
+- Editor creation for printable glyph, Project Text Sprite, and transform-only
+  empty entities, plus focused validated Transform2D/ASCII Renderable controls.
 - Smooth movement, camera tracking, arena collision, and corrected contact on
   all wall sides.
 - A damageable target, range-checked basic attack, cooldown, visual feedback,
@@ -105,7 +107,7 @@ review.
 | 1 — Gameplay feasibility spike | Mechanically implemented; still in progress | Responsiveness and ASCII combat feel need an intentional play-test decision |
 | 2 — Reusable runtime model | In progress | Explicit ownership, minimal components, Text Sprite caching, draw-list interpretation, and the Project/Workspace-driven standalone path exist; stable asset handles and a game-module boundary remain |
 | 3 — Project and asset system | In progress | Stable asset identifiers, file-change detection, actionable asset errors, and relocation across machines remain |
-| 4 — Editor foundation | In progress and healthy | The Viewport does not render editable content, component controls are absent, and runtime play is external |
+| 4 — Editor foundation | In progress and healthy | Component authoring is active; the Viewport does not yet render editable content and runtime play remains external |
 | 5 — Project creation | End-to-end runtime path proven | A generated Project builds, relocates, discovers its manifest, and renders saved Workspace data; focused editor authoring and Run validation remain in the active bridge slice |
 | 6 — Code workflow and hot reload | Supporting build/diagnostic plumbing only | Code editor, external-editor service, real terminal hosting, module boundary, and reload safety are intentionally deferred |
 | 7 — Action-RPG vertical slice | Not started as a production slice | The current arena is a feasibility proof, not a Workspace-authored vertical slice |

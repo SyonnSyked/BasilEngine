@@ -20,6 +20,7 @@ void BEditorWorkspaceSession::Reset()
 {
     BWorkspaceDocument_Destroy(&workspace_);
     path_.clear();
+    projectRoot_.clear();
     selectedIndex_ = NoSelection;
     loaded_ = false;
     dirty_ = false;
@@ -54,6 +55,7 @@ bool BEditorWorkspaceSession::Load(
     }
 
     path_ = candidate;
+    projectRoot_ = normalizedRoot;
     selectedIndex_ = NoSelection;
     loaded_ = true;
     dirty_ = false;
@@ -106,6 +108,11 @@ bool BEditorWorkspaceSession::Save(std::string& error)
 
 bool BEditorWorkspaceSession::AddEntity(std::string& error)
 {
+    return AddGlyphEntity('@', error);
+}
+
+bool BEditorWorkspaceSession::AddGlyphEntity(char glyph, std::string& error)
+{
     if (!loaded_)
     {
         error = "No Workspace is loaded.";
@@ -123,7 +130,137 @@ bool BEditorWorkspaceSession::AddEntity(std::string& error)
         return false;
     }
 
+    BAsciiRenderable renderable = BAsciiRenderable_DefaultGlyph(glyph);
+    if (!BWorkspaceDocument_AddTransform2D(&workspace_, index, BTransform2D{ 0.0f, 0.0f }, true, &diagnostics) ||
+        !BWorkspaceDocument_AddAsciiRenderable(&workspace_, index, &renderable, true, &diagnostics))
+    {
+        BWorkspaceDocument_RemoveEntity(&workspace_, index, nullptr);
+        error = FirstDiagnosticMessage(diagnostics);
+        return false;
+    }
+
     selectedIndex_ = index;
+    dirty_ = true;
+    error.clear();
+    return true;
+}
+
+bool BEditorWorkspaceSession::AddTextSpriteEntity(const std::string& relativePath, std::string& error)
+{
+    if (!loaded_)
+    {
+        error = "No Workspace is loaded.";
+        return false;
+    }
+    if (relativePath.empty() || relativePath.size() >= BWORKSPACE_PATH_MAX)
+    {
+        error = "Text Sprite path is empty or too long.";
+        return false;
+    }
+    char name[BWORKSPACE_ENTITY_NAME_MAX];
+    std::snprintf(name, sizeof(name), "Text Sprite %llu", workspace_.nextEntityId);
+    BDiagnosticList diagnostics{};
+    std::size_t index = 0;
+    BAsciiRenderable renderable = BAsciiRenderable_DefaultGlyph('@');
+    renderable.sourceKind = BASCII_SOURCE_TEXT_SPRITE;
+    std::snprintf(renderable.textSpritePath, sizeof(renderable.textSpritePath), "%s", relativePath.c_str());
+    if (!BWorkspaceDocument_AddEntity(&workspace_, name, &index, &diagnostics))
+    {
+        error = FirstDiagnosticMessage(diagnostics);
+        return false;
+    }
+    if (!BWorkspaceDocument_AddTransform2D(&workspace_, index, BTransform2D{ 0.0f, 0.0f }, true, &diagnostics) ||
+        !BWorkspaceDocument_AddAsciiRenderable(&workspace_, index, &renderable, true, &diagnostics))
+    {
+        BWorkspaceDocument_RemoveEntity(&workspace_, index, nullptr);
+        error = FirstDiagnosticMessage(diagnostics);
+        return false;
+    }
+    selectedIndex_ = index;
+    dirty_ = true;
+    error.clear();
+    return true;
+}
+
+bool BEditorWorkspaceSession::AddEmptyEntity(std::string& error)
+{
+    if (!loaded_)
+    {
+        error = "No Workspace is loaded.";
+        return false;
+    }
+    char name[BWORKSPACE_ENTITY_NAME_MAX];
+    std::snprintf(name, sizeof(name), "Empty Entity %llu", workspace_.nextEntityId);
+    BDiagnosticList diagnostics{};
+    std::size_t index = 0;
+    if (!BWorkspaceDocument_AddEntity(&workspace_, name, &index, &diagnostics))
+    {
+        error = FirstDiagnosticMessage(diagnostics);
+        return false;
+    }
+    if (!BWorkspaceDocument_AddTransform2D(&workspace_, index, BTransform2D{ 0.0f, 0.0f }, true, &diagnostics))
+    {
+        BWorkspaceDocument_RemoveEntity(&workspace_, index, nullptr);
+        error = FirstDiagnosticMessage(diagnostics);
+        return false;
+    }
+    selectedIndex_ = index;
+    dirty_ = true;
+    error.clear();
+    return true;
+}
+
+bool BEditorWorkspaceSession::SetSelectedName(const std::string& name, std::string& error)
+{
+    BDiagnosticList diagnostics{};
+    if (selectedIndex_ >= workspace_.entityCount ||
+        !BWorkspaceDocument_SetEntityName(&workspace_, selectedIndex_, name.c_str(), &diagnostics))
+    {
+        error = selectedIndex_ >= workspace_.entityCount ? "No Workspace entity is selected." : FirstDiagnosticMessage(diagnostics);
+        return false;
+    }
+    dirty_ = true;
+    error.clear();
+    return true;
+}
+
+bool BEditorWorkspaceSession::SetSelectedEnabled(bool enabled, std::string& error)
+{
+    BDiagnosticList diagnostics{};
+    if (selectedIndex_ >= workspace_.entityCount ||
+        !BWorkspaceDocument_SetEntityEnabled(&workspace_, selectedIndex_, enabled, &diagnostics))
+    {
+        error = selectedIndex_ >= workspace_.entityCount ? "No Workspace entity is selected." : FirstDiagnosticMessage(diagnostics);
+        return false;
+    }
+    dirty_ = true;
+    error.clear();
+    return true;
+}
+
+bool BEditorWorkspaceSession::SetSelectedTransform(BTransform2D transform, std::string& error)
+{
+    BDiagnosticList diagnostics{};
+    if (selectedIndex_ >= workspace_.entityCount ||
+        !BWorkspaceDocument_SetTransform2D(&workspace_, selectedIndex_, transform, &diagnostics))
+    {
+        error = selectedIndex_ >= workspace_.entityCount ? "No Workspace entity is selected." : FirstDiagnosticMessage(diagnostics);
+        return false;
+    }
+    dirty_ = true;
+    error.clear();
+    return true;
+}
+
+bool BEditorWorkspaceSession::SetSelectedRenderable(const BAsciiRenderable& renderable, std::string& error)
+{
+    BDiagnosticList diagnostics{};
+    if (selectedIndex_ >= workspace_.entityCount ||
+        !BWorkspaceDocument_SetAsciiRenderable(&workspace_, selectedIndex_, &renderable, &diagnostics))
+    {
+        error = selectedIndex_ >= workspace_.entityCount ? "No Workspace entity is selected." : FirstDiagnosticMessage(diagnostics);
+        return false;
+    }
     dirty_ = true;
     error.clear();
     return true;
@@ -159,6 +296,7 @@ bool BEditorWorkspaceSession::RequiresMigration() const
 }
 void BEditorWorkspaceSession::MarkDirty() { if (loaded_) dirty_ = true; }
 const std::filesystem::path& BEditorWorkspaceSession::Path() const { return path_; }
+const std::filesystem::path& BEditorWorkspaceSession::ProjectRoot() const { return projectRoot_; }
 const BWorkspaceDocument& BEditorWorkspaceSession::Workspace() const { return workspace_; }
 BWorkspaceDocument& BEditorWorkspaceSession::MutableWorkspace() { return workspace_; }
 std::size_t BEditorWorkspaceSession::SelectedIndex() const { return selectedIndex_; }

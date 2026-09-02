@@ -113,6 +113,13 @@ list, and presents it through raylib. Empty content receives a restrained
 visible in a graphical error state. `--basil-validate` performs the identical
 load/interpretation path without creating a window for tooling and tests.
 
+BasilEditor's entity picker creates visible single-glyph entities from the full
+printable ASCII set, Text Sprite entities from recursively discovered `.txt`
+files under `assets/`, or explicit transform-only empty entities. The Inspector
+edits position, source, colors, logical layer, anchor, visibility, and
+transparent-space behavior. Editor changes use shared transactional C mutation
+APIs, so invalid typed values do not replace the last valid component state.
+
 BasilEditor loads the startup Workspace into an explicitly owned, lifecycle-safe
 document held by the editor session. Loads and clones are transactional, so a
 failed operation cannot partially replace the last valid document. Hierarchy

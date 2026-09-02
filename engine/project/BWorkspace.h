@@ -156,6 +156,18 @@ bool BWorkspaceDocument_RemoveEntity(
     size_t index,
     BDiagnosticList* diagnostics
 );
+bool BWorkspaceDocument_SetEntityName(
+    BWorkspaceDocument* document,
+    size_t entityIndex,
+    const char* name,
+    BDiagnosticList* diagnostics
+);
+bool BWorkspaceDocument_SetEntityEnabled(
+    BWorkspaceDocument* document,
+    size_t entityIndex,
+    bool enabled,
+    BDiagnosticList* diagnostics
+);
 bool BWorkspaceDocument_AddTransform2D(
     BWorkspaceDocument* document,
     size_t entityIndex,
@@ -168,6 +180,18 @@ bool BWorkspaceDocument_AddAsciiRenderable(
     size_t entityIndex,
     const BAsciiRenderable* renderable,
     bool required,
+    BDiagnosticList* diagnostics
+);
+bool BWorkspaceDocument_SetTransform2D(
+    BWorkspaceDocument* document,
+    size_t entityIndex,
+    BTransform2D transform,
+    BDiagnosticList* diagnostics
+);
+bool BWorkspaceDocument_SetAsciiRenderable(
+    BWorkspaceDocument* document,
+    size_t entityIndex,
+    const BAsciiRenderable* renderable,
     BDiagnosticList* diagnostics
 );
 bool BWorkspaceDocument_RemoveComponent(
