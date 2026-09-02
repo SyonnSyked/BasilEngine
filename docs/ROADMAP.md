@@ -46,6 +46,10 @@ can feel responsive while retaining the intended ASCII identity.
 **Exit condition:** The feasibility spike uses reusable engine APIs without
 Where Birds Nest concepts entering engine code.
 
+Gameplay design questions that are not required for the initial editor and
+project workflow are tracked in `OPEN_DESIGN_QUESTIONS.md` and intentionally
+deferred.
+
 ## Milestone 3: Project and asset system
 
 - Add a versioned `.basilproject` manifest.
