@@ -145,7 +145,7 @@ static bool OpenProject(EditorState& state, const fs::path& manifestPath)
     state.projectOpen = true;
     state.resetDockLayout = true;
     state.uiConfig = BEditorUIConfig_Default();
-    state.workspaceSession = BEditorWorkspaceSession{};
+    state.workspaceSession.Reset();
     std::string workspaceError;
     bool workspaceLoaded = state.workspaceSession.Load(
         absolutePath.parent_path(),
@@ -456,7 +456,7 @@ static void ReturnToProjectBrowser(EditorState& state)
     }
 
     state.projectOpen = false;
-    state.workspaceSession = BEditorWorkspaceSession{};
+    state.workspaceSession.Reset();
     SetWindowTitle("BasilEditor");
 }
 
@@ -803,7 +803,7 @@ static void DrawEditorShell(EditorState& state)
         if (ImGui::Button("DISCARD", ImVec2(120.0f, 0.0f)))
         {
             state.confirmProjectClose = false;
-            state.workspaceSession = BEditorWorkspaceSession{};
+            state.workspaceSession.Reset();
             state.projectOpen = false;
             SetWindowTitle("BasilEditor");
             ImGui::CloseCurrentPopup();

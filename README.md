@@ -42,6 +42,8 @@ technical contract for that next slice is the
   Terminal scaffolds with honest service states
 - Editable startup Workspaces with stable entity IDs, selection, Inspector
   changes, dirty-state protection, and backup-assisted saves
+- Lifecycle-managed Workspace documents with transactional load/clone and
+  structured diagnostics
 - Asynchronous CMake Build and Run controls with streamed output, extracted
   problems, and native Pause, Resume, and Stop process control
 - Geometric circuit-leaf application branding and embedded Windows icon

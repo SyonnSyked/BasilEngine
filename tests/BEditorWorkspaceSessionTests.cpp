@@ -26,9 +26,17 @@ int main()
         ));
     fs::create_directories(root / "workspaces");
     fs::path workspacePath = root / "workspaces" / "Main.basilworkspace";
-    BWorkspace initial = BWorkspace_Default("Main Workspace", "Main");
-    BProjectError projectError{};
-    failures += Check(BWorkspace_Save(&initial, workspacePath.string().c_str(), &projectError), "fixture saves");
+    BWorkspaceDocument initial{};
+    BDiagnosticList diagnostics{};
+    failures += Check(
+        BWorkspaceDocument_CreateDefault(&initial, "Main Workspace", "Main", &diagnostics),
+        "fixture Workspace is created"
+    );
+    failures += Check(
+        BWorkspaceDocument_Save(&initial, workspacePath.string().c_str(), &diagnostics),
+        "fixture saves"
+    );
+    BWorkspaceDocument_Destroy(&initial);
 
     BEditorWorkspaceSession session;
     BEditorWorkspaceSession escapingSession;
@@ -38,6 +46,14 @@ int main()
     );
     failures += Check(session.Load(root, "workspaces/Main.basilworkspace", error), "session loads Workspace");
     failures += Check(session.IsLoaded() && !session.IsDirty(), "loaded session starts clean");
+    failures += Check(
+        !session.Load(root, "workspaces/Missing.basilworkspace", error),
+        "failed replacement load is reported"
+    );
+    failures += Check(
+        session.IsLoaded() && session.Workspace().identifier[0] != '\0',
+        "failed replacement load preserves the active Workspace"
+    );
     failures += Check(session.AddEntity(error), "session adds entity");
     failures += Check(session.IsDirty(), "adding marks session dirty");
     failures += Check(session.SelectedEntity() != nullptr, "added entity is selected");

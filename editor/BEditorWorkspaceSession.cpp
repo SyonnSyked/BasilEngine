@@ -2,6 +2,29 @@
 
 #include <cstdio>
 
+namespace
+{
+std::string FirstDiagnosticMessage(const BDiagnosticList& diagnostics)
+{
+    const BDiagnostic* diagnostic = BDiagnosticList_FirstError(&diagnostics);
+    return diagnostic != nullptr ? diagnostic->message : "Workspace operation failed.";
+}
+}
+
+BEditorWorkspaceSession::~BEditorWorkspaceSession()
+{
+    BWorkspaceDocument_Destroy(&workspace_);
+}
+
+void BEditorWorkspaceSession::Reset()
+{
+    BWorkspaceDocument_Destroy(&workspace_);
+    path_.clear();
+    selectedIndex_ = NoSelection;
+    loaded_ = false;
+    dirty_ = false;
+}
+
 bool BEditorWorkspaceSession::Load(
     const std::filesystem::path& projectRoot,
     const std::string& relativePath,
@@ -22,20 +45,14 @@ bool BEditorWorkspaceSession::Load(
         selectedIndex_ = NoSelection;
         return false;
     }
-    BProjectError workspaceError{};
-    BWorkspace loaded{};
+    BDiagnosticList diagnostics{};
 
-    if (!BWorkspace_Load(candidate.string().c_str(), &loaded, &workspaceError))
+    if (!BWorkspaceDocument_Load(candidate.string().c_str(), &workspace_, &diagnostics))
     {
-        error = workspaceError.message;
-        loaded_ = false;
-        dirty_ = false;
-        selectedIndex_ = NoSelection;
-        path_ = candidate;
+        error = FirstDiagnosticMessage(diagnostics);
         return false;
     }
 
-    workspace_ = loaded;
     path_ = candidate;
     selectedIndex_ = NoSelection;
     loaded_ = true;
@@ -51,16 +68,14 @@ bool BEditorWorkspaceSession::Reload(std::string& error)
         return false;
     }
 
-    BProjectError workspaceError{};
-    BWorkspace loaded{};
+    BDiagnosticList diagnostics{};
 
-    if (!BWorkspace_Load(path_.string().c_str(), &loaded, &workspaceError))
+    if (!BWorkspaceDocument_Load(path_.string().c_str(), &workspace_, &diagnostics))
     {
-        error = workspaceError.message;
+        error = FirstDiagnosticMessage(diagnostics);
         return false;
     }
 
-    workspace_ = loaded;
     selectedIndex_ = NoSelection;
     dirty_ = false;
     error.clear();
@@ -75,11 +90,11 @@ bool BEditorWorkspaceSession::Save(std::string& error)
         return false;
     }
 
-    BProjectError workspaceError{};
+    BDiagnosticList diagnostics{};
 
-    if (!BWorkspace_Save(&workspace_, path_.string().c_str(), &workspaceError))
+    if (!BWorkspaceDocument_Save(&workspace_, path_.string().c_str(), &diagnostics))
     {
-        error = workspaceError.message;
+        error = FirstDiagnosticMessage(diagnostics);
         return false;
     }
 
@@ -98,12 +113,12 @@ bool BEditorWorkspaceSession::AddEntity(std::string& error)
 
     char name[BWORKSPACE_ENTITY_NAME_MAX];
     std::snprintf(name, sizeof(name), "Entity %llu", workspace_.nextEntityId);
-    BProjectError workspaceError{};
+    BDiagnosticList diagnostics{};
     std::size_t index = 0;
 
-    if (!BWorkspace_AddEntity(&workspace_, name, &index, &workspaceError))
+    if (!BWorkspaceDocument_AddEntity(&workspace_, name, &index, &diagnostics))
     {
-        error = workspaceError.message;
+        error = FirstDiagnosticMessage(diagnostics);
         return false;
     }
 
@@ -121,11 +136,11 @@ bool BEditorWorkspaceSession::RemoveSelectedEntity(std::string& error)
         return false;
     }
 
-    BProjectError workspaceError{};
+    BDiagnosticList diagnostics{};
 
-    if (!BWorkspace_RemoveEntity(&workspace_, selectedIndex_, &workspaceError))
+    if (!BWorkspaceDocument_RemoveEntity(&workspace_, selectedIndex_, &diagnostics))
     {
-        error = workspaceError.message;
+        error = FirstDiagnosticMessage(diagnostics);
         return false;
     }
 
@@ -139,8 +154,8 @@ bool BEditorWorkspaceSession::IsLoaded() const { return loaded_; }
 bool BEditorWorkspaceSession::IsDirty() const { return dirty_; }
 void BEditorWorkspaceSession::MarkDirty() { if (loaded_) dirty_ = true; }
 const std::filesystem::path& BEditorWorkspaceSession::Path() const { return path_; }
-const BWorkspace& BEditorWorkspaceSession::Workspace() const { return workspace_; }
-BWorkspace& BEditorWorkspaceSession::MutableWorkspace() { return workspace_; }
+const BWorkspaceDocument& BEditorWorkspaceSession::Workspace() const { return workspace_; }
+BWorkspaceDocument& BEditorWorkspaceSession::MutableWorkspace() { return workspace_; }
 std::size_t BEditorWorkspaceSession::SelectedIndex() const { return selectedIndex_; }
 
 void BEditorWorkspaceSession::Select(std::size_t index)

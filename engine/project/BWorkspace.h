@@ -1,7 +1,7 @@
 #ifndef BASIL_ENGINE_WORKSPACE_H
 #define BASIL_ENGINE_WORKSPACE_H
 
-#include "BProject.h"
+#include "BDiagnostic.h"
 
 #include <stdbool.h>
 
@@ -24,28 +24,62 @@ typedef struct BWorkspaceEntity
     bool enabled;
 } BWorkspaceEntity;
 
-typedef struct BWorkspace
+typedef struct BWorkspaceDocument
 {
     int schemaVersion;
     char name[BWORKSPACE_NAME_MAX];
     char identifier[BWORKSPACE_IDENTIFIER_MAX];
     unsigned long long nextEntityId;
     size_t entityCount;
-    BWorkspaceEntity entities[BWORKSPACE_ENTITY_MAX];
-} BWorkspace;
+    size_t entityCapacity;
+    BWorkspaceEntity* entities;
+} BWorkspaceDocument;
 
-BWorkspace BWorkspace_Default(const char* name, const char* identifier);
+/*
+ * Documents own their entity storage. Initialize before first use, destroy when
+ * finished, and never copy the structure by assignment or memcpy. Load, Clone,
+ * and CreateDefault replace an initialized destination only after success.
+ */
+void BWorkspaceDocument_Init(BWorkspaceDocument* document);
+void BWorkspaceDocument_Destroy(BWorkspaceDocument* document);
+void BWorkspaceDocument_Swap(BWorkspaceDocument* left, BWorkspaceDocument* right);
 
-bool BWorkspace_Validate(const BWorkspace* workspace, BProjectError* error);
-bool BWorkspace_Load(const char* workspacePath, BWorkspace* outWorkspace, BProjectError* error);
-bool BWorkspace_Save(const BWorkspace* workspace, const char* workspacePath, BProjectError* error);
-bool BWorkspace_AddEntity(
-    BWorkspace* workspace,
+bool BWorkspaceDocument_CreateDefault(
+    BWorkspaceDocument* document,
+    const char* name,
+    const char* identifier,
+    BDiagnosticList* diagnostics
+);
+bool BWorkspaceDocument_Clone(
+    const BWorkspaceDocument* source,
+    BWorkspaceDocument* destination,
+    BDiagnosticList* diagnostics
+);
+bool BWorkspaceDocument_Validate(
+    const BWorkspaceDocument* document,
+    BDiagnosticList* diagnostics
+);
+bool BWorkspaceDocument_Load(
+    const char* workspacePath,
+    BWorkspaceDocument* destination,
+    BDiagnosticList* diagnostics
+);
+bool BWorkspaceDocument_Save(
+    const BWorkspaceDocument* document,
+    const char* workspacePath,
+    BDiagnosticList* diagnostics
+);
+bool BWorkspaceDocument_AddEntity(
+    BWorkspaceDocument* document,
     const char* name,
     size_t* outIndex,
-    BProjectError* error
+    BDiagnosticList* diagnostics
 );
-bool BWorkspace_RemoveEntity(BWorkspace* workspace, size_t index, BProjectError* error);
+bool BWorkspaceDocument_RemoveEntity(
+    BWorkspaceDocument* document,
+    size_t index,
+    BDiagnosticList* diagnostics
+);
 
 #ifdef __cplusplus
 }

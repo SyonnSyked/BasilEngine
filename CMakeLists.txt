@@ -131,6 +131,7 @@ add_library(BasilProject STATIC
 
 target_include_directories(BasilProject PUBLIC
     engine/project
+    engine/core
 )
 
 target_link_libraries(BasilProject PRIVATE

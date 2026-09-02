@@ -1,6 +1,6 @@
 # Runtime Workspace Bridge Technical Design
 
-**Status:** Proposed for review; implementation not started  
+**Status:** Accepted; implementation in progress (Step 1 complete)
 **Design date:** 2026-09-02  
 **Target slice:** BasilEditor-authored entities render in a generated standalone
 Project through shared C runtime APIs
@@ -184,10 +184,10 @@ They are prototype safety limits, not final scale promises.
 
 ## C document API
 
-The current `BWorkspace` is copied by value and contains fixed entity storage.
-Opaque component payloads require explicit heap ownership, so schema v3 replaces
-casual structure assignment with a lifecycle API. Exact spelling may change
-during implementation review, but the ownership contract may not.
+Before Step 1, `BWorkspace` was copied by value and contained fixed entity
+storage. The implemented `BWorkspaceDocument` now uses explicit heap ownership
+and the lifecycle API below. This prepares for opaque component payloads without
+allowing casual structure assignment. The ownership contract is now active.
 
 ```c
 typedef struct BWorkspaceDocument BWorkspaceDocument;
@@ -555,8 +555,10 @@ remain unverified until their native builds and process paths are exercised.
 
 Each step must build, pass its focused tests, and leave a reviewable commit.
 
-1. **Owned document foundation:** introduce diagnostics and lifecycle-safe
-   Workspace storage without changing visible behavior.
+1. **Owned document foundation — Implemented:** diagnostics and lifecycle-safe,
+   dynamically allocated Workspace entity storage are active without changing
+   visible behavior. Load and clone replace destinations transactionally; all
+   engine, generator, test, and editor callers use the single document API.
 2. **Schema 3 components:** implement envelopes, migration, strict known data,
    and opaque optional preservation.
 3. **Text Sprite service:** implement bounded decoding, project-relative path

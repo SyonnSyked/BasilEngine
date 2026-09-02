@@ -63,7 +63,7 @@ BEditorPanelFeedback DrawWorkspaceHierarchy(
         }
 
         ImGui::Spacing();
-        const BWorkspace& workspace = session.Workspace();
+        const BWorkspaceDocument& workspace = session.Workspace();
 
         if (ImGui::TreeNodeEx(workspace.name, ImGuiTreeNodeFlags_DefaultOpen))
         {

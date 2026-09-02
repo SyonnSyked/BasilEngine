@@ -89,7 +89,9 @@ list. The first entity record contains an immutable ID, editable display name,
 and enabled state. Component data and parent/child relationships are not yet
 part of the contract.
 
-BasilEditor loads the startup Workspace into an editor-owned session. Hierarchy
+BasilEditor loads the startup Workspace into an explicitly owned, lifecycle-safe
+document held by the editor session. Loads and clones are transactional, so a
+failed operation cannot partially replace the last valid document. Hierarchy
 selection drives the Inspector; entities can be created, renamed, enabled or
 disabled, and deleted. Save and Ctrl+S validate the complete Workspace, write a
 temporary file, preserve the previous file as `.bak`, and then replace the

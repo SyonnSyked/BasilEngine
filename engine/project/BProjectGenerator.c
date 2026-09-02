@@ -28,6 +28,31 @@ static bool BProjectGenerator_Fail(
     return false;
 }
 
+static bool BProjectGenerator_WorkspaceFailure(
+    BProjectError* error,
+    const BDiagnosticList* diagnostics
+)
+{
+    const BDiagnostic* diagnostic = BDiagnosticList_FirstError(diagnostics);
+    BProjectErrorCode code = BPROJECT_ERROR_INVALID_MANIFEST;
+
+    if (diagnostic != 0)
+    {
+        if (diagnostic->code == BDIAGNOSTIC_IO || diagnostic->code == BDIAGNOSTIC_OUT_OF_MEMORY)
+            code = BPROJECT_ERROR_IO;
+        else if (diagnostic->code == BDIAGNOSTIC_INVALID_ARGUMENT)
+            code = BPROJECT_ERROR_INVALID_ARGUMENT;
+        else if (diagnostic->code == BDIAGNOSTIC_UNSUPPORTED_VERSION)
+            code = BPROJECT_ERROR_UNSUPPORTED_VERSION;
+    }
+
+    return BProjectGenerator_Fail(
+        error,
+        code,
+        diagnostic != 0 ? diagnostic->message : "Workspace generation failed."
+    );
+}
+
 static bool BProjectGenerator_Path(
     char* output,
     size_t outputSize,
@@ -284,10 +309,22 @@ bool BProjectGenerator_Create(
     if (!BProjectGenerator_Path(path, sizeof(path), root, project->startupWorkspace, error))
         return false;
 
-    BWorkspace workspace = BWorkspace_Default("Main Workspace", "Main");
+    BWorkspaceDocument workspace;
+    BWorkspaceDocument_Init(&workspace);
+    BDiagnosticList diagnostics;
 
-    if (!BWorkspace_Save(&workspace, path, error))
-        return false;
+    if (!BWorkspaceDocument_CreateDefault(
+        &workspace,
+        "Main Workspace",
+        "Main",
+        &diagnostics
+    ) || !BWorkspaceDocument_Save(&workspace, path, &diagnostics))
+    {
+        BWorkspaceDocument_Destroy(&workspace);
+        return BProjectGenerator_WorkspaceFailure(error, &diagnostics);
+    }
+
+    BWorkspaceDocument_Destroy(&workspace);
 
     if (!BProjectGenerator_Path(path, sizeof(path), root, "CMakeLists.txt", error) ||
         !BProjectGenerator_WriteCMake(project, path, error))

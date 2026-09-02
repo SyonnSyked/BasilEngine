@@ -12,6 +12,13 @@ class BEditorWorkspaceSession
 public:
     static constexpr std::size_t NoSelection = static_cast<std::size_t>(-1);
 
+    BEditorWorkspaceSession() = default;
+    ~BEditorWorkspaceSession();
+    BEditorWorkspaceSession(const BEditorWorkspaceSession&) = delete;
+    BEditorWorkspaceSession& operator=(const BEditorWorkspaceSession&) = delete;
+
+    void Reset();
+
     bool Load(
         const std::filesystem::path& projectRoot,
         const std::string& relativePath,
@@ -27,8 +34,8 @@ public:
     void MarkDirty();
 
     const std::filesystem::path& Path() const;
-    const BWorkspace& Workspace() const;
-    BWorkspace& MutableWorkspace();
+    const BWorkspaceDocument& Workspace() const;
+    BWorkspaceDocument& MutableWorkspace();
 
     std::size_t SelectedIndex() const;
     void Select(std::size_t index);
@@ -36,7 +43,7 @@ public:
     BWorkspaceEntity* MutableSelectedEntity();
 
 private:
-    BWorkspace workspace_{};
+    BWorkspaceDocument workspace_{};
     std::filesystem::path path_;
     std::size_t selectedIndex_ = NoSelection;
     bool loaded_ = false;
