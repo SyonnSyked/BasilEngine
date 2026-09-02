@@ -350,6 +350,7 @@ if(BASIL_BUILD_EDITOR_DEPS)
 
     add_executable(BasilEditor
         editor/BasilEditor.cpp
+        editor/BEditorPreferences.cpp
         editor/BEditorTheme.cpp
     )
 
@@ -357,6 +358,7 @@ if(BASIL_BUILD_EDITOR_DEPS)
         BasilProject
         BasilEngine
         rlimgui
+        cjson
     )
 
     # Current MSYS2 binutils can fail silently while linking the combined
@@ -373,6 +375,30 @@ if(BASIL_BUILD_EDITOR_DEPS)
     endif()
 
     basil_enable_warnings(BasilEditor)
+
+    if(BUILD_TESTING)
+        add_executable(BEditorPreferencesTests
+            tests/BEditorPreferencesTests.cpp
+            editor/BEditorPreferences.cpp
+        )
+
+        target_include_directories(BEditorPreferencesTests PRIVATE
+            editor
+        )
+
+        target_link_libraries(BEditorPreferencesTests PRIVATE
+            cjson
+        )
+
+        if(MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            target_link_options(BEditorPreferencesTests PRIVATE
+                -static -static-libgcc -static-libstdc++
+            )
+        endif()
+
+        basil_enable_warnings(BEditorPreferencesTests)
+        add_test(NAME BEditorPreferencesTests COMMAND BEditorPreferencesTests)
+    endif()
 
     add_custom_command(TARGET BasilEditor POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory

@@ -221,14 +221,20 @@ The visual direction is **confirmed**:
 - No flashy treatment that makes the tool tiring or difficult to parse
 
 Amber warnings, controlled red errors, and restrained violet/magenta secondary
-accents are current recommendations, not final brand constants. The current UI
-defaults to 135% ImGui scale for readability; user-controlled scaling remains
-unspecified.
+accents are current recommendations, not final brand constants. Interface scale
+is a global editor preference with 100%, 115%, 135%, 150%, and 175% presets;
+135% is the default.
 
 The centralized ImGui theme, semantic palette, baseline spacing, rounded
 geometry, and non-compounding scale application are **implemented** in the
 BasilEditor theme module. Current and future panels should consume that module
 rather than define unrelated local themes.
+
+Global editor preferences are stored as versioned JSON in BasilEngine's user
+configuration directory. Missing preferences use safe defaults. Malformed or
+unsupported preferences are rejected with a visible explanation while the
+editor continues with defaults. UI Config persistence remains a separate future
+system because a UI Config describes panel layout, not global preferences.
 
 ### Typography
 

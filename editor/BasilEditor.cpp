@@ -1,6 +1,7 @@
 #include "BProject.h"
 #include "BProjectGenerator.h"
 #include "BRecentProjects.h"
+#include "BEditorPreferences.h"
 #include "BEditorTheme.h"
 
 #include "imgui.h"
@@ -13,14 +14,14 @@
 
 namespace fs = std::filesystem;
 
-static constexpr float EDITOR_UI_SCALE = 1.35f;
-
 struct EditorState
 {
     BRecentProjects recent{};
     BProject project{};
     fs::path manifestPath;
     fs::path recentPath;
+    fs::path preferencesPath;
+    BEditorPreferences preferences{};
     char openPath[BPROJECT_PATH_MAX]{};
     char projectName[BPROJECT_NAME_MAX] = "My Basil Game";
     char identifier[BPROJECT_IDENTIFIER_MAX] = "MyBasilGame";
@@ -160,10 +161,41 @@ static void DrawMessage(const EditorState& state)
     if (state.message.empty())
         return;
 
-    ImVec4 color = state.messageIsError ? ImVec4(1.0f, 0.35f, 0.3f, 1.0f) : ImVec4(0.35f, 0.85f, 0.5f, 1.0f);
+    const BEditorThemePalette& palette = BEditorTheme_GetPalette();
+    ImVec4 color = state.messageIsError ? palette.error : palette.success;
     ImGui::PushStyleColor(ImGuiCol_Text, color);
     ImGui::TextWrapped("%s", state.message.c_str());
     ImGui::PopStyleColor();
+}
+
+static void DrawInterfaceScale(EditorState& state)
+{
+    static const char* labels[] = { "100%", "115%", "135%", "150%", "175%" };
+    static const float scales[] = { 1.0f, 1.15f, 1.35f, 1.5f, 1.75f };
+    int selected = 2;
+
+    for (int i = 0; i < IM_ARRAYSIZE(scales); ++i)
+    {
+        if (state.preferences.interfaceScale == scales[i])
+        {
+            selected = i;
+            break;
+        }
+    }
+
+    ImGui::SetNextItemWidth(100.0f * state.preferences.interfaceScale);
+
+    if (!ImGui::Combo("Interface scale", &selected, labels, IM_ARRAYSIZE(labels)))
+        return;
+
+    state.preferences.interfaceScale = scales[selected];
+    BEditorTheme_Apply(state.preferences.interfaceScale);
+    std::string error;
+
+    if (!BEditorPreferences_Save(state.preferencesPath.string(), state.preferences, error))
+        SetMessage(state, error.c_str(), true);
+    else
+        SetMessage(state, "Interface scale saved.", false);
 }
 
 static void DrawProjectBrowser(EditorState& state)
@@ -238,6 +270,8 @@ static void DrawProjectBrowser(EditorState& state)
 
     ImGui::Separator();
     DrawMessage(state);
+    ImGui::Spacing();
+    DrawInterfaceScale(state);
     ImGui::End();
 }
 
@@ -267,8 +301,10 @@ static void DrawProjectOverview(EditorState& state)
         SetWindowTitle("BasilEditor");
     }
     ImGui::Spacing();
-    ImGui::TextDisabled("Scene editing, build, and run controls arrive in the next editor stages.");
+    ImGui::TextDisabled("Workspace editing, build, and run controls arrive in the next editor stages.");
     DrawMessage(state);
+    ImGui::Spacing();
+    DrawInterfaceScale(state);
     ImGui::End();
 }
 
@@ -277,17 +313,34 @@ int main(int argumentCount, char** arguments)
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
     InitWindow(1100, 700, "BasilEditor");
     SetTargetFPS(60);
-    rlImGuiBeginInitImGui();
-    bool bundledFontsLoaded = BEditorTheme_Initialize(EDITOR_UI_SCALE);
-    rlImGuiEndInitImGui();
 
     EditorState state;
     state.recentPath = EditorDataDirectory() / "recent-projects.json";
+    state.preferencesPath = EditorDataDirectory() / "preferences.json";
+    std::string preferencesError;
+    bool preferencesLoaded = BEditorPreferences_Load(
+        state.preferencesPath.string(),
+        state.preferences,
+        preferencesError
+    );
+
+    rlImGuiBeginInitImGui();
+    bool bundledFontsLoaded = BEditorTheme_Initialize(state.preferences.interfaceScale);
+    rlImGuiEndInitImGui();
+
     std::string defaultDirectory = DefaultProjectDirectory().string();
     snprintf(state.parentDirectory, sizeof(state.parentDirectory), "%s", defaultDirectory.c_str());
 
     BProjectError recentError{};
-    if (!BRecentProjects_Load(state.recentPath.string().c_str(), &state.recent, &recentError))
+    bool recentProjectsLoaded = BRecentProjects_Load(
+        state.recentPath.string().c_str(),
+        &state.recent,
+        &recentError
+    );
+
+    if (!preferencesLoaded)
+        SetMessage(state, preferencesError.c_str(), true);
+    else if (!recentProjectsLoaded)
         SetMessage(state, recentError.message, true);
     else if (!bundledFontsLoaded)
         SetMessage(state, "JetBrains Mono could not be loaded; BasilEditor is using its fallback font.", true);
