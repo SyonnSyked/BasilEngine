@@ -8,9 +8,11 @@ integrations that require it, such as Dear ImGui.
 is a dark-fantasy action RPG that combines text-art presentation with smooth,
 Diablo-like movement and combat.
 
-The project is experimental and currently in its foundation stage. See the
-[project charter](docs/PROJECT_CHARTER.md), [roadmap](docs/ROADMAP.md), and
-[architecture notes](docs/ARCHITECTURE.md) before making broad changes.
+The project is experimental. Its runtime and ASCII gameplay feasibility work is
+now established; development is turning toward the project system and editor.
+See the [project charter](docs/PROJECT_CHARTER.md), [roadmap](docs/ROADMAP.md),
+[architecture notes](docs/ARCHITECTURE.md), and
+[project-system specification](docs/PROJECT_SYSTEM.md) for the current direction.
 
 ## Current capabilities
 
@@ -19,8 +21,20 @@ The project is experimental and currently in its foundation stage. See the
 - Time and frame tracking
 - Named keyboard input actions
 - In-memory logging and an interactive developer console
-- Layered ASCII canvas rendering backed by BasilsTools
-- A small `WhereBirdsNest` cabin demo
+- Layered ASCII rendering with per-cell foreground/background colors
+- Plain-text ASCII asset loading and runtime glyph editing
+- Smooth world-space movement, camera tracking, and collision
+- A small `WhereBirdsNest` combat feasibility arena
+- Headless input, canvas, and combat tests
+
+## Reference demo
+
+`WhereBirdsNest` currently provides a small movement and combat arena:
+
+- Move with `WASD`.
+- Attack the `D` target with `Space` when in range.
+- Open the developer console with the backtick/grave key.
+- Enter `help` in the console to list commands.
 
 ## Building on the current Windows development machine
 
@@ -31,7 +45,7 @@ Prerequisites:
 - UCRT64 GCC
 - raylib
 - BasilsTools
-- Local Dear ImGui and rlImGui source trees
+- Local Dear ImGui and rlImGui source trees only when editor dependencies are enabled
 
 Configure dependency locations with `BASIL_RAYLIB_ROOT` and
 `BASIL_TOOLS_ROOT`. BasilEngine first looks for installed CMake packages, then
