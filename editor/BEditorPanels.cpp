@@ -2,6 +2,7 @@
 
 #include "BEditorPlatformDialogs.h"
 #include "BEditorTheme.h"
+#include "BEditorPlatformDialogs.h"
 
 #include "imgui.h"
 
@@ -563,10 +564,11 @@ void DrawBuildOutput(BEditorUIConfig& config, const BEditorBuildService& service
     ImGui::End();
 }
 
-void DrawProblems(BEditorUIConfig& config, const BEditorBuildService& service)
+BEditorPanelFeedback DrawProblems(BEditorUIConfig& config, const BEditorBuildService& service, const BEditorCodeWorkspace& codeWorkspace)
 {
     if (!config.showProblems)
-        return;
+        return {};
+    BEditorPanelFeedback feedback;
 
     if (ImGui::Begin(BEditorPanel_Name(BEditorPanel::Problems), &config.showProblems))
     {
@@ -583,11 +585,16 @@ void DrawProblems(BEditorUIConfig& config, const BEditorBuildService& service)
         else
         {
             for (const std::string& problem : service.Problems())
-                ImGui::BulletText("%s", problem.c_str());
+            {
+                if (ImGui::Selectable(problem.c_str()))
+                    for (const std::string& path : codeWorkspace.Files())
+                        if (problem.find(path) != std::string::npos) { feedback.openFile = path; break; }
+            }
         }
     }
 
     ImGui::End();
+    return feedback;
 }
 
 void DrawTerminal(BEditorUIConfig& config, const fs::path& projectRoot)
@@ -602,7 +609,12 @@ void DrawTerminal(BEditorUIConfig& config, const fs::path& projectRoot)
 #else
         const char* shell = "User login shell";
 #endif
-        DrawPanelState("TERMINAL HOST // RESERVED", "Process hosting is not connected in this scaffold step.");
+        DrawPanelState("TERMINAL LAUNCH BRIDGE", "Launches the configured shell at the Project root. Embedded process hosting follows in this stage.");
+        if (ImGui::Button("OPEN PROJECT TERMINAL", ImVec2(-1.0f, 0.0f)))
+        {
+            std::string error;
+            BEditorPlatform_OpenTerminal(projectRoot, error);
+        }
         ImGui::Spacing();
         ImGui::TextDisabled("PLANNED DEFAULT");
         ImGui::TextUnformatted(shell);
@@ -620,6 +632,7 @@ BEditorPanelFeedback BEditorPanels_DrawScaffolds(
     BEditorWorkspaceSession& workspaceSession,
     BEditorAssetService& assetService,
     const BEditorComponentRegistry& componentRegistry,
+    BEditorCodeWorkspace& codeWorkspace,
     BEditorTextSpriteDocument& textSpriteDocument,
     const BEditorBuildService& buildService,
     const fs::path& projectRoot,
@@ -639,7 +652,8 @@ BEditorPanelFeedback BEditorPanels_DrawScaffolds(
     if (!textFeedback.message.empty()) feedback = textFeedback;
     DrawConsole(config, editorMessage, messageIsError);
     DrawBuildOutput(config, buildService);
-    DrawProblems(config, buildService);
+    BEditorPanelFeedback problemFeedback = DrawProblems(config, buildService, codeWorkspace);
+    if (!problemFeedback.openFile.empty()) feedback.openFile = problemFeedback.openFile;
     DrawTerminal(config, projectRoot);
     return feedback;
 }

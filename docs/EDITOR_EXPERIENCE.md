@@ -195,11 +195,13 @@ The first practical internal editor is **in implementation**. Its shared,
 Project-contained document service and initial dockable Project tree/multi-tab
 editing surface are implemented with dirty-state, Save All, close/build
 protection, transactional writes, and external-change conflict detection. It
-will additionally support line numbers, C/C++/CMake/JSON/text syntax
-highlighting, find/replace, go to
-line, unsaved-change handling, compiler diagnostics, file-and-line navigation,
-indent/format commands, Open in External Editor, and Reveal in Terminal/File
-Browser.
+also provides find/replace, go-to-line, compiler-problem file navigation, file
+creation, Open in External Editor, Reveal in File Browser, and a Project-root
+terminal launch bridge. External editor and terminal executables can currently
+be overridden with `BASIL_EXTERNAL_EDITOR` and `BASIL_TERMINAL`; persistent
+editor settings and embedded terminal hosting remain in this stage. Line-number
+presentation, syntax highlighting, remaining file operations, bracket/indent
+helpers, and precise diagnostic line placement are the remaining editor polish.
 
 Language-server completion, semantic navigation, refactoring, and deeper IDE
 features are **deferred** until the core workflow is useful. External-editor

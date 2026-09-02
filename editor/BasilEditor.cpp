@@ -57,6 +57,11 @@ struct EditorState
     BEditorComponentRegistry componentRegistry;
     BEditorCodeWorkspace codeWorkspace;
     std::size_t activeCodeTab = 0;
+    char codeFind[128]{};
+    char codeReplace[128]{};
+    std::size_t codeSearchOffset = 0;
+    int codeGoToLine = 1;
+    int codeCursorTarget = -1;
     double nextCodeRefreshTime = 0.0;
     BEditorTextSpriteDocument textSpriteDocument;
     double nextAssetRefreshTime = 0.0;
@@ -1033,6 +1038,21 @@ static void DrawCodeEditor(EditorState& state)
     if (!ImGui::Begin(BEditorPanel_Name(BEditorPanel::CodeEditor), &state.uiConfig.showCodeEditor)) { ImGui::End(); return; }
     ImGui::BeginChild("##ProjectFiles", ImVec2(240.0f, 0.0f), true);
     ImGui::TextDisabled("PROJECT FILES");
+    static char newFile[256] = "source/new_file.c";
+    if (ImGui::SmallButton("+ FILE")) ImGui::OpenPopup("CREATE PROJECT FILE");
+    if (ImGui::BeginPopup("CREATE PROJECT FILE"))
+    {
+        ImGui::InputText("Project path", newFile, sizeof(newFile));
+        if (ImGui::Button("CREATE"))
+        {
+            std::string error; bool ok = state.codeWorkspace.CreateFile(newFile, error);
+            SetMessage(state, ok ? "Project file created." : error.c_str(), !ok);
+            if (ok) ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("REFRESH")) { std::string error; if (!state.codeWorkspace.RefreshTree(error)) SetMessage(state, error.c_str(), true); }
     ImGui::Separator();
     for (const std::string& path : state.codeWorkspace.Files())
     {
@@ -1067,11 +1087,58 @@ static void DrawCodeEditor(EditorState& state)
             ImGui::EndTabBar();
         }
         BEditorCodeDocument& document = documents[state.activeCodeTab];
+        if (ImGui::SmallButton("SAVE")) { std::string error; bool ok = state.codeWorkspace.Save(state.activeCodeTab, error); SetMessage(state, ok ? "Source file saved." : error.c_str(), !ok); }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("EXTERNAL EDITOR")) { std::string error; bool ok = BEditorPlatform_OpenExternalEditor(state.codeWorkspace.Root() / document.relativePath, error); SetMessage(state, ok ? "Opened external editor." : error.c_str(), !ok); }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("REVEAL")) { std::string error; bool ok = BEditorPlatform_RevealFile(state.codeWorkspace.Root() / document.relativePath, error); SetMessage(state, ok ? "Revealed Project file." : error.c_str(), !ok); }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("POWERSHELL")) { std::string error; bool ok = BEditorPlatform_OpenTerminal(state.codeWorkspace.Root(), error); SetMessage(state, ok ? "Opened Project terminal." : error.c_str(), !ok); }
+        ImGui::SetNextItemWidth(180.0f);
+        ImGui::InputTextWithHint("##CodeFind", "Find", state.codeFind, sizeof(state.codeFind));
+        ImGui::SameLine();
+        if (ImGui::SmallButton("FIND NEXT") && state.codeFind[0])
+        {
+            std::size_t start = state.codeSearchOffset;
+            std::size_t found = document.text.find(state.codeFind, start);
+            if (found == std::string::npos && start) found = document.text.find(state.codeFind);
+            if (found == std::string::npos) SetMessage(state, "Search text was not found.", true);
+            else { state.codeCursorTarget = static_cast<int>(found); state.codeSearchOffset = found + std::strlen(state.codeFind); }
+        }
+        ImGui::SameLine(); ImGui::SetNextItemWidth(150.0f); ImGui::InputTextWithHint("##CodeReplace", "Replace with", state.codeReplace, sizeof(state.codeReplace));
+        ImGui::SameLine();
+        if (ImGui::SmallButton("REPLACE NEXT") && state.codeFind[0])
+        {
+            std::size_t found = document.text.find(state.codeFind, state.codeSearchOffset);
+            if (found == std::string::npos) found = document.text.find(state.codeFind);
+            if (found == std::string::npos) SetMessage(state, "Search text was not found.", true);
+            else
+            {
+                std::string replaced = document.text; replaced.replace(found, std::strlen(state.codeFind), state.codeReplace);
+                std::string error; if (!state.codeWorkspace.SetText(state.activeCodeTab, replaced, error)) SetMessage(state, error.c_str(), true);
+                state.codeSearchOffset = found + std::strlen(state.codeReplace); state.codeCursorTarget = static_cast<int>(state.codeSearchOffset);
+            }
+        }
+        ImGui::SameLine(); ImGui::SetNextItemWidth(90.0f); ImGui::InputInt("##GoLine", &state.codeGoToLine, 0, 0);
+        ImGui::SameLine();
+        if (ImGui::SmallButton("GO TO LINE"))
+        {
+            int line = std::max(1, state.codeGoToLine); std::size_t position = 0;
+            for (int current = 1; current < line && position < document.text.size(); ++current) { position = document.text.find('\n', position); if (position == std::string::npos) { position = document.text.size(); break; } ++position; }
+            state.codeCursorTarget = static_cast<int>(position);
+        }
         if (document.externalConflict) ImGui::TextColored(BEditorTheme_GetPalette().error, "EXTERNAL CONFLICT // Save is blocked");
         std::vector<char> buffer(1024 * 1024 + 1, 0);
         std::memcpy(buffer.data(), document.text.data(), std::min(document.text.size(), buffer.size() - 1));
         ImVec2 available = ImGui::GetContentRegionAvail();
-        if (ImGui::InputTextMultiline("##CodeText", buffer.data(), buffer.size(), available, ImGuiInputTextFlags_AllowTabInput))
+        auto navigation = [](ImGuiInputTextCallbackData* data) -> int
+        {
+            int* target = static_cast<int*>(data->UserData);
+            if (*target >= 0) { data->CursorPos = *target; data->SelectionStart = *target; data->SelectionEnd = *target; *target = -1; }
+            return 0;
+        };
+        if (ImGui::InputTextMultiline("##CodeText", buffer.data(), buffer.size(), available,
+            ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_CallbackAlways, navigation, &state.codeCursorTarget))
         {
             std::string error;
             if (!state.codeWorkspace.SetText(state.activeCodeTab, buffer.data(), error)) SetMessage(state, error.c_str(), true);
@@ -1178,6 +1245,7 @@ static void DrawEditorShell(EditorState& state)
         state.workspaceSession,
         state.assetService,
         state.componentRegistry,
+        state.codeWorkspace,
         state.textSpriteDocument,
         state.buildService,
         state.manifestPath.parent_path(),
@@ -1187,6 +1255,17 @@ static void DrawEditorShell(EditorState& state)
 
     if (!feedback.message.empty())
         SetMessage(state, feedback.message.c_str(), feedback.isError);
+    if (!feedback.openFile.empty())
+    {
+        std::string error;
+        if (state.codeWorkspace.OpenFile(feedback.openFile, error))
+        {
+            state.uiConfig.showCodeEditor = true;
+            const auto& documents = state.codeWorkspace.Documents();
+            for (std::size_t i = 0; i < documents.size(); ++i) if (documents[i].relativePath == feedback.openFile) state.activeCodeTab = i;
+        }
+        else SetMessage(state, error.c_str(), true);
+    }
 
     if (state.showUIConfigManager)
     {

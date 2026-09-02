@@ -5,17 +5,22 @@
 #include "BEditorBuildService.h"
 #include "BEditorAssetService.h"
 #include "BEditorComponentRegistry.h"
+#include "BEditorCodeWorkspace.h"
 #include "BEditorTextSpriteDocument.h"
 #include "BEditorWorkspaceSession.h"
 #include "BProject.h"
 
 #include <filesystem>
 #include <string>
+#include <utility>
 
 struct BEditorPanelFeedback
 {
+    BEditorPanelFeedback() = default;
+    BEditorPanelFeedback(std::string value, bool error) : message(std::move(value)), isError(error) {}
     std::string message;
     bool isError = false;
+    std::string openFile;
 };
 
 BEditorPanelFeedback BEditorPanels_DrawScaffolds(
@@ -24,6 +29,7 @@ BEditorPanelFeedback BEditorPanels_DrawScaffolds(
     BEditorWorkspaceSession& workspaceSession,
     BEditorAssetService& assetService,
     const BEditorComponentRegistry& componentRegistry,
+    BEditorCodeWorkspace& codeWorkspace,
     BEditorTextSpriteDocument& textSpriteDocument,
     const BEditorBuildService& buildService,
     const std::filesystem::path& projectRoot,
