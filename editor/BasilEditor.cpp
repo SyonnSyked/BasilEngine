@@ -1,6 +1,7 @@
 #include "BProject.h"
 #include "BProjectGenerator.h"
 #include "BRecentProjects.h"
+#include "BEditorGit.h"
 #include "BEditorPreferences.h"
 #include "BEditorTheme.h"
 
@@ -9,7 +10,9 @@
 #include "rlImGui.h"
 
 #include <cstdlib>
+#include <exception>
 #include <filesystem>
+#include <cstdio>
 #include <string>
 
 namespace fs = std::filesystem;
@@ -30,6 +33,8 @@ struct EditorState
     int cStandardIndex = 2;
     int cppStandardIndex = 6;
     bool initializeGit = false;
+    bool gitInitialized = false;
+    double nextGitRefreshTime = 0.0;
     bool projectOpen = false;
     std::string message;
     bool messageIsError = false;
@@ -124,30 +129,14 @@ static bool OpenProject(EditorState& state, const fs::path& manifestPath)
     }
 
     state.manifestPath = absolutePath;
+    state.gitInitialized = BEditorGit_IsInitialized(absolutePath.parent_path());
+    state.nextGitRefreshTime = GetTime() + 1.0;
     state.projectOpen = true;
     BRecentProjects_Add(&state.recent, absolutePath.string().c_str());
     SaveRecentProjects(state);
     SetWindowTitle(TextFormat("BasilEditor - %s", state.project.name));
     SetMessage(state, "Project opened successfully.", false);
     return true;
-}
-
-static bool InitializeGit(const fs::path& projectRoot)
-{
-    std::error_code error;
-    fs::path previous = fs::current_path(error);
-
-    if (error)
-        return false;
-
-    fs::current_path(projectRoot, error);
-
-    if (error)
-        return false;
-
-    int result = std::system("git init");
-    fs::current_path(previous, error);
-    return result == 0 && !error;
 }
 
 static void CreateProject(EditorState& state)
@@ -178,7 +167,7 @@ static void CreateProject(EditorState& state)
 
     fs::path root = fs::path(state.parentDirectory) / project.identifier;
 
-    bool gitFailed = state.initializeGit && !InitializeGit(root);
+    bool gitFailed = state.initializeGit && !BEditorGit_Initialize(root);
 
     if (OpenProject(state, root / (std::string(project.identifier) + ".basilproject")) && gitFailed)
         SetMessage(state, "The project was created, but Git initialization failed. You can retry it from the project overview.", true);
@@ -426,6 +415,14 @@ static void DrawProjectBrowser(EditorState& state)
 
 static void DrawProjectOverview(EditorState& state)
 {
+    double currentTime = GetTime();
+
+    if (currentTime >= state.nextGitRefreshTime)
+    {
+        state.gitInitialized = BEditorGit_IsInitialized(state.manifestPath.parent_path());
+        state.nextGitRefreshTime = currentTime + 1.0;
+    }
+
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
     ImGui::Begin("Project Overview", nullptr, ImGuiWindowFlags_NoTitleBar |
@@ -462,11 +459,18 @@ static void DrawProjectOverview(EditorState& state)
         ImGui::Spacing();
         ImGui::SeparatorText("PROJECT OPERATIONS");
 
-        if (ImGui::Button("INITIALIZE GIT", ImVec2(-1.0f, 0.0f)))
+        ImGui::BeginDisabled(state.gitInitialized);
+        const char* gitButtonLabel = state.gitInitialized ?
+            "GIT REPOSITORY ACTIVE" : "INITIALIZE GIT";
+
+        if (ImGui::Button(gitButtonLabel, ImVec2(-1.0f, 0.0f)))
         {
-            bool succeeded = InitializeGit(state.manifestPath.parent_path());
+            bool succeeded = BEditorGit_Initialize(state.manifestPath.parent_path());
+            state.gitInitialized = succeeded;
             SetMessage(state, succeeded ? "Git repository initialized." : "Git initialization failed. Verify that Git is installed and available on PATH.", !succeeded);
         }
+
+        ImGui::EndDisabled();
 
         ImGui::Spacing();
         DrawInterfaceScale(state);
@@ -493,7 +497,7 @@ static void DrawProjectOverview(EditorState& state)
     ImGui::End();
 }
 
-int main(int argumentCount, char** arguments)
+static int RunEditor(int argumentCount, char** arguments)
 {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
     InitWindow(1100, 700, "BasilEditor");
@@ -550,4 +554,25 @@ int main(int argumentCount, char** arguments)
     rlImGuiShutdown();
     CloseWindow();
     return 0;
+}
+
+int main(int argumentCount, char** arguments)
+{
+    try
+    {
+        return RunEditor(argumentCount, arguments);
+    }
+    catch (const std::exception& exception)
+    {
+        std::fprintf(stderr, "BasilEditor fatal error: %s\n", exception.what());
+    }
+    catch (...)
+    {
+        std::fprintf(stderr, "BasilEditor fatal error: unknown exception\n");
+    }
+
+    if (IsWindowReady())
+        CloseWindow();
+
+    return 1;
 }

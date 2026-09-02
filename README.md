@@ -34,6 +34,7 @@ The authoritative visual and interaction plan is recorded in the
 - Geometric circuit-leaf application branding and embedded Windows icon
 - Persistent global interface-scale presets from 100% through 175%
 - Optional Git initialization during or after project creation
+- Project-root Git detection that avoids redundant initialization controls
 - Headless project, generated-build, input, canvas, and combat tests
 
 ## Reference demo

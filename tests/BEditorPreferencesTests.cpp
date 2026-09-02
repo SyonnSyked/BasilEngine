@@ -36,10 +36,15 @@ int main()
     failures += Check(loaded.interfaceScale == 1.35f, "missing file returns default scale");
 
     BEditorPreferences saved = BEditorPreferences_Default();
-    saved.interfaceScale = 1.5f;
-    failures += Check(BEditorPreferences_Save(path.string(), saved, error), "preferences save");
-    failures += Check(BEditorPreferences_Load(path.string(), loaded, error), "saved preferences load");
-    failures += Check(loaded.interfaceScale == 1.5f, "saved scale round trips");
+    const float scales[] = { 1.0f, 1.15f, 1.35f, 1.5f, 1.75f };
+
+    for (float scale : scales)
+    {
+        saved.interfaceScale = scale;
+        failures += Check(BEditorPreferences_Save(path.string(), saved, error), "preferences save");
+        failures += Check(BEditorPreferences_Load(path.string(), loaded, error), "saved preferences load");
+        failures += Check(loaded.interfaceScale == scale, "scale preset round trips");
+    }
 
     {
         std::ofstream invalid(path, std::ios::binary | std::ios::trunc);

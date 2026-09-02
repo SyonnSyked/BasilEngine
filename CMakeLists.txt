@@ -350,6 +350,7 @@ if(BASIL_BUILD_EDITOR_DEPS)
 
     add_executable(BasilEditor
         editor/BasilEditor.cpp
+        editor/BEditorGit.cpp
         editor/BEditorPreferences.cpp
         editor/BEditorTheme.cpp
     )
@@ -405,6 +406,24 @@ if(BASIL_BUILD_EDITOR_DEPS)
 
         basil_enable_warnings(BEditorPreferencesTests)
         add_test(NAME BEditorPreferencesTests COMMAND BEditorPreferencesTests)
+
+        add_executable(BEditorGitTests
+            tests/BEditorGitTests.cpp
+            editor/BEditorGit.cpp
+        )
+
+        target_include_directories(BEditorGitTests PRIVATE
+            editor
+        )
+
+        if(MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            target_link_options(BEditorGitTests PRIVATE
+                -static -static-libgcc -static-libstdc++
+            )
+        endif()
+
+        basil_enable_warnings(BEditorGitTests)
+        add_test(NAME BEditorGitTests COMMAND BEditorGitTests)
     endif()
 
     add_custom_command(TARGET BasilEditor POST_BUILD

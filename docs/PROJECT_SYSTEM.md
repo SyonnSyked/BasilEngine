@@ -94,6 +94,12 @@ available from the opened-project overview. Generated projects receive a
 suitable `.gitignore` regardless. BasilEditor defaults project creation to
 `Documents/BasilEngine`, while allowing any location.
 
+The overview detects Git metadata owned by the Project root, including normal
+`.git` directories and worktree-style `.git` files. An initialized Project shows
+`GIT REPOSITORY ACTIVE` as a disabled status control instead of offering the
+operation again. A parent repository does not count as Project initialization,
+and external initialization is detected while the Project remains open.
+
 ## Editor launch behavior
 
 BasilEditor opens to the project browser when launched without arguments. It
