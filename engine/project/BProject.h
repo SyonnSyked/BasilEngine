@@ -8,7 +8,8 @@
 extern "C" {
 #endif
 
-#define BPROJECT_SCHEMA_VERSION 1
+#define BPROJECT_SCHEMA_VERSION 2
+#define BPROJECT_LEGACY_SCHEMA_VERSION 1
 #define BPROJECT_NAME_MAX 128
 #define BPROJECT_IDENTIFIER_MAX 64
 #define BPROJECT_PATH_MAX 1024
@@ -45,7 +46,7 @@ typedef struct BProject
     BProjectLanguageMode languageMode;
     int cStandard;
     int cppStandard;
-    char startupScene[BPROJECT_PATH_MAX];
+    char startupWorkspace[BPROJECT_PATH_MAX];
 } BProject;
 
 BProject BProject_Default(const char* name, const char* identifier);

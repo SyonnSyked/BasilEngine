@@ -126,6 +126,7 @@ add_library(BasilProject STATIC
     engine/project/BProject.c
     engine/project/BProjectGenerator.c
     engine/project/BRecentProjects.c
+    engine/project/BWorkspace.c
 )
 
 target_include_directories(BasilProject PUBLIC
@@ -237,8 +238,35 @@ if(BUILD_TESTING)
         "${CMAKE_CURRENT_BINARY_DIR}/test-fixtures/project-unsupported-version.basilproject"
         COPYONLY
     )
+    configure_file(
+        tests/fixtures/project-legacy-version.basilproject
+        "${CMAKE_CURRENT_BINARY_DIR}/test-fixtures/project-legacy-version.basilproject"
+        COPYONLY
+    )
 
     add_test(NAME BProjectTests COMMAND BProjectTests)
+
+    add_executable(BWorkspaceTests
+        tests/BWorkspaceTests.c
+    )
+
+    target_link_libraries(BWorkspaceTests PRIVATE
+        BasilProject
+    )
+
+    foreach(workspace_fixture IN ITEMS
+        workspace-invalid-json.basilworkspace
+        workspace-unsupported-version.basilworkspace
+        workspace-nonempty-entities.basilworkspace
+    )
+        configure_file(
+            "tests/fixtures/${workspace_fixture}"
+            "${CMAKE_CURRENT_BINARY_DIR}/test-fixtures/${workspace_fixture}"
+            COPYONLY
+        )
+    endforeach()
+
+    add_test(NAME BWorkspaceTests COMMAND BWorkspaceTests)
 
     add_executable(BRecentProjectsTests
         tests/BRecentProjectsTests.c

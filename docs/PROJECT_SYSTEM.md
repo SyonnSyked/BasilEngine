@@ -2,7 +2,8 @@
 
 This document records the agreed direction for creating and opening independent
 BasilEngine projects. The versioned manifest, validation, JSON persistence,
-headless generator, and independent generated-project build are implemented.
+versioned empty Workspace format, headless generator, and independent
+generated-project build are implemented.
 The first BasilEditor project-browser slice is implemented. It creates and
 opens projects through the shared headless project APIs, tracks recent projects,
 accepts a manifest path on the command line, and displays an opened project's
@@ -63,23 +64,29 @@ The implemented minimal template contains:
 
 ```text
 MyGame/
-├── MyGame.basilproject
-├── CMakeLists.txt
-├── .gitignore
-├── assets/
-├── scenes/
-└── source/
-    └── main.c or main.cpp
+|-- MyGame.basilproject
+|-- CMakeLists.txt
+|-- .gitignore
+|-- assets/
+|-- workspaces/
+|   `-- Main.basilworkspace
+`-- source/
+    `-- main.c or main.cpp
 ```
 
 Empty files or directories are included only when they serve an immediate
 workflow purpose.
 
-The implemented generator still uses the `scenes/` directory name and the
-manifest field `startupScene`; both predate the confirmed Workspace terminology.
-They remain documented here as current on-disk behavior, not desired public
-vocabulary. They require a deliberate schema migration when the first Workspace
-format is introduced rather than an unversioned rename.
+Project schema version 2 uses a `startupWorkspace` path and generated Projects
+store `workspaces/Main.basilworkspace`. The Workspace file is versioned JSON and
+currently describes an empty, named content unit; entity content is reserved
+until its model is defined rather than accepting data the engine cannot retain.
+
+Project schema version 1 remains loadable. Its `startupScene` path is preserved
+in memory while the Project is represented using the current API. Loading does
+not silently rewrite the manifest. A future explicit migration operation must
+back up the version-1 file before it writes version 2 and converts any legacy
+content path.
 
 ## Dependencies
 
@@ -118,8 +125,9 @@ error rather than being modified.
 4. Independent generated-project build verification
 5. BasilEditor application shell and project browser
 6. New/Open Project interface
-7. Starter Workspace and asset editing
-8. Build and Run controls
+7. Versioned empty Workspace format and starter generation
+8. Starter Workspace and asset editing
+9. Build and Run controls
 
 Project generation remains a testable headless engine/tooling capability rather
 than logic embedded directly in an ImGui event handler.

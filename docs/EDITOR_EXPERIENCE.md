@@ -60,8 +60,9 @@ Workspace, Open Workspace, Save Workspace, Active Workspace, Workspace
 Hierarchy, and loading an additional Workspace.
 
 Multiple/additive Workspaces are intended, but their exact runtime and ownership
-semantics remain **unresolved**. The serialization schema and extension are also
-unresolved; `.basilworkspace` is a candidate, not a contract.
+semantics remain **unresolved**. Initial empty-Workspace serialization is
+**implemented** as versioned JSON using `.basilworkspace`. Entity/component
+serialization remains deliberately undefined until its runtime model exists.
 
 ### Viewport
 
@@ -296,7 +297,7 @@ Future macOS application-bundle packaging will require an ICNS export.
 ## Remaining decisions
 
 - Final `.basilproject` and Where Birds Nest icons
-- Workspace schema, extension, and additive semantics
+- Workspace entity/component schema and additive semantics
 - UI Config schema and extension
 - External-editor configuration schema and placeholders
 - Exact default docking measurements

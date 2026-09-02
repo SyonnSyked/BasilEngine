@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "name": "Legacy Project",
+  "identifier": "LegacyProject",
+  "languages": {
+    "mode": "mixed",
+    "cStandard": 11,
+    "cppStandard": 26
+  },
+  "startupScene": "scenes/Main.scene"
+}

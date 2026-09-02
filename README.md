@@ -29,7 +29,7 @@ the [visual-foundation closeout](docs/EDITOR_VISUAL_FOUNDATION.md).
 - Plain-text ASCII asset loading and runtime glyph editing
 - Smooth world-space movement, camera tracking, and collision
 - A small `WhereBirdsNest` combat feasibility arena
-- Versioned JSON project manifests and a headless empty-project generator
+- Versioned JSON Project and empty-Workspace formats with a headless generator
 - A graphical BasilEditor project browser with New, Open, and Recent workflows
 - A centralized cyberpunk editor theme with bundled JetBrains Mono typography
 - NetRunner-styled Project Browser and Project Overview screens

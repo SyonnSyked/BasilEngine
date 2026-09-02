@@ -57,6 +57,38 @@ static bool BProject_IsValidIdentifier(const char* identifier)
     return true;
 }
 
+static bool BProject_IsPortableRelativePath(const char* path)
+{
+    if (path == 0 || path[0] == '\0' || path[0] == '/' || path[0] == '\\' ||
+        strchr(path, ':') != 0)
+    {
+        return false;
+    }
+
+    const char* segment = path;
+
+    for (const char* cursor = path; ; ++cursor)
+    {
+        if (*cursor == '/' || *cursor == '\\' || *cursor == '\0')
+        {
+            size_t length = (size_t)(cursor - segment);
+
+            if (length == 0 || (length == 1 && segment[0] == '.') ||
+                (length == 2 && segment[0] == '.' && segment[1] == '.'))
+            {
+                return false;
+            }
+
+            if (*cursor == '\0')
+                break;
+
+            segment = cursor + 1;
+        }
+    }
+
+    return true;
+}
+
 static char* BProject_ReadFile(const char* path, BProjectError* error)
 {
     FILE* file = fopen(path, "rb");
@@ -114,6 +146,11 @@ BProject BProject_Default(const char* name, const char* identifier)
     project.languageMode = BPROJECT_LANGUAGE_MIXED;
     project.cStandard = 11;
     project.cppStandard = 26;
+    snprintf(
+        project.startupWorkspace,
+        sizeof(project.startupWorkspace),
+        "workspaces/Main.basilworkspace"
+    );
 
     if (name != 0 && strlen(name) < sizeof(project.name))
         snprintf(project.name, sizeof(project.name), "%s", name);
@@ -159,6 +196,9 @@ bool BProject_Validate(const BProject* project, BProjectError* error)
     {
         return BProject_Fail(error, BPROJECT_ERROR_INVALID_MANIFEST, "Unsupported C++ language standard.");
     }
+
+    if (!BProject_IsPortableRelativePath(project->startupWorkspace))
+        return BProject_Fail(error, BPROJECT_ERROR_INVALID_MANIFEST, "Startup Workspace must be a portable relative path.");
 
     return true;
 }
@@ -213,11 +253,9 @@ bool BProject_Load(const char* manifestPath, BProject* outProject, BProjectError
     cJSON* name = cJSON_GetObjectItemCaseSensitive(root, "name");
     cJSON* identifier = cJSON_GetObjectItemCaseSensitive(root, "identifier");
     cJSON* languages = cJSON_GetObjectItemCaseSensitive(root, "languages");
-    cJSON* startupScene = cJSON_GetObjectItemCaseSensitive(root, "startupScene");
 
     if (!cJSON_IsNumber(schemaVersion) || !cJSON_IsString(name) ||
-        !cJSON_IsString(identifier) || !cJSON_IsObject(languages) ||
-        !cJSON_IsString(startupScene))
+        !cJSON_IsString(identifier) || !cJSON_IsObject(languages))
     {
         cJSON_Delete(root);
         return BProject_Fail(error, BPROJECT_ERROR_INVALID_MANIFEST, "Manifest is missing required fields or contains incorrect field types.");
@@ -241,19 +279,45 @@ bool BProject_Load(const char* manifestPath, BProject* outProject, BProjectError
         return BProject_Fail(error, BPROJECT_ERROR_INVALID_MANIFEST, "Manifest versions and language standards must be integers.");
     }
 
+    int sourceSchemaVersion = schemaVersion->valueint;
+
+    if (sourceSchemaVersion != BPROJECT_LEGACY_SCHEMA_VERSION &&
+        sourceSchemaVersion != BPROJECT_SCHEMA_VERSION)
+    {
+        cJSON_Delete(root);
+        return BProject_Fail(error, BPROJECT_ERROR_UNSUPPORTED_VERSION, "Unsupported project schema version.");
+    }
+
+    const char* startupFieldName = sourceSchemaVersion == BPROJECT_LEGACY_SCHEMA_VERSION ?
+        "startupScene" : "startupWorkspace";
+    cJSON* startupWorkspace = cJSON_GetObjectItemCaseSensitive(root, startupFieldName);
+
+    if (!cJSON_IsString(startupWorkspace))
+    {
+        cJSON_Delete(root);
+        return BProject_Fail(error, BPROJECT_ERROR_INVALID_MANIFEST, "Manifest startup Workspace is missing or has an incorrect field type.");
+    }
+
     if (strlen(name->valuestring) >= BPROJECT_NAME_MAX ||
         strlen(identifier->valuestring) >= BPROJECT_IDENTIFIER_MAX ||
-        strlen(startupScene->valuestring) >= BPROJECT_PATH_MAX)
+        strlen(startupWorkspace->valuestring) >= BPROJECT_PATH_MAX)
     {
         cJSON_Delete(root);
         return BProject_Fail(error, BPROJECT_ERROR_INVALID_MANIFEST, "Manifest contains a string that exceeds its supported length.");
     }
 
     BProject project = BProject_Default(name->valuestring, identifier->valuestring);
-    project.schemaVersion = schemaVersion->valueint;
+    project.schemaVersion = BPROJECT_SCHEMA_VERSION;
     project.cStandard = cStandard->valueint;
     project.cppStandard = cppStandard->valueint;
-    snprintf(project.startupScene, sizeof(project.startupScene), "%s", startupScene->valuestring);
+    snprintf(
+        project.startupWorkspace,
+        sizeof(project.startupWorkspace),
+        "%s",
+        sourceSchemaVersion == BPROJECT_LEGACY_SCHEMA_VERSION &&
+            startupWorkspace->valuestring[0] == '\0' ?
+            "workspaces/Main.basilworkspace" : startupWorkspace->valuestring
+    );
 
     bool modeValid = BProject_LanguageModeFromString(mode->valuestring, &project.languageMode);
     cJSON_Delete(root);
@@ -295,7 +359,7 @@ bool BProject_Save(const BProject* project, const char* manifestPath, BProjectEr
     cJSON_AddNumberToObject(languages, "cStandard", project->cStandard);
     cJSON_AddNumberToObject(languages, "cppStandard", project->cppStandard);
     cJSON_AddItemToObject(root, "languages", languages);
-    cJSON_AddStringToObject(root, "startupScene", project->startupScene);
+    cJSON_AddStringToObject(root, "startupWorkspace", project->startupWorkspace);
 
     char* json = cJSON_Print(root);
     cJSON_Delete(root);

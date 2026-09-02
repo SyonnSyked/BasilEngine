@@ -1,4 +1,5 @@
 #include "BProjectGenerator.h"
+#include "BWorkspace.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -257,7 +258,7 @@ bool BProjectGenerator_Create(
     if (!BProjectGenerator_CreateDirectory(root, error))
         return false;
 
-    const char* directories[] = { "assets", "scenes", "source" };
+    const char* directories[] = { "assets", "workspaces", "source" };
 
     for (size_t i = 0; i < sizeof(directories) / sizeof(directories[0]); ++i)
     {
@@ -279,6 +280,14 @@ bool BProjectGenerator_Create(
     {
         return false;
     }
+
+    if (!BProjectGenerator_Path(path, sizeof(path), root, project->startupWorkspace, error))
+        return false;
+
+    BWorkspace workspace = BWorkspace_Default("Main Workspace", "Main");
+
+    if (!BWorkspace_Save(&workspace, path, error))
+        return false;
 
     if (!BProjectGenerator_Path(path, sizeof(path), root, "CMakeLists.txt", error) ||
         !BProjectGenerator_WriteCMake(project, path, error))
@@ -336,4 +345,3 @@ bool BProjectGenerator_Create(
 
     return true;
 }
-

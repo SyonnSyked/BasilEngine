@@ -74,7 +74,9 @@ engine source or machine-specific paths.
   bundled typography, persistent scale preferences, application branding, and
   Project-root Git-state detection. The visual-foundation finishing pass is
   complete and recorded in `EDITOR_VISUAL_FOUNDATION.md`; dockable content
-  panels and actual Workspace editing remain.
+  panels and actual Workspace editing remain. The versioned empty-Workspace
+  format, `.basilworkspace` extension, starter generation, and legacy manifest
+  load path are implemented.
 - Create a dockable editor application.
 - Add an ASCII viewport, hierarchy, inspector, asset browser, and log console.
 - Load, edit, save, play, and stop the reference Workspace.
@@ -85,9 +87,8 @@ engine source or machine-specific paths.
 **Exit condition:** The reference-game test room can be meaningfully edited and
 saved without hand-editing its Workspace representation.
 
-The next implementation slice begins with the versioned Workspace data model
-and its compatibility plan for the legacy `scenes/`/`startupScene` names. It
-then introduces the dockable editor shell and a slim default UI Config before
+The next implementation slice introduces the dockable editor shell and a slim
+default UI Config before
 placing hierarchy, inspector, asset-browser, and Viewport behavior on top of
 real Workspace data.
 

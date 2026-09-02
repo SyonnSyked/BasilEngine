@@ -66,11 +66,13 @@ but it must not be mistaken for functional editing capability.
 
 ## Next milestone handoff
 
-The next slice should establish real editor data and structure in this order:
+The initial Workspace-format item below was completed immediately after this
+closeout. The remaining sequence still defines the editor-foundation handoff:
 
 1. Define a versioned Workspace model, serialization schema, and extension,
-   including a deliberate migration path from the current `scenes/` directory
-   and `startupScene` manifest field.
+   including compatibility with the legacy `scenes/` directory and
+   `startupScene` manifest field. **Completed:** the empty format and load path
+   exist; backup-aware on-disk migration remains part of future editing work.
 2. Add the dockable editor shell and the maintained slim default UI Config,
    keeping UI Config state separate from Project content.
 3. Introduce Workspace Hierarchy, Inspector, Asset Browser, Console, and
@@ -81,6 +83,6 @@ The next slice should establish real editor data and structure in this order:
 5. Add build/run integration only after the Project and Workspace paths are
    represented consistently in both editor and runtime code.
 
-The unresolved Workspace extension, schema, and additive semantics must be
-decided explicitly at the start of that slice; candidate names in planning
-documents are not yet file-format contracts.
+The `.basilworkspace` extension and empty-file schema are now contracts.
+Entity/component serialization and additive semantics still require explicit
+decisions before those capabilities are implemented.
