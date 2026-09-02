@@ -670,6 +670,14 @@ if(BASIL_BUILD_EDITOR_DEPS)
         endif()
         basil_enable_warnings(BEditorComponentRegistryTests)
         add_test(NAME BEditorComponentRegistryTests COMMAND BEditorComponentRegistryTests)
+
+        add_executable(BEditorCodeWorkspaceTests tests/BEditorCodeWorkspaceTests.cpp editor/BEditorCodeWorkspace.cpp)
+        target_include_directories(BEditorCodeWorkspaceTests PRIVATE editor)
+        if(MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            target_link_options(BEditorCodeWorkspaceTests PRIVATE -static -static-libgcc -static-libstdc++)
+        endif()
+        basil_enable_warnings(BEditorCodeWorkspaceTests)
+        add_test(NAME BEditorCodeWorkspaceTests COMMAND BEditorCodeWorkspaceTests)
     endif()
 
     add_custom_command(TARGET BasilEditor POST_BUILD
