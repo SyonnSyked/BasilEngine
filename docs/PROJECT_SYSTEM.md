@@ -59,8 +59,7 @@ Project metadata is stored in a human-readable, versioned JSON
 `.basilproject` manifest. Persistent formats carry a schema version from their
 first revision and project paths are relative to the project root by default.
 
-The exact minimal template will be validated during implementation, but it is
-expected to contain:
+The implemented minimal template contains:
 
 ```text
 MyGame/

@@ -14,7 +14,9 @@ See the [project charter](docs/PROJECT_CHARTER.md), [roadmap](docs/ROADMAP.md),
 [architecture notes](docs/ARCHITECTURE.md), and
 [project-system specification](docs/PROJECT_SYSTEM.md) for the current direction.
 The authoritative visual and interaction plan is recorded in the
-[BasilEditor experience specification](docs/EDITOR_EXPERIENCE.md).
+[BasilEditor experience specification](docs/EDITOR_EXPERIENCE.md). The completed
+editor visual-foundation pass and its verification evidence are summarized in
+the [visual-foundation closeout](docs/EDITOR_VISUAL_FOUNDATION.md).
 
 ## Current capabilities
 

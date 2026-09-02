@@ -4,6 +4,10 @@ This is the authoritative record of the agreed BasilEditor product,
 interaction, terminology, and visual direction. It exists to prevent feature
 drift and mismatched workflows as the editor grows.
 
+The implemented visual-foundation slice is closed out in
+`EDITOR_VISUAL_FOUNDATION.md`. This specification remains authoritative for
+both implemented behavior and future product decisions.
+
 Status words are intentional:
 
 - **Confirmed:** a product decision future work should preserve.
