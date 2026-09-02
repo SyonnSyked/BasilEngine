@@ -46,6 +46,8 @@ technical contract for that next slice is the
   structured diagnostics
 - Workspace schema v3 with versioned Transform2D/ASCII Renderable components,
   safe legacy migration, and preservation of unknown optional component data
+- A bounded, project-root-contained Text Sprite decoder with transparent-space
+  grids, structured diagnostics, and last-known-good cache replacement
 - Asynchronous CMake Build and Run controls with streamed output, extracted
   problems, and native Pause, Resume, and Stop process control
 - Geometric circuit-leaf application branding and embedded Windows icon

@@ -90,6 +90,13 @@ are the first typed components. Unknown optional component JSON is owned and
 preserved; unknown required components are rejected. Parent/child relationships
 are not part of the contract.
 
+Text Sprite assets are decoded by a shared C service from normalized paths
+relative to the Project root. Version 1 accepts printable ASCII with LF or CRLF
+line endings, treats spaces as transparent cells, pads uneven rows, and rejects
+empty visual content or dimensions beyond the documented bounds. Loads and
+cache refreshes are transactional: a malformed edit cannot replace the last
+known-good decoded sprite. The service does not depend on raylib or BasilEditor.
+
 BasilEditor loads the startup Workspace into an explicitly owned, lifecycle-safe
 document held by the editor session. Loads and clones are transactional, so a
 failed operation cannot partially replace the last valid document. Hierarchy

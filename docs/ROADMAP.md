@@ -57,8 +57,10 @@ deferred.
 **Status:** In progress. Versioned JSON manifests, validation, configurable
 C/C++ language rules, a headless empty-project generator, independent build
 verification, and the first editor-facing project browser are implemented.
-Asset identifiers, startup-Workspace loading, native file dialogs, and file-change
-detection remain.
+Asset identifiers, startup-Workspace runtime loading, native file dialogs, and
+file-change detection remain. A bounded project-relative Text Sprite decoder and
+transactional last-known-good cache are now implemented as the first shared
+asset service.
 
 - Add a versioned `.basilproject` manifest.
 - Use portable relative asset paths and stable asset identifiers.
@@ -86,7 +88,8 @@ engine source or machine-specific paths.
   Asynchronous CMake Build/Run, output capture, problem extraction, and native
   Pause/Resume/Stop process control are implemented. Lifecycle-owned Workspace
   documents and the first versioned Transform2D/ASCII Renderable component
-  schema are implemented. Runtime interpretation, editor component controls,
+  schema and the shared Text Sprite loading/cache service are implemented.
+  Runtime interpretation, editor component controls,
   in-Viewport play, source navigation, and terminal services remain.
 - Create a dockable editor application. **Implemented.**
 - Add an ASCII viewport, hierarchy, inspector, asset browser, and log console.

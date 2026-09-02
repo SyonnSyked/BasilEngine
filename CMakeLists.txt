@@ -140,6 +140,17 @@ target_link_libraries(BasilProject PRIVATE
 
 basil_enable_warnings(BasilProject)
 
+add_library(BasilAssets STATIC
+    engine/assets/BTextSprite.c
+)
+
+target_include_directories(BasilAssets PUBLIC
+    engine/assets
+    engine/core
+)
+
+basil_enable_warnings(BasilAssets)
+
 add_library(BasilEngine STATIC
     engine/core/BEngine.c
     engine/core/BApplication.c
@@ -159,6 +170,7 @@ target_include_directories(BasilEngine PUBLIC
 )
 
 target_link_libraries(BasilEngine PUBLIC
+    BasilAssets
     ${BASIL_RAYLIB_TARGET}
     ${BASIL_TOOLS_TARGET}
 )
@@ -274,6 +286,16 @@ if(BUILD_TESTING)
     endforeach()
 
     add_test(NAME BWorkspaceTests COMMAND BWorkspaceTests)
+
+    add_executable(BTextSpriteTests
+        tests/BTextSpriteTests.c
+    )
+
+    target_link_libraries(BTextSpriteTests PRIVATE
+        BasilAssets
+    )
+
+    add_test(NAME BTextSpriteTests COMMAND BTextSpriteTests)
 
     add_executable(BRecentProjectsTests
         tests/BRecentProjectsTests.c

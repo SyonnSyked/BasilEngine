@@ -17,7 +17,7 @@ plan.
 
 ## Verification snapshot
 
-At this checkpoint, all 8 runtime/core tests and all 13 editor-enabled tests
+At this checkpoint, all 9 runtime/core tests and all 14 editor-enabled tests
 pass on the Windows development machine. These suites include Project and
 Workspace persistence, recent Projects, interactive Project creation, generated
 Project compilation, combat logic, ASCII canvas behavior, input, editor
@@ -31,7 +31,7 @@ review.
 | Intended outcome | Current evidence | Status | Remaining gap |
 | --- | --- | --- | --- |
 | BasilEngine is reusable; Where Birds Nest is its proving project | Engine and reference game are separate, and documented architecture forbids game concepts in engine code | Aligned | Move the feasibility arena onto the same Project/Workspace runtime path used by generated projects |
-| ASCII and text art are first-class | Layered glyph rendering, text-asset loading, and versioned Transform2D/ASCII Renderable Workspace data exist | Foundation proven | Decode Text Sprites through the new component path and introduce stable asset identities later |
+| ASCII and text art are first-class | Layered glyph rendering, a strict shared Text Sprite decoder/cache, and versioned Transform2D/ASCII Renderable Workspace data exist | Foundation proven | Interpret Text Sprites through the component path and introduce stable asset identities later |
 | Smooth real-time action-RPG play | Delta-time movement, camera, collision, input routing, a target, attack cooldown, damage, and death exist | Feasibility spike complete in breadth; feel unvalidated | Conduct play-feel validation before treating combat APIs as stable |
 | C-first runtime with narrow C++ use | Runtime and public-facing systems are C11; BasilEditor uses C++ for ImGui integration | Aligned | Preserve the C boundary when component and future game-module APIs are introduced |
 | Windows, macOS, and Linux | Cross-platform code paths and CMake structure exist | Not fully verified | Windows is the active verified platform; macOS/Linux need native configure, build, test, and process-control verification |
@@ -53,6 +53,8 @@ review.
 - In-memory diagnostics and a developer console overlay.
 - Layered ASCII rendering with per-cell foreground/background colors.
 - Plain-text asset loading and runtime glyph editing.
+- Bounded Text Sprite decoding with LF/CRLF support, transparent-space grids,
+  root-contained paths, structured diagnostics, and last-known-good caching.
 - Smooth movement, camera tracking, arena collision, and corrected contact on
   all wall sides.
 - A damageable target, range-checked basic attack, cooldown, visual feedback,

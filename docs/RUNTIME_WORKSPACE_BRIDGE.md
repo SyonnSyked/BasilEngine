@@ -1,6 +1,6 @@
 # Runtime Workspace Bridge Technical Design
 
-**Status:** Accepted; implementation in progress (Steps 1–2 complete)
+**Status:** Accepted; implementation in progress (Steps 1–3 complete)
 **Design date:** 2026-09-02  
 **Target slice:** BasilEditor-authored entities render in a generated standalone
 Project through shared C runtime APIs
@@ -562,8 +562,10 @@ Each step must build, pass its focused tests, and leave a reviewable commit.
 2. **Schema 3 components — Implemented:** bounded versioned envelopes,
    Transform2D and ASCII Renderable typed data, schema-1/2 migration, strict
    validation, mutation APIs, and opaque optional preservation are active.
-3. **Text Sprite service:** implement bounded decoding, project-relative path
-   handling, cache ownership, and tests.
+3. **Text Sprite service — Implemented:** bounded printable-ASCII decoding,
+   project-root-contained relative paths, explicit cache ownership,
+   last-known-good replacement, structured diagnostics, and focused tests are
+   active without raylib or editor dependencies.
 4. **Shared interpretation:** produce deterministic `BAsciiDrawList` data from
    Transform2D and ASCII Renderable components.
 5. **Generated runtime bridge:** add Project discovery, load the startup
