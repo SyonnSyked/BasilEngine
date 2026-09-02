@@ -201,8 +201,10 @@ terminal launch bridge. External editor and terminal executable settings persist
 in the global editor preferences and remain optionally overridable with
 `BASIL_EXTERNAL_EDITOR` and `BASIL_TERMINAL`. Clean-file rename/delete/reload,
 protected tab closing, and precise compiler diagnostic line placement are also
-implemented. Embedded terminal hosting, line-number/syntax presentation, and
-bracket/indent helpers remain in this stage.
+implemented. The built-in editor now has a scroll-synchronized line-number
+gutter, language identification, a restrained syntax-colored inspection mode,
+current-line indent/unindent, live cursor/line state, and matching-bracket jump.
+Embedded terminal hosting is the remaining Stage 5 subsystem.
 
 Language-server completion, semantic navigation, refactoring, and deeper IDE
 features are **deferred** until the core workflow is useful. External-editor

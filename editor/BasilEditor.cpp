@@ -25,6 +25,7 @@
 #include <filesystem>
 #include <cstdio>
 #include <string>
+#include <sstream>
 #include <utility>
 #include <vector>
 
@@ -62,6 +63,9 @@ struct EditorState
     std::size_t codeSearchOffset = 0;
     int codeGoToLine = 1;
     int codeCursorTarget = -1;
+    int codeCursorPosition = 0;
+    float codeScrollY = 0.0f;
+    bool codeSyntaxPreview = false;
     double nextCodeRefreshTime = 0.0;
     BEditorTextSpriteDocument textSpriteDocument;
     double nextAssetRefreshTime = 0.0;
@@ -1172,6 +1176,21 @@ static void DrawCodeEditor(EditorState& state)
                 state.codeSearchOffset = found + std::strlen(state.codeReplace); state.codeCursorTarget = static_cast<int>(state.codeSearchOffset);
             }
         }
+        ImGui::SameLine(); bool indentLine = ImGui::SmallButton("INDENT LINE");
+        ImGui::SameLine(); bool unindentLine = ImGui::SmallButton("UNINDENT LINE");
+        if (indentLine || unindentLine)
+        {
+            std::size_t cursor = std::min<std::size_t>(state.codeCursorPosition, document.text.size());
+            std::size_t lineStart = cursor == 0 ? 0 : document.text.rfind('\n', cursor - 1) + 1;
+            std::string changed = document.text;
+            if (unindentLine)
+            {
+                std::size_t count = 0; while (count < 4 && lineStart + count < changed.size() && changed[lineStart + count] == ' ') ++count;
+                changed.erase(lineStart, count); state.codeCursorTarget = static_cast<int>(cursor - std::min(cursor - lineStart, count));
+            }
+            else { changed.insert(lineStart, "    "); state.codeCursorTarget = static_cast<int>(cursor + 4); }
+            std::string error; if (!state.codeWorkspace.SetText(state.activeCodeTab, changed, error)) SetMessage(state, error.c_str(), true);
+        }
         ImGui::SameLine(); ImGui::SetNextItemWidth(90.0f); ImGui::InputInt("##GoLine", &state.codeGoToLine, 0, 0);
         ImGui::SameLine();
         if (ImGui::SmallButton("GO TO LINE"))
@@ -1181,21 +1200,61 @@ static void DrawCodeEditor(EditorState& state)
             state.codeCursorTarget = static_cast<int>(position);
         }
         if (document.externalConflict) ImGui::TextColored(BEditorTheme_GetPalette().error, "EXTERNAL CONFLICT // Save is blocked");
+        int lineCount = 1 + static_cast<int>(std::count(document.text.begin(), document.text.end(), '\n'));
+        std::string extension = fs::path(document.relativePath).extension().string();
+        const char* language = extension == ".cpp" || extension == ".hpp" ? "C++" :
+            extension == ".c" || extension == ".h" ? "C" : extension == ".json" ? "JSON" :
+            fs::path(document.relativePath).filename() == "CMakeLists.txt" || extension == ".cmake" ? "CMAKE" : "TEXT";
+        int cursorLine = 1 + static_cast<int>(std::count(document.text.begin(), document.text.begin() + std::min<std::size_t>(state.codeCursorPosition, document.text.size()), '\n'));
+        int bracketMatch = -1; std::size_t bracketAt = std::min<std::size_t>(state.codeCursorPosition, document.text.size());
+        if (bracketAt == document.text.size() || std::string("()[]{}").find(document.text[bracketAt]) == std::string::npos) { if (bracketAt > 0) --bracketAt; }
+        if (bracketAt < document.text.size())
+        {
+            char open = document.text[bracketAt], close = 0; int direction = 1;
+            if (open == '(') close = ')'; else if (open == '[') close = ']'; else if (open == '{') close = '}';
+            else if (open == ')') { close = '('; direction = -1; } else if (open == ']') { close = '['; direction = -1; } else if (open == '}') { close = '{'; direction = -1; }
+            if (close) { int depth = 0; for (int p = static_cast<int>(bracketAt); p >= 0 && p < static_cast<int>(document.text.size()); p += direction) { if (document.text[p] == open) ++depth; else if (document.text[p] == close && --depth == 0) { bracketMatch = p; break; } } }
+        }
+        ImGui::TextDisabled("%s // LINE %d OF %d", language, cursorLine, lineCount);
+        if (bracketMatch >= 0) { ImGui::SameLine(); if (ImGui::SmallButton("JUMP MATCHING BRACKET")) state.codeCursorTarget = bracketMatch; }
+        ImGui::SameLine(); if (ImGui::SmallButton(state.codeSyntaxPreview ? "EDIT MODE" : "SYNTAX PREVIEW")) state.codeSyntaxPreview = !state.codeSyntaxPreview;
+        if (state.codeSyntaxPreview)
+        {
+            ImGui::BeginChild("##SyntaxPreview", ImGui::GetContentRegionAvail(), true, ImGuiWindowFlags_HorizontalScrollbar);
+            std::istringstream lines(document.text); std::string line; int number = 1;
+            while (std::getline(lines, line))
+            {
+                std::size_t first = line.find_first_not_of(" \t"); std::string trimmed = first == std::string::npos ? "" : line.substr(first);
+                ImVec4 color = BEditorTheme_GetPalette().text;
+                if (trimmed.rfind("//", 0) == 0 || trimmed.rfind("#", 0) == 0) color = trimmed.rfind("//", 0) == 0 ? BEditorTheme_GetPalette().textMuted : BEditorTheme_GetPalette().violet;
+                else if (line.find('"') != std::string::npos) color = BEditorTheme_GetPalette().cyan;
+                ImGui::TextDisabled("%5d", number++); ImGui::SameLine(); ImGui::TextColored(color, "%s", line.c_str());
+            }
+            ImGui::EndChild(); ImGui::EndGroup(); ImGui::End(); return;
+        }
         std::vector<char> buffer(1024 * 1024 + 1, 0);
         std::memcpy(buffer.data(), document.text.data(), std::min(document.text.size(), buffer.size() - 1));
         ImVec2 available = ImGui::GetContentRegionAvail();
+        float gutterWidth = ImGui::CalcTextSize("000000").x + 12.0f;
+        ImGui::BeginChild("##LineNumbers", ImVec2(gutterWidth, available.y), false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::SetCursorPosY(-state.codeScrollY);
+        for (int line = 1; line <= lineCount; ++line) ImGui::TextDisabled("%5d", line);
+        ImGui::EndChild(); ImGui::SameLine();
+        struct Navigation { int* target; int* cursor; } navigationState{ &state.codeCursorTarget, &state.codeCursorPosition };
         auto navigation = [](ImGuiInputTextCallbackData* data) -> int
         {
-            int* target = static_cast<int*>(data->UserData);
-            if (*target >= 0) { data->CursorPos = *target; data->SelectionStart = *target; data->SelectionEnd = *target; *target = -1; }
+            Navigation* value = static_cast<Navigation*>(data->UserData);
+            if (*value->target >= 0) { data->CursorPos = *value->target; data->SelectionStart = *value->target; data->SelectionEnd = *value->target; *value->target = -1; }
+            *value->cursor = data->CursorPos;
             return 0;
         };
-        if (ImGui::InputTextMultiline("##CodeText", buffer.data(), buffer.size(), available,
-            ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_CallbackAlways, navigation, &state.codeCursorTarget))
+        if (ImGui::InputTextMultiline("##CodeText", buffer.data(), buffer.size(), ImVec2(ImGui::GetContentRegionAvail().x, available.y),
+            ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_CallbackAlways, navigation, &navigationState))
         {
             std::string error;
             if (!state.codeWorkspace.SetText(state.activeCodeTab, buffer.data(), error)) SetMessage(state, error.c_str(), true);
         }
+        if (ImGuiInputTextState* input = ImGui::GetInputTextState(ImGui::GetItemID())) state.codeScrollY = input->Scroll.y;
     }
     ImGui::EndGroup();
     ImGui::End();
