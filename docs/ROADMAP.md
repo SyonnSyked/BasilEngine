@@ -89,7 +89,8 @@ engine source or machine-specific paths.
   Pause/Resume/Stop process control are implemented. Lifecycle-owned Workspace
   documents and the first versioned Transform2D/ASCII Renderable component
   schema and the shared Text Sprite loading/cache service are implemented.
-  Runtime interpretation, editor component controls,
+  Shared host-neutral draw-list interpretation is also implemented. Generated
+  runtime consumption, editor component controls,
   in-Viewport play, source navigation, and terminal services remain.
 - Create a dockable editor application. **Implemented.**
 - Add an ASCII viewport, hierarchy, inspector, asset browser, and log console.

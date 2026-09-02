@@ -97,6 +97,13 @@ empty visual content or dimensions beyond the documented bounds. Loads and
 cache refreshes are transactional: a malformed edit cannot replace the last
 known-good decoded sprite. The service does not depend on raylib or BasilEditor.
 
+The shared C runtime interpretation service converts enabled Transform2D and
+ASCII Renderable components into an owned `BAsciiDrawList`. Its glyph items use
+world-space floating-point positions and retain colors, logical layer, stable
+source entity ID, and deterministic entity/cell ordering. The build is
+transactional, host-neutral, and applies the same anchor and transparent-space
+rules for future standalone and editor presentation paths.
+
 BasilEditor loads the startup Workspace into an explicitly owned, lifecycle-safe
 document held by the editor session. Loads and clones are transactional, so a
 failed operation cannot partially replace the last valid document. Hierarchy

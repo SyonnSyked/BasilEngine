@@ -48,6 +48,8 @@ technical contract for that next slice is the
   safe legacy migration, and preservation of unknown optional component data
 - A bounded, project-root-contained Text Sprite decoder with transparent-space
   grids, structured diagnostics, and last-known-good cache replacement
+- Deterministic host-neutral ASCII draw-list interpretation with shared anchor,
+  layer, visibility, transparency, color, and source-entity semantics
 - Asynchronous CMake Build and Run controls with streamed output, extracted
   problems, and native Pause, Resume, and Stop process control
 - Geometric circuit-leaf application branding and embedded Windows icon

@@ -151,6 +151,21 @@ target_include_directories(BasilAssets PUBLIC
 
 basil_enable_warnings(BasilAssets)
 
+add_library(BasilRuntimeWorkspace STATIC
+    engine/runtime/BAsciiDrawList.c
+)
+
+target_include_directories(BasilRuntimeWorkspace PUBLIC
+    engine/runtime
+)
+
+target_link_libraries(BasilRuntimeWorkspace PUBLIC
+    BasilProject
+    BasilAssets
+)
+
+basil_enable_warnings(BasilRuntimeWorkspace)
+
 add_library(BasilEngine STATIC
     engine/core/BEngine.c
     engine/core/BApplication.c
@@ -170,7 +185,7 @@ target_include_directories(BasilEngine PUBLIC
 )
 
 target_link_libraries(BasilEngine PUBLIC
-    BasilAssets
+    BasilRuntimeWorkspace
     ${BASIL_RAYLIB_TARGET}
     ${BASIL_TOOLS_TARGET}
 )
@@ -296,6 +311,16 @@ if(BUILD_TESTING)
     )
 
     add_test(NAME BTextSpriteTests COMMAND BTextSpriteTests)
+
+    add_executable(BAsciiDrawListTests
+        tests/BAsciiDrawListTests.c
+    )
+
+    target_link_libraries(BAsciiDrawListTests PRIVATE
+        BasilRuntimeWorkspace
+    )
+
+    add_test(NAME BAsciiDrawListTests COMMAND BAsciiDrawListTests)
 
     add_executable(BRecentProjectsTests
         tests/BRecentProjectsTests.c

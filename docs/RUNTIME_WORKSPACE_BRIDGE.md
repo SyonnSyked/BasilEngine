@@ -1,6 +1,6 @@
 # Runtime Workspace Bridge Technical Design
 
-**Status:** Accepted; implementation in progress (Steps 1–3 complete)
+**Status:** Accepted; implementation in progress (Steps 1–4 complete)
 **Design date:** 2026-09-02  
 **Target slice:** BasilEditor-authored entities render in a generated standalone
 Project through shared C runtime APIs
@@ -566,8 +566,10 @@ Each step must build, pass its focused tests, and leave a reviewable commit.
    project-root-contained relative paths, explicit cache ownership,
    last-known-good replacement, structured diagnostics, and focused tests are
    active without raylib or editor dependencies.
-4. **Shared interpretation:** produce deterministic `BAsciiDrawList` data from
-   Transform2D and ASCII Renderable components.
+4. **Shared interpretation — Implemented:** deterministic, host-neutral
+   `BAsciiDrawList` snapshots now interpret Transform2D, glyph/Text Sprite ASCII
+   Renderables, anchors, layers, transparency, visibility, colors, and stable
+   source entity IDs through a shared C-only service.
 5. **Generated runtime bridge:** add Project discovery, load the startup
    Workspace, render its draw list, and present stable empty/error states.
 6. **Editor authoring:** add creation choices and focused Inspector fields using
