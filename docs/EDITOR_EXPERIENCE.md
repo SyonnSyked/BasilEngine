@@ -225,15 +225,20 @@ accents are current recommendations, not final brand constants. The current UI
 defaults to 135% ImGui scale for readability; user-controlled scaling remains
 unspecified.
 
+The centralized ImGui theme, semantic palette, baseline spacing, rounded
+geometry, and non-compounding scale application are **implemented** in the
+BasilEditor theme module. Current and future panels should consume that module
+rather than define unrelated local themes.
+
 ### Typography
 
 JetBrains Mono is the **confirmed** bundled typeface for consistent
 cross-platform identity. Long-session readability and code legibility outrank
 decorative novelty. Regular and Bold from the pinned v2.304 release are stored
-with their SIL Open Font License in `assets/editor/fonts/JetBrainsMono`.
-
-The files are present, but loading them in BasilEditor is part of the next
-visual-theme implementation step.
+with their SIL Open Font License in `assets/editor/fonts/JetBrainsMono`. The
+editor build copies and loads them at startup. If either required file is
+unavailable, BasilEditor remains usable with ImGui's fallback font and reports
+the problem.
 
 ### Motion
 

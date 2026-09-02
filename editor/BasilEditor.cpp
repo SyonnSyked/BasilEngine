@@ -1,6 +1,7 @@
 #include "BProject.h"
 #include "BProjectGenerator.h"
 #include "BRecentProjects.h"
+#include "BEditorTheme.h"
 
 #include "imgui.h"
 #include "raylib.h"
@@ -271,24 +272,14 @@ static void DrawProjectOverview(EditorState& state)
     ImGui::End();
 }
 
-static void ConfigureEditorInterface()
-{
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-
-    ImGuiStyle& style = ImGui::GetStyle();
-    style.ScaleAllSizes(EDITOR_UI_SCALE);
-    style.FontScaleMain = EDITOR_UI_SCALE;
-    style.MouseCursorScale = EDITOR_UI_SCALE;
-}
-
 int main(int argumentCount, char** arguments)
 {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
     InitWindow(1100, 700, "BasilEditor");
     SetTargetFPS(60);
-    rlImGuiSetup(true);
-    ConfigureEditorInterface();
+    rlImGuiBeginInitImGui();
+    bool bundledFontsLoaded = BEditorTheme_Initialize(EDITOR_UI_SCALE);
+    rlImGuiEndInitImGui();
 
     EditorState state;
     state.recentPath = EditorDataDirectory() / "recent-projects.json";
@@ -298,6 +289,8 @@ int main(int argumentCount, char** arguments)
     BProjectError recentError{};
     if (!BRecentProjects_Load(state.recentPath.string().c_str(), &state.recent, &recentError))
         SetMessage(state, recentError.message, true);
+    else if (!bundledFontsLoaded)
+        SetMessage(state, "JetBrains Mono could not be loaded; BasilEditor is using its fallback font.", true);
 
     if (argumentCount > 1)
         OpenProject(state, arguments[1]);

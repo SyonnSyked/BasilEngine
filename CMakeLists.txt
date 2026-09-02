@@ -350,6 +350,7 @@ if(BASIL_BUILD_EDITOR_DEPS)
 
     add_executable(BasilEditor
         editor/BasilEditor.cpp
+        editor/BEditorTheme.cpp
     )
 
     target_link_libraries(BasilEditor PRIVATE
@@ -372,5 +373,16 @@ if(BASIL_BUILD_EDITOR_DEPS)
     endif()
 
     basil_enable_warnings(BasilEditor)
+
+    add_custom_command(TARGET BasilEditor POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:BasilEditor>/assets/editor/fonts/JetBrainsMono"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/editor/fonts/JetBrainsMono/JetBrainsMono-Regular.ttf"
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/editor/fonts/JetBrainsMono/JetBrainsMono-Bold.ttf"
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/editor/fonts/JetBrainsMono/OFL.txt"
+            "$<TARGET_FILE_DIR:BasilEditor>/assets/editor/fonts/JetBrainsMono"
+        VERBATIM
+    )
 endif()
 
