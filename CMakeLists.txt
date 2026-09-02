@@ -154,6 +154,7 @@ endif()
 
 add_executable(WhereBirdsNest
     projects/wherebirdsnest/main.c
+    projects/wherebirdsnest/WBNCombat.c
 )
 
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/assets/wherebirdsnest")
@@ -168,6 +169,17 @@ target_link_libraries(WhereBirdsNest PRIVATE
 )
 
 if(BUILD_TESTING)
+    add_executable(WBNCombatTests
+        tests/WBNCombatTests.c
+        projects/wherebirdsnest/WBNCombat.c
+    )
+
+    target_include_directories(WBNCombatTests PRIVATE
+        projects/wherebirdsnest
+    )
+
+    add_test(NAME WBNCombatTests COMMAND WBNCombatTests)
+
     add_executable(AsciiCanvasTests
         tests/AsciiCanvasTests.c
     )

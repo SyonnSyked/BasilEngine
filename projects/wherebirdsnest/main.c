@@ -9,16 +9,26 @@
 #include "../../engine/debug/BConsole.h"
 #include "../../engine/input/BInput.h"
 #include "../../engine/rendering/AsciiCanvas.h"
+#include "WBNCombat.h"
 
 #define ARENA_WIDTH 48
 #define ARENA_HEIGHT 24
 #define PLAYER_RADIUS 0.45f
-#define PLAYER_SPEED 7.0f
+#define PLAYER_SPEED 8.5f
+#define BASIC_ATTACK_RANGE 3.5f
+#define BASIC_ATTACK_DAMAGE 1
+#define BASIC_ATTACK_COOLDOWN 0.3f
+#define ATTACK_EFFECT_DURATION 0.12f
 
 typedef struct WhereBirdsNestGame
 {
     AsciiCanvas canvas;
     Vector2 playerPosition;
+    WBNCombatTarget target;
+    WBNBasicAttackResult lastAttackResult;
+    float attackCooldown;
+    float attackEffectTime;
+    float attackMessageTime;
     bool canvasInitialized;
 } WhereBirdsNestGame;
 
@@ -142,6 +152,19 @@ static bool WhereBirdsNest_OnStart(void* userData, BEngine* engine)
 
     WhereBirdsNest_ApplyArenaPalette(game);
     game->playerPosition = (Vector2){ 2.5f, 2.5f };
+
+    if (!BInput_RegisterAction("basic_attack", KEY_SPACE))
+        return false;
+
+    WBNCombatTarget_Init(
+        &game->target,
+        (WBNPosition){ 12.5f, 2.5f },
+        3
+    );
+    game->attackCooldown = 0.0f;
+    game->attackEffectTime = 0.0f;
+    game->attackMessageTime = 0.0f;
+    game->lastAttackResult = WBN_ATTACK_INVALID;
     return true;
 }
 
@@ -153,6 +176,15 @@ static void WhereBirdsNest_OnUpdate(void* userData, BEngine* engine, float delta
 
     if (game == 0 || BConsole_IsOpen())
         return;
+
+    if (game->attackCooldown > 0.0f)
+        game->attackCooldown -= deltaTime;
+
+    if (game->attackEffectTime > 0.0f)
+        game->attackEffectTime -= deltaTime;
+
+    if (game->attackMessageTime > 0.0f)
+        game->attackMessageTime -= deltaTime;
 
     Vector2 direction = { 0.0f, 0.0f };
 
@@ -185,6 +217,25 @@ static void WhereBirdsNest_OnUpdate(void* userData, BEngine* engine, float delta
     if (WhereBirdsNest_CanOccupy(game, nextPosition))
         game->playerPosition.y = nextPosition.y;
 
+    if (BInput_IsActionPressed("basic_attack") && game->attackCooldown <= 0.0f)
+    {
+        game->lastAttackResult = WBNCombat_TryBasicAttack(
+            (WBNPosition){ game->playerPosition.x, game->playerPosition.y },
+            &game->target,
+            BASIC_ATTACK_RANGE,
+            BASIC_ATTACK_DAMAGE
+        );
+
+        game->attackCooldown = BASIC_ATTACK_COOLDOWN;
+        game->attackMessageTime = 0.6f;
+
+        if (game->lastAttackResult == WBN_ATTACK_HIT ||
+            game->lastAttackResult == WBN_ATTACK_KILLED)
+        {
+            game->attackEffectTime = ATTACK_EFFECT_DURATION;
+        }
+    }
+
     Vector2 cellSize = AsciiCanvas_GetCellSize(&game->canvas);
     int originX = GetScreenWidth() / 2 - (int)(game->playerPosition.x * cellSize.x);
     int originY = GetScreenHeight() / 2 - (int)(game->playerPosition.y * cellSize.y);
@@ -212,7 +263,51 @@ static void WhereBirdsNest_OnRender(void* userData, BEngine* engine)
         },
         GOLD
     );
-    DrawText("WASD move  |  ` console", 16, 16, 18, RAYWHITE);
+
+    Vector2 targetPosition =
+    {
+        game->target.position.x,
+        game->target.position.y
+    };
+    Color targetColor = WBNCombatTarget_IsAlive(&game->target) ? MAROON : DARKGRAY;
+
+    if (game->attackEffectTime > 0.0f)
+    {
+        Vector2 playerScreen = AsciiCanvas_CellToScreen(&game->canvas, game->playerPosition);
+        Vector2 targetScreen = AsciiCanvas_CellToScreen(&game->canvas, targetPosition);
+        DrawLineEx(playerScreen, targetScreen, 2.0f, GOLD);
+        targetColor = YELLOW;
+    }
+
+    AsciiCanvas_DrawCharacter(
+        &game->canvas,
+        WBNCombatTarget_IsAlive(&game->target) ? 'D' : '%',
+        (Vector2){ targetPosition.x - 0.5f, targetPosition.y - 0.5f },
+        targetColor
+    );
+
+    DrawText("WASD move  |  SPACE attack  |  ` console", 16, 16, 18, RAYWHITE);
+
+    if (WBNCombatTarget_IsAlive(&game->target))
+    {
+        DrawText(
+            TextFormat("Target health: %d / %d", game->target.health, game->target.maxHealth),
+            16,
+            42,
+            18,
+            LIGHTGRAY
+        );
+    }
+    else
+    {
+        DrawText("Target defeated", 16, 42, 18, GOLD);
+    }
+
+    if (game->attackMessageTime > 0.0f &&
+        game->lastAttackResult == WBN_ATTACK_OUT_OF_RANGE)
+    {
+        DrawText("Out of range", 16, 68, 18, ORANGE);
+    }
 }
 
 static void WhereBirdsNest_OnShutdown(void* userData, BEngine* engine)

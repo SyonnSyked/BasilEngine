@@ -20,8 +20,9 @@ platform.
 
 **Status:** In progress. Text-asset loading, per-cell foreground/background
 colors, continuous player movement, camera tracking, wall collision, and console
-input capture are implemented in the initial arena. An enemy target and a basic
-attack remain.
+input capture are implemented in the initial arena. A damageable enemy target,
+range-checked basic attack, cooldown, feedback, and death state are also present.
+The spike now awaits play-feel validation before its runtime model is stabilized.
 
 - Load an environment from a text asset.
 - Render colored glyphs in world space.
