@@ -2,14 +2,28 @@
   "version": 6,
   "configurePresets": [
     {
-      "name": "ucrt64-debug",
-      "displayName": "UCRT64 GCC Debug",
+      "name": "ucrt64-base",
+      "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build",
       "toolchainFile": "C:/dev/cmake/toolchains/ucrt64-gcc.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "ucrt64-debug",
+      "displayName": "BasilEngine Runtime (UCRT64 Debug)",
+      "inherits": "ucrt64-base",
+      "binaryDir": "${sourceDir}/build/runtime-debug"
+    },
+    {
+      "name": "ucrt64-editor-debug",
+      "displayName": "BasilEditor (UCRT64 Debug)",
+      "inherits": "ucrt64-base",
+      "binaryDir": "${sourceDir}/build/editor-debug",
+      "cacheVariables": {
+        "BASIL_BUILD_EDITOR_DEPS": "ON"
       }
     }
   ],
@@ -17,6 +31,22 @@
     {
       "name": "ucrt64-debug",
       "configurePreset": "ucrt64-debug"
+    },
+    {
+      "name": "ucrt64-editor-debug",
+      "configurePreset": "ucrt64-editor-debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "ucrt64-debug",
+      "configurePreset": "ucrt64-debug",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "ucrt64-editor-debug",
+      "configurePreset": "ucrt64-editor-debug",
+      "output": { "outputOnFailure": true }
     }
   ]
 }

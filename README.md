@@ -69,17 +69,18 @@ Prerequisites:
 - Local Dear ImGui docking-branch and rlImGui source trees only when editor
   dependencies are enabled
 
-Configure dependency locations with `BASIL_RAYLIB_ROOT` and
-`BASIL_TOOLS_ROOT`. BasilEngine first looks for installed CMake packages, then
-pkg-config for raylib, and finally searches the supplied roots for headers and
-libraries.
+Configure dependency locations once in a machine-local preset. Copy
+`CMakeUserPresets.json.example` to `CMakeUserPresets.json`, update the two paths,
+and keep that local file uncommitted. BasilEngine first looks for installed
+CMake packages, then pkg-config for raylib, and finally searches the supplied
+roots for headers and libraries.
 
 ```powershell
-cmake --preset ucrt64-debug `
-    -DBASIL_RAYLIB_ROOT=C:/path/to/raylib `
-    -DBASIL_TOOLS_ROOT=C:/path/to/BasilsTools
-cmake --build --preset ucrt64-debug
-ctest --test-dir build --output-on-failure
+Copy-Item CMakeUserPresets.json.example CMakeUserPresets.json
+# Edit BASIL_RAYLIB_ROOT and BASIL_TOOLS_ROOT once, then:
+cmake --preset local-ucrt64-debug
+cmake --build --preset local-ucrt64-debug
+ctest --preset local-ucrt64-debug
 ```
 
 On macOS or Linux, use any preferred generator and provide the same cache hints
@@ -93,24 +94,25 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-Set `BASIL_BUILD_EDITOR_DEPS=ON` to build `BasilEditor` using the vendored ImGui
-and rlImGui source trees. BasilEditor requires the official ImGui `docking`
-branch; configuration stops with an actionable error if a master-branch
-checkout is supplied:
+The editor preset enables the vendored ImGui and rlImGui source trees.
+BasilEditor requires the official ImGui `docking` branch; configuration stops
+with an actionable error if a master-branch checkout is supplied:
 
 ```powershell
-cmake --preset ucrt64-debug -DBASIL_BUILD_EDITOR_DEPS=ON
-cmake --build --preset ucrt64-debug
-.\build\BasilEditor.exe
+cmake --preset local-ucrt64-editor-debug
+cmake --build --preset local-ucrt64-editor-debug
+ctest --preset local-ucrt64-editor-debug
+.\build\editor-debug\BasilEditor.exe
 ```
 
 BasilEditor opens to its project browser. It can also open a project directly:
 
 ```powershell
-.\build\BasilEditor.exe C:\Projects\MyGame\MyGame.basilproject
+.\build\editor-debug\BasilEditor.exe C:\Projects\MyGame\MyGame.basilproject
 ```
 
-The demo executable is generated at `build/WhereBirdsNest.exe`.
+The editor build also produces the reference demo at
+`build/editor-debug/WhereBirdsNest.exe`.
 
 ## Creating an empty project
 

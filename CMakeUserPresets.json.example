@@ -1,0 +1,45 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "local-ucrt64-debug",
+      "displayName": "Local BasilEngine Runtime",
+      "inherits": "ucrt64-debug",
+      "cacheVariables": {
+        "BASIL_RAYLIB_ROOT": "C:/path/to/raylib",
+        "BASIL_TOOLS_ROOT": "C:/path/to/BasilsTools"
+      }
+    },
+    {
+      "name": "local-ucrt64-editor-debug",
+      "displayName": "Local BasilEditor",
+      "inherits": "ucrt64-editor-debug",
+      "cacheVariables": {
+        "BASIL_RAYLIB_ROOT": "C:/path/to/raylib",
+        "BASIL_TOOLS_ROOT": "C:/path/to/BasilsTools"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "local-ucrt64-debug",
+      "configurePreset": "local-ucrt64-debug"
+    },
+    {
+      "name": "local-ucrt64-editor-debug",
+      "configurePreset": "local-ucrt64-editor-debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "local-ucrt64-debug",
+      "configurePreset": "local-ucrt64-debug",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "local-ucrt64-editor-debug",
+      "configurePreset": "local-ucrt64-editor-debug",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}
