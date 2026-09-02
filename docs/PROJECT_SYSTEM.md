@@ -11,8 +11,9 @@ opened Project through independently dockable Project Details and Workspace
 Viewport windows. The remaining core panel windows are present as dockable
 scaffolds, including a read-only top-level asset listing. Startup Workspace
 entities can now be edited and saved through the Hierarchy and Inspector.
-Native file dialogs, editor component controls, and runtime Workspace consumption
-remain future work.
+Native file dialogs and the broader alpha asset/code/export workflow remain
+future work. Editor component controls and runtime Workspace consumption are
+implemented.
 
 ## User workflow
 
@@ -159,10 +160,11 @@ output/error, Problems extracts compiler/linker/CMake error lines, and the menu
 controls the real process through Pause, Resume, and Stop. An active build or
 game must be stopped before returning to the Project Browser.
 
-This standalone process workflow is implemented and tested, but it is not the
-final in-editor development-play model: generated runtimes do not yet load the
-Workspace entity file, and their rendering is not yet hosted in the editor
-Viewport.
+This standalone process workflow is implemented and tested. Generated runtimes
+load and render the same Workspace data previewed by the editor. The game
+process is not hosted in the editor Viewport; separate-window stop/build/run is
+the required alpha workflow, while in-Viewport simulation remains a later
+product direction.
 
 Schema version 3 rejects unknown and duplicate structural fields. It preserves
 bounded unknown optional component `data` without interpreting it, while
@@ -223,3 +225,5 @@ than logic embedded directly in an ImGui event handler.
 
 The complete interaction, terminology, visual, code-editing, terminal, and UI
 Config direction is defined in `EDITOR_EXPERIENCE.md`.
+The first complete Windows alpha and its end-to-end acceptance checks are
+defined in `ALPHA_PRODUCT_CONTRACT.md`.

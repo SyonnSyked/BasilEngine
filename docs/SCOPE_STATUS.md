@@ -1,8 +1,8 @@
 # BasilEngine Scope and Course Audit
 
 **Audit date:** 2026-09-02  
-**Project phase:** Runtime Workspace Bridge closeout
-**Overall verdict:** On course; the runtime/editor data-path mismatch is closed
+**Project phase:** Windows alpha contract and baseline
+**Overall verdict:** On course; alpha scope is bounded and testable
 
 BasilEngine still matches the product charter. The repository has not drifted
 into game-specific engine code, a speculative ECS, or an oversized editor.
@@ -10,9 +10,17 @@ The earlier gap between editor-authored data and runtime rendering is now
 closed. Further work can build on one shared Project, Workspace, Text Sprite,
 and draw-list path without expanding into a speculative ECS or oversized IDE.
 
+The accepted final-stretch boundary is now recorded in
+`ALPHA_PRODUCT_CONTRACT.md`. It requires a complete create/author/program/build/
+run/export loop and an independently runnable Where Birds Nest proof. It keeps
+the alpha achievable by explicitly deferring embedded gameplay, code hot reload,
+semantic IDE features, gamepads, additive Workspaces, general-purpose engine
+scope, and non-Windows certification.
+
 This document is the current status checkpoint. The charter and architecture
 remain the source of truth for product intent; the roadmap remains the ordered
-plan.
+plan; and the Alpha Product Contract governs first-alpha inclusion and exit
+criteria.
 
 ## Verification snapshot
 
@@ -114,8 +122,9 @@ review.
 | 3 — Project and asset system | In progress | Stable asset identifiers, file-change detection, actionable asset errors, and relocation across machines remain |
 | 4 — Editor foundation | In progress and healthy | Component authoring and shared-data Viewport preview are active; gameplay remains in the controlled external process |
 | 5 — Project creation | Exit condition achieved on Windows | A new Project can be created, opened, authored, previewed, saved, built, and run end to end; native macOS/Linux and distribution verification remain |
-| 6 — Code workflow and hot reload | Supporting build/diagnostic plumbing only | Code editor, external-editor service, real terminal hosting, module boundary, and reload safety are intentionally deferred |
+| 6 — Alpha game-code workflow | Supporting build/diagnostic plumbing only | Code editor, external-editor service, single terminal session, and versioned module boundary remain |
 | 7 — Action-RPG vertical slice | Not started as a production slice | The current arena is a feasibility proof, not a Workspace-authored vertical slice |
+| 8 — Windows alpha export and proof | Contract accepted; implementation pending | Reliability, asset, programming, runtime-service, export, proof-game, and independent verification stages remain |
 
 Milestones overlap in implementation because the editor needed Project creation
 to become useful. Their exit conditions must not be declared complete out of
@@ -143,8 +152,8 @@ order merely because a button or panel exists.
    mechanics, but its responsiveness should be deliberately play-tested before
    its APIs shape the reusable gameplay model.
 7. **Feature-surface temptation.** UI Config files, native dialogs, terminal
-   hosting, code editing, LSP integration, and hot reload are appealing, but
-   none closes the current runtime/Workspace gap.
+   hosting, and bounded code editing now serve the alpha workflow. Semantic IDE
+   features, a debugger, custom terminal emulation, and hot reload do not.
 
 ## Scope guardrails for a two-person team
 
@@ -152,30 +161,30 @@ order merely because a button or panel exists.
 
 - One active Project per editor window.
 - One active, flat Workspace with stable entities.
-- Only the transform and ASCII-renderable data needed to prove the shared path.
-- Project/Workspace loading in the standalone runtime.
-- A visible result: an entity authored in BasilEditor appears when Run is used.
-- Tests for serialization, runtime mapping, malformed input, and generated
-  Project relocation within the supported development setup.
+- Execute the ordered stages in `ALPHA_PRODUCT_CONTRACT.md`.
+- Begin with editor reliability; do not couple recovery, UI Config persistence,
+  and native dialogs to unrelated gameplay systems.
+- Preserve the proven shared Project/Workspace/Text Sprite rendering path.
+- Keep every stage independently testable and reviewable.
 
-### Candidate next work after this closeout
+### Immediate next work
 
-- Add stable asset identities and focused file-change/error handling.
-- Validate and refine the Project toolchain configuration story.
-- Perform the deferred gameplay-feel review before stabilizing combat APIs.
-- Close native-window unsaved-change handling before calling editor shutdown
-  behavior reliable.
+- Add complete close protection, Save All, recovery snapshots, and undo/redo.
+- Finish portable JSON UI Config persistence and native file/folder dialogs.
+- Establish regression tests for recovery and editor-owned mutations.
 
 ### Later
 
-- Portable JSON UI Config files.
-- Built-in text/code editing and simple configurable external-editor commands.
-- Platform shell integration, followed much later by a custom terminal tab.
-- Dynamic game modules, safe hot reload, and in-Viewport play.
+- Stable asset identities and file watching, followed by the bounded Text Sprite
+  editor.
+- Versioned dynamic game modules and safe custom-component metadata.
+- Built-in code editing, external-editor commands, and one terminal session.
+- Alpha runtime services, export, and the Where Birds Nest proof.
+- After alpha: safe hot reload, in-Viewport play, semantic IDE features, and a
+  custom terminal emulator.
 - Additive Workspaces, richer components, and hierarchy when a demonstrated
   use case requires them.
-- Native file dialogs, installers/file association, and full three-platform
-  release verification.
+- Installers/file association and full three-platform release verification.
 
 ### Not now
 

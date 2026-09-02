@@ -21,6 +21,8 @@ capabilities, roadmap alignment, risks, scope guardrails, and next bounded slice
 are tracked in the [scope and course audit](docs/SCOPE_STATUS.md). The proposed
 technical contract for that next slice is the
 [Runtime Workspace Bridge design](docs/RUNTIME_WORKSPACE_BRIDGE.md).
+The requirements and measurable completion boundary for the current final
+stretch are defined in the [Alpha Product Contract](docs/ALPHA_PRODUCT_CONTRACT.md).
 
 ## Current capabilities
 

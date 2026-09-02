@@ -63,16 +63,23 @@ and terminal-oriented workflows.
 Persistent formats are versioned from their first revision. Project paths are
 relative to the project root unless an explicitly external resource is needed.
 
-## Future module boundary
+## Alpha module boundary
 
-Game code will eventually compile as a DLL, shared object, or dynamic library
-and communicate through a versioned C interface. Until the gameplay spike is
-complete, that interface remains intentionally unfrozen.
+Game code will compile as a DLL, shared object, or dynamic library and
+communicate through a versioned C interface. The first Windows implementation
+is an alpha requirement; the interface is versioned and testable but is not a
+promise of post-alpha ABI stability.
 
 Long-lived engine resources should be represented across the module boundary by
-stable handles rather than internal pointers. Failed reloads should preserve the
-last working module whenever possible. State must either be engine-owned or
-serializable across reloads.
+stable handles rather than internal pointers. Failed builds preserve the last
+valid artifact. The boundary must leave room for later hot reload, but live
+replacement and state migration are outside the first alpha. When reload is
+implemented, state must either be engine-owned or serializable across reloads.
+
+Project-defined Inspector fields use a separate, restricted metadata artifact.
+BasilEditor must not load arbitrary Project code merely to inspect a Workspace.
+The exact alpha boundary and supported field types are defined in
+`ALPHA_PRODUCT_CONTRACT.md`.
 
 ## Current runtime flow
 

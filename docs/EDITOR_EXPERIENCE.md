@@ -223,8 +223,8 @@ are planned, not implemented.
 
 ## Development play
 
-The first final-form development-play workflow is **confirmed** to run inside
-the editor Viewport, with Play, Stop, and Pause where supported. Editor and
+The final-form development-play workflow is **confirmed** to run inside the
+editor Viewport, with Play, Stop, and Pause where supported. Editor and
 standalone runtime must use the same Project, Workspace, asset, and
 serialization code. A separate game window may remain an option but is not the
 intended final default. Hot reload follows only after the runtime module
@@ -238,6 +238,10 @@ panels without blocking the editor. The generated runtime consumes Workspace
 entities and Text Sprites through the shared draw-list path. The editor Viewport
 previews that same data, but the game process is not embedded there, so this
 must not be described as in-editor development play.
+
+For the first complete Windows alpha, the separate-window stop/build/run loop is
+the required workflow. In-Viewport simulation and native-code hot reload remain
+post-alpha work. This sequencing does not change the intended final default.
 
 ## Notifications
 
@@ -345,7 +349,7 @@ Future macOS application-bundle packaging will require an ICNS export.
 - External-editor configuration schema and placeholders
 - Exact default docking measurements
 - Native file-dialog strategy per platform
-- Initial terminal hosting/launch approach
+- Post-alpha custom terminal-emulation approach
 
 Gameplay questions remain in `OPEN_DESIGN_QUESTIONS.md` and must not distract
 from editor-foundation work.

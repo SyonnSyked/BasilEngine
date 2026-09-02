@@ -4,6 +4,8 @@ This roadmap is outcome-based. A stage is complete only when its acceptance
 criteria are demonstrated; creating empty subsystem directories does not count.
 The current cross-milestone assessment and two-person-team guardrails are
 maintained in `SCOPE_STATUS.md`.
+The accepted scope and measurable exit checks for the first complete Windows
+alpha are authoritative in `ALPHA_PRODUCT_CONTRACT.md`.
 
 ## Milestone 0: Reliable foundation
 
@@ -124,19 +126,24 @@ evidence are recorded in `RUNTIME_WORKSPACE_BRIDGE.md`.
 **Exit condition:** Starting from the BasilEngine launcher, a new editable and
 runnable project can be created end to end.
 
-## Milestone 6: Game-code workflow and hot reload
+## Milestone 6: Alpha game-code workflow
 
 - Add embedded code browsing and editing, build output, and linked diagnostics.
 - Keep the built-in editor as the default while supporting simple,
   configurable external-editor commands, including Neovim.
 - Provide an expandable terminal panel with platform-appropriate shell defaults.
-- Integrate language-server functionality where practical.
 - Compile game code as a platform-native dynamic module.
-- Load and reload through a versioned C interface.
-- Preserve or reconstruct state safely and recover from failed builds/reloads.
+- Load it through a versioned C interface.
+- Add a single persistent Project-root terminal panel.
+- Preserve the last valid artifact when a build fails.
 
-**Exit condition:** Project code can be edited, built, and reloaded during an
-editor session without restarting the editor or losing the last working module.
+**Exit condition:** Project code can be edited, built, diagnosed, and rerun in a
+separate game process without restarting the editor. The same Project remains
+usable through a configured external editor and terminal.
+
+Native-code hot reload, state migration, semantic language-server features,
+and an integrated debugger are later milestones. The dynamic-module boundary
+must permit that evolution without making those features alpha blockers.
 
 ## Milestone 7: Action-RPG vertical slice
 
@@ -146,3 +153,16 @@ editor session without restarting the editor or losing the last working module.
 
 **Exit condition:** Where Birds Nest provides a short, genuine action-RPG
 encounter and exposes the next set of engine requirements.
+
+## Milestone 8: Windows alpha export and independent proof
+
+- Complete the reliability, asset, custom-component, input, Workspace-switching,
+  minimal UI/dialogue, and audio requirements in `ALPHA_PRODUCT_CONTRACT.md`.
+- Export Development and Release packages from BasilEditor.
+- Build the bounded Where Birds Nest alpha proof through supported workflows.
+- Run its Release package in a clean-machine-style Windows environment.
+
+**Exit condition:** The exported Where Birds Nest Release package runs without
+BasilEditor, the BasilEngine repository, source code, a compiler, or an
+undocumented dependency, and the alpha contract's automated and manual checks
+are recorded as passing.

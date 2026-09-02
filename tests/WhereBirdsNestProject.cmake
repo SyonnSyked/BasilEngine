@@ -6,7 +6,15 @@ file(REMOVE_RECURSE "${TEST_ROOT}")
 file(MAKE_DIRECTORY "${TEST_ROOT}")
 set(relocated "${TEST_ROOT}/Where Birds Nest Relocated")
 file(MAKE_DIRECTORY "${relocated}")
-file(COPY "${REFERENCE_PROJECT}/" DESTINATION "${relocated}")
+# Copy the maintained Project content, never a developer's ignored local build
+# tree. A copied CMake cache remembers its original source directory and would
+# make this relocation test depend on whether that developer built in-source.
+file(GLOB project_entries RELATIVE "${REFERENCE_PROJECT}" "${REFERENCE_PROJECT}/*")
+foreach(project_entry IN LISTS project_entries)
+    if(NOT project_entry STREQUAL "build")
+        file(COPY "${REFERENCE_PROJECT}/${project_entry}" DESTINATION "${relocated}")
+    endif()
+endforeach()
 set(build_directory "${relocated}/build")
 set(configure_command
     "${CMAKE_COMMAND}" -S "${relocated}" -B "${build_directory}"
