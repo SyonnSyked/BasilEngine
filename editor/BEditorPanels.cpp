@@ -604,29 +604,31 @@ BEditorPanelFeedback DrawProblems(BEditorUIConfig& config, const BEditorBuildSer
     return feedback;
 }
 
-void DrawTerminal(BEditorUIConfig& config, const fs::path& projectRoot)
+void DrawTerminal(BEditorUIConfig& config, const fs::path& projectRoot, BEditorTerminalService& service, const std::string& shell)
 {
     if (!config.showTerminal)
         return;
 
     if (ImGui::Begin(BEditorPanel_Name(BEditorPanel::Terminal), &config.showTerminal))
     {
-#ifdef _WIN32
-        const char* shell = "Windows PowerShell";
-#else
-        const char* shell = "User login shell";
-#endif
-        DrawPanelState("TERMINAL LAUNCH BRIDGE", "Launches the configured shell at the Project root. Embedded process hosting follows in this stage.");
-        if (ImGui::Button("OPEN PROJECT TERMINAL", ImVec2(-1.0f, 0.0f)))
+        if (!service.IsRunning())
         {
             std::string error;
-            BEditorPlatform_OpenTerminal(projectRoot, "powershell.exe", error);
+            if (!service.Start(shell, projectRoot, error)) DrawPanelState("TERMINAL OFFLINE", error.c_str());
         }
-        ImGui::Spacing();
-        ImGui::TextDisabled("PLANNED DEFAULT");
-        ImGui::TextUnformatted(shell);
-        ImGui::TextDisabled("WORKING DIRECTORY");
-        ImGui::TextWrapped("%s", projectRoot.string().c_str());
+        static char command[2048]{};
+        ImGui::TextDisabled("SHELL // %s", shell.c_str()); ImGui::SameLine(); ImGui::TextDisabled("ROOT // %s", projectRoot.string().c_str());
+        if (ImGui::Button("CLEAR")) service.Clear();
+        ImGui::SameLine();
+        if (ImGui::Button("RESTART")) { std::string error; service.Restart(error); }
+        ImGui::Separator();
+        float inputHeight = ImGui::GetFrameHeightWithSpacing();
+        const std::string& output = service.Output();
+        std::vector<char> terminalBuffer(output.begin(), output.end()); terminalBuffer.push_back('\0');
+        ImGui::InputTextMultiline("##TerminalOutput", terminalBuffer.data(), terminalBuffer.size(), ImVec2(0.0f, -inputHeight), ImGuiInputTextFlags_ReadOnly);
+        ImGui::SetNextItemWidth(-1.0f);
+        if (ImGui::InputTextWithHint("##TerminalInput", "Enter command and press Return", command, sizeof(command), ImGuiInputTextFlags_EnterReturnsTrue))
+        { std::string error; if (service.Send(command, error)) command[0] = '\0'; }
     }
 
     ImGui::End();
@@ -640,6 +642,8 @@ BEditorPanelFeedback BEditorPanels_DrawScaffolds(
     BEditorAssetService& assetService,
     const BEditorComponentRegistry& componentRegistry,
     BEditorCodeWorkspace& codeWorkspace,
+    BEditorTerminalService& terminalService,
+    const std::string& terminalCommand,
     BEditorTextSpriteDocument& textSpriteDocument,
     const BEditorBuildService& buildService,
     const fs::path& projectRoot,
@@ -662,6 +666,6 @@ BEditorPanelFeedback BEditorPanels_DrawScaffolds(
     BEditorPanelFeedback problemFeedback = DrawProblems(config, buildService, codeWorkspace);
     if (!problemFeedback.openFile.empty()) feedback.openFile = problemFeedback.openFile;
     if (problemFeedback.openLine > 0) feedback.openLine = problemFeedback.openLine;
-    DrawTerminal(config, projectRoot);
+    DrawTerminal(config, projectRoot, terminalService, terminalCommand);
     return feedback;
 }

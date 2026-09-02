@@ -6,6 +6,7 @@
 #include "BEditorAssetService.h"
 #include "BEditorComponentRegistry.h"
 #include "BEditorCodeWorkspace.h"
+#include "BEditorTerminalService.h"
 #include "BEditorTextSpriteDocument.h"
 #include "BEditorWorkspaceSession.h"
 #include "BProject.h"
@@ -31,6 +32,8 @@ BEditorPanelFeedback BEditorPanels_DrawScaffolds(
     BEditorAssetService& assetService,
     const BEditorComponentRegistry& componentRegistry,
     BEditorCodeWorkspace& codeWorkspace,
+    BEditorTerminalService& terminalService,
+    const std::string& terminalCommand,
     BEditorTextSpriteDocument& textSpriteDocument,
     const BEditorBuildService& buildService,
     const std::filesystem::path& projectRoot,

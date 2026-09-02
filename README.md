@@ -22,6 +22,8 @@ are tracked in the [scope and course audit](docs/SCOPE_STATUS.md). The proposed
 technical contract for that next slice is the
 [Runtime Workspace Bridge design](docs/RUNTIME_WORKSPACE_BRIDGE.md), followed by
 the implemented [game-module and Project-component boundary](docs/GAME_MODULE_AND_COMPONENTS.md).
+The integrated edit/build/diagnose/run loop is specified and checked in the
+[programming workflow closeout](docs/INTEGRATED_PROGRAMMING_WORKFLOW.md).
 The requirements and measurable completion boundary for the current final
 stretch are defined in the [Alpha Product Contract](docs/ALPHA_PRODUCT_CONTRACT.md).
 

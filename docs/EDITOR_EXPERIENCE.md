@@ -204,7 +204,8 @@ protected tab closing, and precise compiler diagnostic line placement are also
 implemented. The built-in editor now has a scroll-synchronized line-number
 gutter, language identification, a restrained syntax-colored inspection mode,
 current-line indent/unindent, live cursor/line state, and matching-bracket jump.
-Embedded terminal hosting is the remaining Stage 5 subsystem.
+The Terminal panel now hosts one persistent, bounded Project-root shell process
+with command input, captured output, clear, restart, and controlled shutdown.
 
 Language-server completion, semantic navigation, refactoring, and deeper IDE
 features are **deferred** until the core workflow is useful. External-editor

@@ -4,6 +4,7 @@
 #include "BEditorGit.h"
 #include "BEditorBuildService.h"
 #include "BEditorCodeWorkspace.h"
+#include "BEditorTerminalService.h"
 #include "BEditorComponentRegistry.h"
 #include "BEditorPanels.h"
 #include "BEditorPlatformDialogs.h"
@@ -57,6 +58,7 @@ struct EditorState
     BEditorAssetService assetService;
     BEditorComponentRegistry componentRegistry;
     BEditorCodeWorkspace codeWorkspace;
+    BEditorTerminalService terminalService;
     std::size_t activeCodeTab = 0;
     char codeFind[128]{};
     char codeReplace[128]{};
@@ -563,6 +565,7 @@ static void ReturnToProjectBrowser(EditorState& state)
     state.assetService.Reset();
     state.textSpriteDocument.Reset();
     state.codeWorkspace = BEditorCodeWorkspace{};
+    state.terminalService.Stop();
     ResetViewportPreview(state);
     SetWindowTitle("BasilEditor");
 }
@@ -1263,6 +1266,7 @@ static void DrawCodeEditor(EditorState& state)
 static void DrawEditorShell(EditorState& state)
 {
     double currentTime = GetTime();
+    state.terminalService.Update();
 
     if (currentTime >= state.nextGitRefreshTime)
     {
@@ -1358,6 +1362,8 @@ static void DrawEditorShell(EditorState& state)
         state.assetService,
         state.componentRegistry,
         state.codeWorkspace,
+        state.terminalService,
+        state.preferences.terminal,
         state.textSpriteDocument,
         state.buildService,
         state.manifestPath.parent_path(),
@@ -1447,6 +1453,7 @@ static void DrawEditorShell(EditorState& state)
             state.assetService.Reset();
             state.textSpriteDocument.Reset();
             state.codeWorkspace = BEditorCodeWorkspace{};
+            state.terminalService.Stop();
             ResetViewportPreview(state);
             state.projectOpen = false;
             SetWindowTitle("BasilEditor");

@@ -469,6 +469,7 @@ if(BASIL_BUILD_EDITOR_DEPS)
         editor/BEditorAssetService.cpp
         editor/BEditorComponentRegistry.cpp
         editor/BEditorCodeWorkspace.cpp
+        editor/BEditorTerminalService.cpp
         editor/BEditorGit.cpp
         editor/BEditorPanels.cpp
         editor/BEditorPlatformDialogs.cpp
@@ -679,6 +680,14 @@ if(BASIL_BUILD_EDITOR_DEPS)
         endif()
         basil_enable_warnings(BEditorCodeWorkspaceTests)
         add_test(NAME BEditorCodeWorkspaceTests COMMAND BEditorCodeWorkspaceTests)
+
+        add_executable(BEditorTerminalServiceTests tests/BEditorTerminalServiceTests.cpp editor/BEditorTerminalService.cpp)
+        target_include_directories(BEditorTerminalServiceTests PRIVATE editor)
+        if(MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            target_link_options(BEditorTerminalServiceTests PRIVATE -static -static-libgcc -static-libstdc++)
+        endif()
+        basil_enable_warnings(BEditorTerminalServiceTests)
+        add_test(NAME BEditorTerminalServiceTests COMMAND BEditorTerminalServiceTests)
     endif()
 
     add_custom_command(TARGET BasilEditor POST_BUILD

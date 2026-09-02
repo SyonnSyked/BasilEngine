@@ -282,7 +282,7 @@ manual review, documentation updates, and a reviewable commit.
 
 ### Stage 5: Integrated programming workflow
 
-**Implementation status:** In progress; Project document-service foundation implemented.
+**Implementation status:** Complete; Windows interactive checklist pending.
 
 - A new Project can be programmed, built, diagnosed, and rerun using only the
   editor.
