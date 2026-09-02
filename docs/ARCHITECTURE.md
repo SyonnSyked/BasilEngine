@@ -3,7 +3,7 @@
 ## System boundary
 
 BasilEngine provides reusable mechanisms: application lifecycle, platform
-services, input, time, rendering, audio, assets, scenes, serialization, project
+services, input, time, rendering, audio, assets, Workspaces, serialization, project
 loading, and diagnostics.
 
 Game projects provide policy and content: characters, enemies, abilities,
@@ -18,13 +18,13 @@ Basil Launcher
   Creates, locates, and opens projects
 
 Basil Editor
-  Edits project assets and scenes using public engine APIs
+  Edits project assets and Workspaces using public engine APIs
 
 Basil Runtime
   Runs reusable engine systems and a project game module
 
 Where Birds Nest
-  Supplies game code, data, scenes, and text-art assets
+  Supplies game code, data, Workspaces, and text-art assets
 ```
 
 ## Language boundary
@@ -46,10 +46,19 @@ is an optional behavior, not an architectural assumption.
 
 ## Data and editor model
 
-The editor and standalone runtime must use the same project, scene, asset, and
+The editor and standalone runtime must use the same Project, Workspace, asset, and
 serialization implementations. Editor panels should mutate data through explicit
 APIs rather than reaching directly into arbitrary runtime memory. This preserves
 validation and leaves a path to undo/redo.
+
+Workspace is the canonical term for the loadable content unit that other
+engines commonly call a scene. UI Config is the canonical term for a saved
+arrangement of editor panels. These concepts must remain distinct.
+
+Editor buttons, command-palette actions, and terminal commands should call a
+shared command/service layer. The built-in editor is the default for scripts,
+while normal files and configurable external-editor commands preserve Neovim-
+and terminal-oriented workflows.
 
 Persistent formats are versioned from their first revision. Project paths are
 relative to the project root unless an explicitly external resource is needed.
@@ -86,4 +95,3 @@ Project main
 
 This flow is the current implementation, not a permanent promise. Global
 subsystem state should move behind explicit ownership as systems mature.
-

@@ -6,7 +6,7 @@ headless generator, and independent generated-project build are implemented.
 The first BasilEditor project-browser slice is implemented. It creates and
 opens projects through the shared headless project APIs, tracks recent projects,
 accepts a manifest path on the command line, and displays an opened project's
-metadata. Native file dialogs and the editable workspace remain future work.
+metadata. Native file dialogs and editable content panels remain future work.
 
 ## User workflow
 
@@ -24,7 +24,7 @@ The initial end-to-end acceptance target is:
 1. Launch BasilEditor.
 2. Create a named project in a selected directory.
 3. Open the generated project immediately.
-4. Display its project information and empty starter scene.
+4. Display its project information and empty starter Workspace.
 5. Edit and save the project.
 6. Build and run it from the editor.
 
@@ -76,6 +76,12 @@ MyGame/
 Empty files or directories are included only when they serve an immediate
 workflow purpose.
 
+The implemented generator still uses the `scenes/` directory name and the
+manifest field `startupScene`; both predate the confirmed Workspace terminology.
+They remain documented here as current on-disk behavior, not desired public
+vocabulary. They require a deliberate schema migration when the first Workspace
+format is introduced rather than an unversioned rename.
+
 ## Dependencies
 
 Small critical dependencies, including JSON parsing/writing, may be vendored at
@@ -107,8 +113,11 @@ error rather than being modified.
 4. Independent generated-project build verification
 5. BasilEditor application shell and project browser
 6. New/Open Project interface
-7. Starter scene and asset workspace
+7. Starter Workspace and asset editing
 8. Build and Run controls
 
 Project generation remains a testable headless engine/tooling capability rather
 than logic embedded directly in an ImGui event handler.
+
+The complete interaction, terminology, visual, code-editing, terminal, and UI
+Config direction is defined in `EDITOR_EXPERIENCE.md`.

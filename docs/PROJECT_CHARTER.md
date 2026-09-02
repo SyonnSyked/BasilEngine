@@ -26,7 +26,7 @@ use cases.
 
 Where Birds Nest is a dark-fantasy action RPG inspired structurally by Diablo,
 Path of Exile, and Baldur's Gate, with a harsh setting and an ASCII-art visual
-identity. Its initial role is to validate movement, combat, scenes, assets,
+identity. Its initial role is to validate movement, combat, Workspaces, assets,
 serialization, and editor workflows.
 
 ## Product principles
@@ -45,7 +45,7 @@ serialization, and editor workflows.
 ## Medium-term product target
 
 A user can launch BasilEngine, create a portable project from a template, open
-it in the editor, edit and save an ASCII scene, write project code, build it,
+it in the editor, edit and save an ASCII Workspace, write project code, build it,
 and run it. Play-in-editor and safe hot reload follow once runtime and project
 boundaries are stable.
 
@@ -54,8 +54,7 @@ boundaries are stable.
 - Networking or multiplayer
 - Mobile and console deployment
 - Multiple graphics backends
-- A full IDE or debugger replacement
+- A replacement for every general-purpose IDE or debugger capability
 - A general plugin marketplace
 - AAA-scale reflection or build infrastructure
 - A complex ECS before reference-game needs justify it
-

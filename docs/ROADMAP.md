@@ -39,7 +39,7 @@ can feel responsive while retaining the intended ASCII identity.
 
 - Formalize subsystem ownership through explicit engine state.
 - Separate world, glyph-cell, and screen coordinates.
-- Introduce stable scene and entity identities.
+- Introduce stable Workspace and entity identities.
 - Add the minimal component and asset-handle model proven by Milestone 1.
 - Define the initial game-module boundary without promising ABI stability.
 
@@ -55,12 +55,12 @@ deferred.
 **Status:** In progress. Versioned JSON manifests, validation, configurable
 C/C++ language rules, a headless empty-project generator, independent build
 verification, and the first editor-facing project browser are implemented.
-Asset identifiers, startup-scene loading, native file dialogs, and file-change
+Asset identifiers, startup-Workspace loading, native file dialogs, and file-change
 detection remain.
 
 - Add a versioned `.basilproject` manifest.
 - Use portable relative asset paths and stable asset identifiers.
-- Store startup scene, renderer settings, and input mappings.
+- Store startup Workspace, renderer settings, and input mappings.
 - Detect changed files and produce actionable load errors.
 
 **Exit condition:** A project can be relocated, loaded, and run without changing
@@ -70,21 +70,23 @@ engine source or machine-specific paths.
 
 - **Status:** In progress. BasilEditor now has a graphical project browser,
   New/Open/Recent workflows, an opened-project overview, and optional Git
-  initialization. The editable workspace panels remain.
+  initialization. The editable content panels remain.
 - Create a dockable editor application.
 - Add an ASCII viewport, hierarchy, inspector, asset browser, and log console.
-- Load, edit, save, play, and stop the reference scene.
+- Load, edit, save, play, and stop the reference Workspace.
+- Add a slim default UI Config and portable JSON UI Config persistence.
+- Establish the restrained cyberpunk visual system and bundled monospace font.
 - Route editor mutations through APIs compatible with future undo/redo.
 
 **Exit condition:** The reference-game test room can be meaningfully edited and
-saved without hand-editing its scene representation.
+saved without hand-editing its Workspace representation.
 
 ## Milestone 5: Project creation
 
 - Create and open projects from the engine launcher or project manager.
 - Generate a portable project from a maintained template.
 - Track recent projects.
-- Edit, build, and run the new project's initial scene.
+- Edit, build, and run the new project's initial Workspace.
 
 **Exit condition:** Starting from the BasilEngine launcher, a new editable and
 runnable project can be created end to end.
@@ -92,6 +94,9 @@ runnable project can be created end to end.
 ## Milestone 6: Game-code workflow and hot reload
 
 - Add embedded code browsing and editing, build output, and linked diagnostics.
+- Keep the built-in editor as the default while supporting simple,
+  configurable external-editor commands, including Neovim.
+- Provide an expandable terminal panel with platform-appropriate shell defaults.
 - Integrate language-server functionality where practical.
 - Compile game code as a platform-native dynamic module.
 - Load and reload through a versioned C interface.
@@ -103,7 +108,7 @@ editor session without restarting the editor or losing the last working module.
 ## Milestone 7: Action-RPG vertical slice
 
 - Build movement, targeting, navigation, combat, health, death, and items.
-- Add an ability, interaction, UI, scene transition, and save/load path.
+- Add an ability, interaction, UI, Workspace transition, and save/load path.
 - Author the slice through normal BasilEngine project and editor workflows.
 
 **Exit condition:** Where Birds Nest provides a short, genuine action-RPG

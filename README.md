@@ -13,6 +13,8 @@ now established; development is turning toward the project system and editor.
 See the [project charter](docs/PROJECT_CHARTER.md), [roadmap](docs/ROADMAP.md),
 [architecture notes](docs/ARCHITECTURE.md), and
 [project-system specification](docs/PROJECT_SYSTEM.md) for the current direction.
+The authoritative visual and interaction plan is recorded in the
+[BasilEditor experience specification](docs/EDITOR_EXPERIENCE.md).
 
 ## Current capabilities
 
@@ -111,7 +113,7 @@ Language rules can be selected without editing the generator:
 ```
 
 Generated projects contain a versioned `.basilproject` manifest, editable CMake
-configuration, an engine lifecycle entry point, empty asset/scene directories,
+configuration, an engine lifecycle entry point, empty asset/content directories,
 and a suitable `.gitignore`. Configure one by supplying the current engine
 source location and the same dependency hints used by BasilEngine:
 
@@ -138,7 +140,7 @@ docs/                   Product, roadmap, and architecture decisions
 
 - The engine must not depend on Where Birds Nest.
 - Engine abstractions are validated through a real reference-game use case.
-- Runtime and editor will use the same project and scene data.
+- Runtime and editor will use the same Project and Workspace data.
 - ASCII assets remain human-readable and useful outside the editor.
 - Simulation coordinates are independent from glyph-cell coordinates.
 - Platform-specific behavior stays behind narrow interfaces.
