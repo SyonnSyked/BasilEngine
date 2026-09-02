@@ -54,6 +54,12 @@ while unknown required data remains a load error.
 
 ## Stage 4 manual exit check (Windows)
 
+**Result (2026-09-02): Passed.** Fresh C, C++, and mixed Projects built and
+launched; their canonical modules were present. Inspector attachment survived
+save/reopen. A real compile failure preserved the prior module hash, and an
+API-v2 module was rejected by the API-v1 host with both versions reported. The
+valid source/module was restored after the destructive-path checks.
+
 1. Create one C, one C++, and one mixed Project and build/run each.
 2. Confirm the generated `.game.dll` sits beside its executable.
 3. Add a registered component in the Inspector, save, reopen, and confirm its
