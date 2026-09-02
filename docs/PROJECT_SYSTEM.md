@@ -81,9 +81,23 @@ Empty files or directories are included only when they serve an immediate
 workflow purpose.
 
 Project schema version 2 uses a `startupWorkspace` path and generated Projects
-store `workspaces/Main.basilworkspace`. The Workspace file is versioned JSON and
-currently describes an empty, named content unit; entity content is reserved
-until its model is defined rather than accepting data the engine cannot retain.
+store `workspaces/Main.basilworkspace`. Workspace schema version 2 is versioned
+JSON containing its identity, next stable entity ID, and a bounded flat entity
+list. The first entity record contains an immutable ID, editable display name,
+and enabled state. Component data and parent/child relationships are not yet
+part of the contract.
+
+BasilEditor loads the startup Workspace into an editor-owned session. Hierarchy
+selection drives the Inspector; entities can be created, renamed, enabled or
+disabled, and deleted. Save and Ctrl+S validate the complete Workspace, write a
+temporary file, preserve the previous file as `.bak`, and then replace the
+destination. Returning to the Project Browser with changes requires an explicit
+save, discard, or cancel choice.
+
+Schema version 2 rejects unknown and duplicate fields rather than accepting
+data it cannot preserve. Empty schema-version-1 Workspace files remain loadable
+and are represented as version 2 in memory; their first save retains the
+original file as a backup.
 
 Project schema version 1 remains loadable. Its `startupScene` path is preserved
 in memory while the Project is represented using the current API. Loading does
@@ -129,7 +143,7 @@ error rather than being modified.
 5. BasilEditor application shell and project browser
 6. New/Open Project interface
 7. Versioned empty Workspace format and starter generation
-8. Starter Workspace and asset editing
+8. Startup Workspace loading and first entity editing **Implemented**
 9. Build and Run controls
 
 Project generation remains a testable headless engine/tooling capability rather

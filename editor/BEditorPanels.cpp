@@ -21,10 +21,16 @@ void DrawPanelState(const char* state, const char* explanation)
     ImGui::TextDisabled("%s", explanation);
 }
 
-void DrawWorkspaceHierarchy(BEditorUIConfig& config, const BProject& project)
+BEditorPanelFeedback DrawWorkspaceHierarchy(
+    BEditorUIConfig& config,
+    const BProject& project,
+    BEditorWorkspaceSession& session
+)
 {
     if (!config.showWorkspaceHierarchy)
-        return;
+        return {};
+
+    BEditorPanelFeedback feedback;
 
     if (ImGui::Begin(
         BEditorPanel_Name(BEditorPanel::WorkspaceHierarchy),
@@ -34,35 +40,111 @@ void DrawWorkspaceHierarchy(BEditorUIConfig& config, const BProject& project)
         const BEditorThemePalette& palette = BEditorTheme_GetPalette();
         ImGui::TextColored(palette.violet, "ACTIVE WORKSPACE");
         ImGui::Separator();
-        ImGui::TextDisabled("SOURCE");
-        ImGui::TextWrapped("%s", project.startupWorkspace);
-        ImGui::Spacing();
-        std::string workspaceLabel = fs::path(project.startupWorkspace).stem().string();
+        ImGui::TextDisabled("SOURCE // %s", project.startupWorkspace);
+        ImGui::TextColored(
+            session.IsDirty() ? palette.warning : palette.success,
+            session.IsDirty() ? "MODIFIED" : "SAVED"
+        );
+        ImGui::Separator();
 
-        if (ImGui::TreeNodeEx(workspaceLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+        if (!session.IsLoaded())
         {
-            ImGui::TextColored(palette.cyan, "[ EMPTY ENTITY GRAPH ]");
+            ImGui::TextColored(palette.error, "[!] STARTUP WORKSPACE UNAVAILABLE");
+            ImGui::End();
+            return feedback;
+        }
+
+        if (ImGui::Button("+ ADD ENTITY", ImVec2(-1.0f, 0.0f)))
+        {
+            std::string error;
+            bool succeeded = session.AddEntity(error);
+            feedback.message = succeeded ? "Workspace entity created." : error;
+            feedback.isError = !succeeded;
+        }
+
+        ImGui::Spacing();
+        const BWorkspace& workspace = session.Workspace();
+
+        if (ImGui::TreeNodeEx(workspace.name, ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            if (workspace.entityCount == 0)
+                ImGui::TextColored(palette.cyan, "[ EMPTY ENTITY GRAPH ]");
+
+            for (size_t i = 0; i < workspace.entityCount; ++i)
+            {
+                const BWorkspaceEntity& entity = workspace.entities[i];
+                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf |
+                    ImGuiTreeNodeFlags_NoTreePushOnOpen |
+                    ImGuiTreeNodeFlags_SpanAvailWidth;
+
+                if (session.SelectedIndex() == i)
+                    flags |= ImGuiTreeNodeFlags_Selected;
+
+                ImGui::TreeNodeEx(reinterpret_cast<void*>(i + 1), flags, "%s", entity.name);
+
+                if (ImGui::IsItemClicked())
+                    session.Select(i);
+            }
+
             ImGui::TreePop();
         }
     }
 
     ImGui::End();
+    return feedback;
 }
 
-void DrawInspector(BEditorUIConfig& config)
+BEditorPanelFeedback DrawInspector(BEditorUIConfig& config, BEditorWorkspaceSession& session)
 {
     if (!config.showInspector)
-        return;
+        return {};
+
+    BEditorPanelFeedback feedback;
 
     if (ImGui::Begin(BEditorPanel_Name(BEditorPanel::Inspector), &config.showInspector))
     {
-        DrawPanelState(
-            "SELECTION // NONE",
-            "Select a Workspace entity or asset when those data models become editable."
-        );
+        BWorkspaceEntity* entity = session.MutableSelectedEntity();
+
+        if (entity == nullptr)
+            DrawPanelState("SELECTION // NONE", "Select a Workspace entity in the Hierarchy.");
+        else
+        {
+            const BEditorThemePalette& palette = BEditorTheme_GetPalette();
+            ImGui::TextColored(palette.violet, "ENTITY INSPECTOR");
+            ImGui::Separator();
+            ImGui::TextDisabled("STABLE ID");
+            ImGui::TextWrapped("%s", entity->id);
+            ImGui::Spacing();
+
+            if (ImGui::InputText("Name", entity->name, sizeof(entity->name)))
+            {
+                session.MarkDirty();
+                feedback.message = "Entity name modified.";
+            }
+
+            if (ImGui::Checkbox("Enabled", &entity->enabled))
+            {
+                session.MarkDirty();
+                feedback.message = "Entity enabled state modified.";
+            }
+
+            ImGui::Spacing();
+            ImGui::PushStyleColor(ImGuiCol_Button, palette.error);
+
+            if (ImGui::Button("DELETE ENTITY", ImVec2(-1.0f, 0.0f)))
+            {
+                std::string error;
+                bool succeeded = session.RemoveSelectedEntity(error);
+                feedback.message = succeeded ? "Workspace entity deleted." : error;
+                feedback.isError = !succeeded;
+            }
+
+            ImGui::PopStyleColor();
+        }
     }
 
     ImGui::End();
+    return feedback;
 }
 
 void DrawAssets(BEditorUIConfig& config, const fs::path& projectRoot)
@@ -184,19 +266,25 @@ void DrawTerminal(BEditorUIConfig& config, const fs::path& projectRoot)
 }
 }
 
-void BEditorPanels_DrawScaffolds(
+BEditorPanelFeedback BEditorPanels_DrawScaffolds(
     BEditorUIConfig& config,
     const BProject& project,
+    BEditorWorkspaceSession& workspaceSession,
     const fs::path& projectRoot,
     const std::string& editorMessage,
     bool messageIsError
 )
 {
-    DrawWorkspaceHierarchy(config, project);
-    DrawInspector(config);
+    BEditorPanelFeedback feedback = DrawWorkspaceHierarchy(config, project, workspaceSession);
+    BEditorPanelFeedback inspectorFeedback = DrawInspector(config, workspaceSession);
+
+    if (!inspectorFeedback.message.empty())
+        feedback = inspectorFeedback;
+
     DrawAssets(config, projectRoot);
     DrawConsole(config, editorMessage, messageIsError);
     DrawBuildOutput(config);
     DrawProblems(config);
     DrawTerminal(config, projectRoot);
+    return feedback;
 }

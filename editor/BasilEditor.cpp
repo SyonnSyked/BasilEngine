@@ -6,6 +6,7 @@
 #include "BEditorPreferences.h"
 #include "BEditorTheme.h"
 #include "BEditorUIConfig.h"
+#include "BEditorWorkspaceSession.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -41,6 +42,8 @@ struct EditorState
     bool projectOpen = false;
     bool resetDockLayout = true;
     BEditorUIConfig uiConfig = BEditorUIConfig_Default();
+    BEditorWorkspaceSession workspaceSession;
+    bool confirmProjectClose = false;
     std::string message;
     bool messageIsError = false;
 };
@@ -139,10 +142,25 @@ static bool OpenProject(EditorState& state, const fs::path& manifestPath)
     state.projectOpen = true;
     state.resetDockLayout = true;
     state.uiConfig = BEditorUIConfig_Default();
+    state.workspaceSession = BEditorWorkspaceSession{};
+    std::string workspaceError;
+    bool workspaceLoaded = state.workspaceSession.Load(
+        absolutePath.parent_path(),
+        state.project.startupWorkspace,
+        workspaceError
+    );
+
+    if (!workspaceLoaded)
+        state.uiConfig.showProblems = true;
+
     BRecentProjects_Add(&state.recent, absolutePath.string().c_str());
     SaveRecentProjects(state);
     SetWindowTitle(TextFormat("BasilEditor - %s", state.project.name));
-    SetMessage(state, "Project opened successfully.", false);
+    SetMessage(
+        state,
+        workspaceLoaded ? "Project and startup Workspace opened successfully." : workspaceError.c_str(),
+        !workspaceLoaded
+    );
     return true;
 }
 
@@ -422,8 +440,23 @@ static void DrawProjectBrowser(EditorState& state)
 
 static void ReturnToProjectBrowser(EditorState& state)
 {
+    if (state.workspaceSession.IsDirty())
+    {
+        state.confirmProjectClose = true;
+        return;
+    }
+
     state.projectOpen = false;
+    state.workspaceSession = BEditorWorkspaceSession{};
     SetWindowTitle("BasilEditor");
+}
+
+static bool SaveWorkspace(EditorState& state)
+{
+    std::string error;
+    bool succeeded = state.workspaceSession.Save(error);
+    SetMessage(state, succeeded ? "Workspace saved. A recovery backup was retained." : error.c_str(), !succeeded);
+    return succeeded;
 }
 
 static void DrawEditorMenuBar(EditorState& state)
@@ -452,7 +485,13 @@ static void DrawEditorMenuBar(EditorState& state)
         ImGui::BeginDisabled();
         ImGui::MenuItem("New Workspace");
         ImGui::MenuItem("Open Workspace...");
-        ImGui::MenuItem("Save Workspace");
+        ImGui::EndDisabled();
+
+        ImGui::BeginDisabled(!state.workspaceSession.IsLoaded());
+
+        if (ImGui::MenuItem("Save Workspace", "Ctrl+S"))
+            SaveWorkspace(state);
+
         ImGui::EndDisabled();
         ImGui::EndMenu();
     }
@@ -488,9 +527,14 @@ static void DrawEditorMenuBar(EditorState& state)
     if (ImGui::MenuItem("Terminal"))
         state.uiConfig.showTerminal = true;
 
-    float statusWidth = ImGui::CalcTextSize("PROJECT LINK // STABLE").x;
+    const char* statusText = state.workspaceSession.IsDirty() ?
+        "WORKSPACE // MODIFIED" : "PROJECT LINK // STABLE";
+    float statusWidth = ImGui::CalcTextSize(statusText).x;
     ImGui::SameLine(ImGui::GetWindowWidth() - statusWidth - ImGui::GetStyle().ItemSpacing.x);
-    ImGui::TextColored(palette.success, "PROJECT LINK // STABLE");
+    ImGui::TextColored(
+        state.workspaceSession.IsDirty() ? palette.warning : palette.success,
+        statusText
+    );
     ImGui::EndMainMenuBar();
 }
 
@@ -576,15 +620,26 @@ static void DrawWorkspaceViewport(EditorState& state)
         BEditorPanel_Name(BEditorPanel::WorkspaceViewport),
         &state.uiConfig.showWorkspaceViewport
     );
-    ImGui::TextColored(palette.violet, "WORKSPACE VIEWPORT // FOUNDATION ONLINE");
+    ImGui::TextColored(palette.violet, "WORKSPACE VIEWPORT // EDIT SESSION ONLINE");
     ImGui::Separator();
+
+    if (!state.workspaceSession.IsLoaded())
+    {
+        ImGui::TextColored(palette.error, "[ STARTUP WORKSPACE UNAVAILABLE ]");
+        ImGui::End();
+        ImGui::PopStyleColor();
+        return;
+    }
+
     ImVec2 available = ImGui::GetContentRegionAvail();
-    float headingWidth = ImGui::CalcTextSize("[ STARTUP WORKSPACE READY ]").x;
+    std::string summary = "[ " + std::to_string(state.workspaceSession.Workspace().entityCount) +
+        " ENTITIES LOADED ]";
+    float headingWidth = ImGui::CalcTextSize(summary.c_str()).x;
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + available.y * 0.38f);
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (available.x - headingWidth) * 0.5f);
-    ImGui::TextColored(palette.cyan, "[ STARTUP WORKSPACE READY ]");
+    ImGui::TextColored(palette.cyan, "%s", summary.c_str());
     ImGui::Spacing();
-    ImGui::TextDisabled("Dockable panel shell active. Workspace rendering arrives after panel scaffolding.");
+    ImGui::TextDisabled("Entity editing is active. Spatial rendering follows the component model.");
     ImGui::End();
     ImGui::PopStyleColor();
 }
@@ -600,6 +655,12 @@ static void DrawEditorShell(EditorState& state)
     }
 
     DrawEditorMenuBar(state);
+
+    if (state.workspaceSession.IsLoaded() &&
+        ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S, false))
+    {
+        SaveWorkspace(state);
+    }
     ImGuiID dockspaceId = ImGui::GetID("BasilEditorDockspace");
     ImGui::DockSpaceOverViewport(
         dockspaceId,
@@ -615,13 +676,59 @@ static void DrawEditorShell(EditorState& state)
 
     DrawProjectDetails(state);
     DrawWorkspaceViewport(state);
-    BEditorPanels_DrawScaffolds(
+    BEditorPanelFeedback feedback = BEditorPanels_DrawScaffolds(
         state.uiConfig,
         state.project,
+        state.workspaceSession,
         state.manifestPath.parent_path(),
         state.message,
         state.messageIsError
     );
+
+    if (!feedback.message.empty())
+        SetMessage(state, feedback.message.c_str(), feedback.isError);
+
+    if (state.confirmProjectClose)
+        ImGui::OpenPopup("UNSAVED WORKSPACE CHANGES");
+
+    if (ImGui::BeginPopupModal(
+        "UNSAVED WORKSPACE CHANGES",
+        nullptr,
+        ImGuiWindowFlags_AlwaysAutoResize
+    ))
+    {
+        ImGui::TextUnformatted("The active Workspace has unsaved changes.");
+        ImGui::TextDisabled("Save before returning to the Project Browser, discard, or cancel.");
+        ImGui::Spacing();
+
+        if (ImGui::Button("SAVE + CLOSE", ImVec2(170.0f, 0.0f)) && SaveWorkspace(state))
+        {
+            state.confirmProjectClose = false;
+            ImGui::CloseCurrentPopup();
+            ReturnToProjectBrowser(state);
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("DISCARD", ImVec2(120.0f, 0.0f)))
+        {
+            state.confirmProjectClose = false;
+            state.workspaceSession = BEditorWorkspaceSession{};
+            state.projectOpen = false;
+            SetWindowTitle("BasilEditor");
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("CANCEL", ImVec2(100.0f, 0.0f)))
+        {
+            state.confirmProjectClose = false;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
 }
 
 static int RunEditor(int argumentCount, char** arguments)

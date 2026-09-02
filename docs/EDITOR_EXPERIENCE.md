@@ -60,9 +60,11 @@ Workspace, Open Workspace, Save Workspace, Active Workspace, Workspace
 Hierarchy, and loading an additional Workspace.
 
 Multiple/additive Workspaces are intended, but their exact runtime and ownership
-semantics remain **unresolved**. Initial empty-Workspace serialization is
-**implemented** as versioned JSON using `.basilworkspace`. Entity/component
-serialization remains deliberately undefined until its runtime model exists.
+semantics remain **unresolved**. Workspace schema version 2 is **implemented**
+as JSON using `.basilworkspace`. It supports a flat list of entities with stable
+immutable IDs, editable names, and enabled state. Component serialization,
+parenting, and runtime ownership remain deliberately undefined until their
+reusable runtime models exist.
 
 ### Viewport
 
@@ -131,10 +133,18 @@ default reserves the dominant center for the Viewport, side regions for Project
 Details/Hierarchy and Inspector, and a lower tab region for operational panels.
 Workspace Hierarchy, Inspector, Assets, Console, Build Output, Problems, and
 Terminal scaffold windows are also **implemented** and independently dockable.
-Hierarchy exposes the configured startup path, Assets safely lists the real
-top-level asset directory, and Console reports current editor status. The other
-scaffolds state clearly when their build, diagnostic, terminal, selection, or
-editing services are not connected; those services remain planned.
+Hierarchy loads the startup Workspace and owns entity creation and selection;
+Inspector edits the selected entity's name and enabled state. Assets safely
+lists the real top-level asset directory, and Console reports current editor
+status. The remaining scaffolds state clearly when their build, diagnostic, or
+terminal services are not connected; those services remain planned.
+
+Save Workspace and Ctrl+S are implemented with full-model validation,
+temporary-file writing, and a recovery `.bak`. The editor reports clean/dirty
+state and guards the transition back to the Project Browser with Save, Discard,
+and Cancel choices. Additional Workspace creation/opening, undo/redo, component
+editing, parenting, and protection around every operating-system shutdown path
+remain planned.
 
 ## UI Configs
 
@@ -314,7 +324,7 @@ Future macOS application-bundle packaging will require an ICNS export.
 ## Remaining decisions
 
 - Final `.basilproject` and Where Birds Nest icons
-- Workspace entity/component schema and additive semantics
+- Workspace component/parenting schema and additive semantics
 - Portable UI Config JSON schema and extension
 - External-editor configuration schema and placeholders
 - Exact default docking measurements

@@ -82,7 +82,8 @@ handoff:
    state. **Scaffolds completed:** panels consume shared Project/UI Config state
    where it exists; deeper Workspace/build/terminal services remain separate.
 4. Load, create, edit, and save one empty Workspace reliably before additive
-   Workspace behavior or development play is attempted.
+   Workspace behavior or development play is attempted. **Completed:** the
+   generated startup Workspace supports flat entity editing and safe save.
 5. Add build/run integration only after the Project and Workspace paths are
    represented consistently in both editor and runtime code.
 

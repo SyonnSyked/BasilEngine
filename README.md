@@ -36,6 +36,8 @@ the [visual-foundation closeout](docs/EDITOR_VISUAL_FOUNDATION.md).
 - A genuine dockable editor shell with a resettable slim default UI Config
 - Dockable Hierarchy, Inspector, Assets, Console, Build Output, Problems, and
   Terminal scaffolds with honest service states
+- Editable startup Workspaces with stable entity IDs, selection, Inspector
+  changes, dirty-state protection, and backup-assisted saves
 - Geometric circuit-leaf application branding and embedded Windows icon
 - Persistent global interface-scale presets from 100% through 175%
 - Optional Git initialization during or after project creation

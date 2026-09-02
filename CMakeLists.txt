@@ -258,6 +258,8 @@ if(BUILD_TESTING)
         workspace-invalid-json.basilworkspace
         workspace-unsupported-version.basilworkspace
         workspace-nonempty-entities.basilworkspace
+        workspace-legacy-empty.basilworkspace
+        workspace-unknown-field.basilworkspace
     )
         configure_file(
             "tests/fixtures/${workspace_fixture}"
@@ -383,6 +385,7 @@ if(BASIL_BUILD_EDITOR_DEPS)
         editor/BEditorPreferences.cpp
         editor/BEditorTheme.cpp
         editor/BEditorUIConfig.cpp
+        editor/BEditorWorkspaceSession.cpp
     )
 
     if(WIN32)
@@ -484,6 +487,28 @@ if(BASIL_BUILD_EDITOR_DEPS)
 
         basil_enable_warnings(BEditorUIConfigTests)
         add_test(NAME BEditorUIConfigTests COMMAND BEditorUIConfigTests)
+
+        add_executable(BEditorWorkspaceSessionTests
+            tests/BEditorWorkspaceSessionTests.cpp
+            editor/BEditorWorkspaceSession.cpp
+        )
+
+        target_include_directories(BEditorWorkspaceSessionTests PRIVATE
+            editor
+        )
+
+        target_link_libraries(BEditorWorkspaceSessionTests PRIVATE
+            BasilProject
+        )
+
+        if(MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            target_link_options(BEditorWorkspaceSessionTests PRIVATE
+                -static -static-libgcc -static-libstdc++
+            )
+        endif()
+
+        basil_enable_warnings(BEditorWorkspaceSessionTests)
+        add_test(NAME BEditorWorkspaceSessionTests COMMAND BEditorWorkspaceSessionTests)
     endif()
 
     add_custom_command(TARGET BasilEditor POST_BUILD
