@@ -18,7 +18,9 @@ The authoritative visual and interaction plan is recorded in the
 editor visual-foundation pass and its verification evidence are summarized in
 the [visual-foundation closeout](docs/EDITOR_VISUAL_FOUNDATION.md). The current
 capabilities, roadmap alignment, risks, scope guardrails, and next bounded slice
-are tracked in the [scope and course audit](docs/SCOPE_STATUS.md).
+are tracked in the [scope and course audit](docs/SCOPE_STATUS.md). The proposed
+technical contract for that next slice is the
+[Runtime Workspace Bridge design](docs/RUNTIME_WORKSPACE_BRIDGE.md).
 
 ## Current capabilities
 

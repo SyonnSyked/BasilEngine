@@ -179,6 +179,9 @@ The next slice is **Runtime Workspace Bridge**. Its acceptance result is simple:
 create or edit an entity in BasilEditor, press Run, and see that entity rendered
 by the generated standalone application using shared engine APIs.
 
+The concrete schema, ownership, Text Sprite, diagnostics, migration, testing,
+and implementation contract is defined in `RUNTIME_WORKSPACE_BRIDGE.md`.
+
 The slice may introduce:
 
 1. A C runtime API that loads a Project and its startup Workspace.

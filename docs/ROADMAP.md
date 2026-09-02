@@ -104,7 +104,8 @@ The next implementation slice connects the generated runtime to Project and
 Workspace loading, introduces the first transform/renderable component data,
 and proves that editor-authored entities appear in the running application.
 That shared runtime path is required before standalone Run can evolve into
-in-Viewport development play.
+in-Viewport development play. Its proposed implementation contract is recorded
+in `RUNTIME_WORKSPACE_BRIDGE.md` for review before code changes begin.
 
 ## Milestone 5: Project creation
 
