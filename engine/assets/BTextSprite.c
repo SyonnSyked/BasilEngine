@@ -204,14 +204,19 @@ void BTextSprite_Swap(BTextSprite* left, BTextSprite* right)
     *right = temporary;
 }
 
-static bool BTextSprite_Decode(
+bool BTextSprite_Decode(
     const char* contents,
     size_t length,
     const char* relativePath,
-    BTextSprite* sprite,
+    BTextSprite* destination,
     BDiagnosticList* diagnostics
 )
 {
+    BDiagnosticList_Clear(diagnostics);
+    if (contents == NULL || destination == NULL)
+        return BTextSprite_Fail(diagnostics, BDIAGNOSTIC_INVALID_ARGUMENT, "Text Sprite source and destination are required.", relativePath, 0, 0);
+    BTextSprite decoded;
+    BTextSprite_Init(&decoded);
     BTextSpriteRow rows[BTEXT_SPRITE_HEIGHT_MAX];
     size_t rowCount = 0;
     size_t rowStart = 0;
@@ -290,9 +295,11 @@ static bool BTextSprite_Decode(
             memcpy(cells + row * maximumWidth, contents + rows[row].start, rows[row].width);
     }
 
-    sprite->width = maximumWidth;
-    sprite->height = rowCount;
-    sprite->cells = cells;
+    decoded.width = maximumWidth;
+    decoded.height = rowCount;
+    decoded.cells = cells;
+    BTextSprite_Swap(destination, &decoded);
+    BTextSprite_Destroy(&decoded);
     return true;
 }
 

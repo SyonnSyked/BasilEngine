@@ -1,5 +1,6 @@
 #include "BEditorPanels.h"
 
+#include "BEditorPlatformDialogs.h"
 #include "BEditorTheme.h"
 
 #include "imgui.h"
@@ -344,10 +345,18 @@ BEditorPanelFeedback DrawInspector(BEditorUIConfig& config, BEditorWorkspaceSess
     return feedback;
 }
 
-void DrawAssets(BEditorUIConfig& config, const fs::path& projectRoot)
+BEditorPanelFeedback DrawAssets(
+    BEditorUIConfig& config,
+    const fs::path& projectRoot,
+    BEditorAssetService& assetService,
+    BEditorTextSpriteDocument& textDocument,
+    BEditorWorkspaceSession& workspaceSession
+)
 {
     if (!config.showAssets)
-        return;
+        return {};
+
+    BEditorPanelFeedback feedback;
 
     if (ImGui::Begin(BEditorPanel_Name(BEditorPanel::Assets), &config.showAssets))
     {
@@ -362,45 +371,118 @@ void DrawAssets(BEditorUIConfig& config, const fs::path& projectRoot)
         ImGui::SetNextItemWidth(-1.0f);
         ImGui::InputTextWithHint("##AssetFilter", "Filter assets...", assetFilter, sizeof(assetFilter));
 
-        std::error_code error;
-        std::vector<fs::directory_entry> entries;
-        bool assetDirectoryExists = fs::is_directory(assetRoot, error);
-
-        if (assetDirectoryExists)
+        if (ImGui::Button("NEW TEXT SPRITE", ImVec2(-1.0f, 0.0f)))
         {
-            for (fs::directory_iterator iterator(assetRoot, error), end;
-                !error && iterator != end;
-                iterator.increment(error))
+            fs::path selected = assetRoot / "sprite.txt";
+            std::string error;
+            if (BEditorDialog_SaveTextSprite(selected, error))
             {
-                entries.push_back(*iterator);
+                fs::path relative = selected.lexically_normal().lexically_relative(projectRoot.lexically_normal());
+                bool ok = textDocument.Create(projectRoot, relative.generic_string(), error);
+                feedback = { ok ? "Text Sprite created." : error, !ok };
+                if (ok) config.showTextSpriteEditor = true;
             }
+            else if (!error.empty()) feedback = { error, true };
         }
-
-        std::sort(entries.begin(), entries.end(), [](const auto& left, const auto& right)
-        {
-            return left.path().filename().string() < right.path().filename().string();
-        });
-
-        if (error)
-            ImGui::TextColored(palette.error, "[!] Could not inspect the asset directory: %s", error.message().c_str());
-        else if (!assetDirectoryExists)
-            ImGui::TextColored(palette.warning, "[!] ASSET DIRECTORY MISSING");
-        else if (entries.empty())
+        ImGui::Separator();
+        if (assetService.Records().empty())
             ImGui::TextColored(palette.cyan, "[ EMPTY ASSET DIRECTORY ]");
         else
         {
-            for (const fs::directory_entry& entry : entries)
+            bool assetListChanged = false;
+            for (const BEditorAssetRecord& record : assetService.Records())
             {
-                if (!ContainsInsensitive(entry.path().filename().string(), assetFilter))
+                ImGui::PushID(record.id.c_str());
+                if (!ContainsInsensitive(record.relativePath, assetFilter))
                     continue;
-                std::error_code typeError;
-                bool directory = entry.is_directory(typeError);
-                ImGui::BulletText("%s %s", directory ? "[DIR]" : "[FILE]", entry.path().filename().string().c_str());
+                std::string label = "[" + std::string(BEditorAssetService::KindName(record.kind)) + "] " + record.relativePath;
+                bool selected = textDocument.IsOpen() && textDocument.RelativePath() == record.relativePath;
+                if (ImGui::Selectable(label.c_str(), selected) && record.kind == BEditorAssetKind::TextSprite)
+                {
+                    std::string error; bool ok = textDocument.Open(projectRoot, record.relativePath, error);
+                    feedback = { ok ? "Text Sprite opened." : error, !ok };
+                    if (ok) config.showTextSpriteEditor = true;
+                }
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("ID // %s", record.id.c_str());
+                if (ImGui::BeginPopupContextItem("AssetActions"))
+                {
+                    static char renamed[BPROJECT_PATH_MAX]{};
+                    static std::string renameId;
+                    if (renameId != record.id) { renameId = record.id; std::snprintf(renamed, sizeof(renamed), "%s", fs::path(record.relativePath).filename().string().c_str()); }
+                    ImGui::InputText("New filename", renamed, sizeof(renamed));
+                    bool blocked = textDocument.IsDirty() && textDocument.RelativePath() == record.relativePath;
+                    ImGui::BeginDisabled(blocked);
+                    if (ImGui::Button("RENAME"))
+                    {
+                        std::vector<BEditorAssetMove> moves; std::string error;
+                        bool ok = assetService.Rename(record.relativePath, renamed, moves, error);
+                        if (ok)
+                            for (const auto& move : moves) ok = workspaceSession.RemapAssetPath(move.oldPath, move.newPath, error) && ok;
+                        if (ok && textDocument.IsOpen() && textDocument.RelativePath() == record.relativePath)
+                            ok = textDocument.Open(projectRoot, moves.empty() ? record.relativePath : moves.front().newPath, error);
+                        feedback = { ok ? "Asset renamed and references updated." : error, !ok };
+                        if (ok) { assetListChanged = true; ImGui::CloseCurrentPopup(); }
+                    }
+                    ImGui::EndDisabled();
+                    if (blocked) ImGui::TextDisabled("Save the open Text Sprite before renaming it.");
+                    ImGui::EndPopup();
+                }
+                ImGui::PopID();
+                if (assetListChanged) break;
             }
         }
     }
 
     ImGui::End();
+    return feedback;
+}
+
+BEditorPanelFeedback DrawTextSpriteEditor(BEditorUIConfig& config, BEditorTextSpriteDocument& document)
+{
+    if (!config.showTextSpriteEditor) return {};
+    BEditorPanelFeedback feedback;
+    if (ImGui::Begin(BEditorPanel_Name(BEditorPanel::TextSpriteEditor), &config.showTextSpriteEditor))
+    {
+        const BEditorThemePalette& palette = BEditorTheme_GetPalette();
+        if (!document.IsOpen())
+            DrawPanelState("TEXT SPRITE // NONE", "Select or create a .txt asset in Assets.");
+        else
+        {
+            ImGui::TextColored(document.IsDirty() ? palette.warning : palette.success, "%s // %s",
+                document.IsDirty() ? "MODIFIED" : "SAVED", document.RelativePath().c_str());
+            if (document.HasExternalChange())
+            {
+                ImGui::TextColored(palette.warning, "[!] FILE CHANGED OUTSIDE BASILEDITOR");
+                if (ImGui::Button("RELOAD DISK COPY")) { std::string error; bool ok = document.Reload(error); feedback = { ok ? "External Text Sprite reloaded." : error, !ok }; }
+                ImGui::SameLine();
+                if (ImGui::Button("KEEP EDITOR COPY")) document.AcceptExternalChange();
+            }
+            if (ImGui::Button("SAVE TEXT SPRITE", ImVec2(-1.0f, 0.0f)))
+            { std::string error; bool ok = document.Save(error); feedback = { ok ? "Text Sprite saved." : error, !ok }; }
+            ImGui::Separator();
+            ImVec2 editorSize(ImGui::GetContentRegionAvail().x * 0.55f, ImGui::GetContentRegionAvail().y);
+            if (ImGui::InputTextMultiline("##TextSpriteSource", document.Buffer(), document.Capacity(), editorSize))
+            {
+                document.MarkEdited(); std::string error;
+                if (!document.RefreshPreview(error)) feedback = { error, true };
+            }
+            ImGui::SameLine();
+            ImGui::BeginGroup();
+            const BTextSprite& sprite = document.Preview();
+            ImGui::TextColored(palette.violet, "PREVIEW // %zu x %zu", sprite.width, sprite.height);
+            ImGui::TextDisabled("Spaces render as transparent dots.");
+            ImGui::BeginChild("##TextSpritePreview", ImVec2(0.0f, 0.0f), true, ImGuiWindowFlags_HorizontalScrollbar);
+            for (std::size_t row = 0; row < sprite.height; ++row)
+            {
+                std::string line;
+                for (std::size_t column = 0; column < sprite.width; ++column)
+                { char glyph = BTextSprite_Cell(&sprite, column, row); line.push_back(glyph == ' ' ? '.' : glyph); }
+                ImGui::TextColored(palette.cyan, "%s", line.c_str());
+            }
+            ImGui::EndChild(); ImGui::EndGroup();
+        }
+    }
+    ImGui::End(); return feedback;
 }
 
 void DrawConsole(BEditorUIConfig& config, const std::string& message, bool isError)
@@ -503,6 +585,8 @@ BEditorPanelFeedback BEditorPanels_DrawScaffolds(
     BEditorUIConfig& config,
     const BProject& project,
     BEditorWorkspaceSession& workspaceSession,
+    BEditorAssetService& assetService,
+    BEditorTextSpriteDocument& textSpriteDocument,
     const BEditorBuildService& buildService,
     const fs::path& projectRoot,
     const std::string& editorMessage,
@@ -515,7 +599,10 @@ BEditorPanelFeedback BEditorPanels_DrawScaffolds(
     if (!inspectorFeedback.message.empty())
         feedback = inspectorFeedback;
 
-    DrawAssets(config, projectRoot);
+    BEditorPanelFeedback assetFeedback = DrawAssets(config, projectRoot, assetService, textSpriteDocument, workspaceSession);
+    BEditorPanelFeedback textFeedback = DrawTextSpriteEditor(config, textSpriteDocument);
+    if (!assetFeedback.message.empty()) feedback = assetFeedback;
+    if (!textFeedback.message.empty()) feedback = textFeedback;
     DrawConsole(config, editorMessage, messageIsError);
     DrawBuildOutput(config, buildService);
     DrawProblems(config, buildService);

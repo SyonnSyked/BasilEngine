@@ -51,6 +51,9 @@ struct EditorState
     bool resetDockLayout = true;
     BEditorUIConfig uiConfig = BEditorUIConfig_Default();
     BEditorWorkspaceSession workspaceSession;
+    BEditorAssetService assetService;
+    BEditorTextSpriteDocument textSpriteDocument;
+    double nextAssetRefreshTime = 0.0;
     bool confirmProjectClose = false;
     bool confirmApplicationClose = false;
     bool confirmRecovery = false;
@@ -80,6 +83,21 @@ static void ResetViewportPreview(EditorState& state)
     state.viewportError.clear();
     state.viewportPan = { 0.0f, 0.0f };
     state.viewportZoom = 1.0f;
+}
+
+static bool ApplyAssetMoves(EditorState& state, const std::vector<BEditorAssetMove>& moves, std::string& error)
+{
+    for (const BEditorAssetMove& move : moves)
+    {
+        if (!state.workspaceSession.RemapAssetPath(move.oldPath, move.newPath, error)) return false;
+        if (state.textSpriteDocument.IsOpen() && state.textSpriteDocument.RelativePath() == move.oldPath)
+        {
+            if (state.textSpriteDocument.IsDirty())
+            { error = "An externally moved Text Sprite has unsaved editor changes."; return false; }
+            if (!state.textSpriteDocument.Open(state.manifestPath.parent_path(), move.newPath, error)) return false;
+        }
+    }
+    return true;
 }
 
 static fs::path UserHome()
@@ -190,6 +208,9 @@ static bool OpenProject(EditorState& state, const fs::path& manifestPath)
         state.project.startupWorkspace,
         workspaceError
     );
+    std::string assetError;
+    bool assetsOpened = state.assetService.Open(absolutePath.parent_path(), assetError);
+    state.nextAssetRefreshTime = GetTime() + 1.0;
 
     if (!workspaceLoaded)
         state.uiConfig.showProblems = true;
@@ -203,12 +224,12 @@ static bool OpenProject(EditorState& state, const fs::path& manifestPath)
     SetWindowTitle(TextFormat("BasilEditor - %s", state.project.name));
     SetMessage(
         state,
-        !uiConfigError.empty() ? uiConfigError.c_str() : workspaceLoaded ?
+        !uiConfigError.empty() ? uiConfigError.c_str() : !assetsOpened ? assetError.c_str() : workspaceLoaded ?
             (state.workspaceSession.RequiresMigration() ?
                 "Project opened. Startup Workspace will migrate safely on first save." :
                 "Project and startup Workspace opened successfully.") :
             workspaceError.c_str(),
-        !uiConfigError.empty() || !workspaceLoaded
+        !uiConfigError.empty() || !assetsOpened || !workspaceLoaded
     );
     return true;
 }
@@ -511,7 +532,7 @@ static void ReturnToProjectBrowser(EditorState& state)
         return;
     }
 
-    if (state.workspaceSession.IsDirty())
+    if (state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty())
     {
         state.confirmProjectClose = true;
         return;
@@ -519,6 +540,8 @@ static void ReturnToProjectBrowser(EditorState& state)
 
     state.projectOpen = false;
     state.workspaceSession.Reset();
+    state.assetService.Reset();
+    state.textSpriteDocument.Reset();
     ResetViewportPreview(state);
     SetWindowTitle("BasilEditor");
 }
@@ -526,8 +549,13 @@ static void ReturnToProjectBrowser(EditorState& state)
 static bool SaveWorkspace(EditorState& state)
 {
     std::string error;
+    if (state.textSpriteDocument.IsDirty() && !state.textSpriteDocument.Save(error))
+    {
+        SetMessage(state, error.c_str(), true);
+        return false;
+    }
     bool succeeded = state.workspaceSession.Save(error);
-    SetMessage(state, succeeded ? "Workspace saved. A recovery backup was retained." : error.c_str(), !succeeded);
+    SetMessage(state, succeeded ? "All modified authoring documents saved." : error.c_str(), !succeeded);
     return succeeded;
 }
 
@@ -561,7 +589,7 @@ static void StartProjectBuild(EditorState& state, bool runAfterBuild)
         }
     }
 
-    if (state.workspaceSession.IsDirty() && !SaveWorkspace(state))
+    if ((state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty()) && !SaveWorkspace(state))
         return;
 
     std::string error;
@@ -617,7 +645,7 @@ static void DrawEditorMenuBar(EditorState& state)
         ImGui::Separator();
         if (ImGui::MenuItem("Exit BasilEditor"))
         {
-            state.confirmApplicationClose = state.workspaceSession.IsDirty();
+            state.confirmApplicationClose = state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty();
             state.exitApproved = !state.confirmApplicationClose;
         }
 
@@ -662,6 +690,7 @@ static void DrawEditorMenuBar(EditorState& state)
         ImGui::MenuItem("Build Output", nullptr, &state.uiConfig.showBuildOutput);
         ImGui::MenuItem("Problems", nullptr, &state.uiConfig.showProblems);
         ImGui::MenuItem("Terminal", nullptr, &state.uiConfig.showTerminal);
+        ImGui::MenuItem("Text Sprite Editor", nullptr, &state.uiConfig.showTextSpriteEditor);
         ImGui::Separator();
 
         ImGui::MenuItem("UI Config Manager", nullptr, &state.showUIConfigManager);
@@ -756,12 +785,12 @@ static void DrawEditorMenuBar(EditorState& state)
     if (ImGui::MenuItem("Terminal"))
         state.uiConfig.showTerminal = true;
 
-    const char* statusText = state.workspaceSession.IsDirty() ?
+    const char* statusText = (state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty()) ?
         "WORKSPACE // MODIFIED" : "PROJECT LINK // STABLE";
     float statusWidth = ImGui::CalcTextSize(statusText).x;
     ImGui::SameLine(ImGui::GetWindowWidth() - statusWidth - ImGui::GetStyle().ItemSpacing.x);
     ImGui::TextColored(
-        state.workspaceSession.IsDirty() ? palette.warning : palette.success,
+        (state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty()) ? palette.warning : palette.success,
         statusText
     );
     ImGui::EndMainMenuBar();
@@ -990,6 +1019,21 @@ static void DrawEditorShell(EditorState& state)
         state.nextGitRefreshTime = currentTime + 1.0;
     }
 
+    if (currentTime >= state.nextAssetRefreshTime)
+    {
+        std::uint64_t previousRevision = state.assetService.Revision();
+        std::vector<BEditorAssetMove> moves; std::string error;
+        if (!state.assetService.Refresh(moves, error) || !ApplyAssetMoves(state, moves, error))
+            SetMessage(state, error.c_str(), true);
+        if (state.assetService.Revision() != previousRevision)
+        {
+            BAsciiDrawList_Destroy(&state.viewportDrawList);
+            BTextSpriteCache_Destroy(&state.viewportSpriteCache);
+            state.viewportRevision = 0;
+        }
+        state.nextAssetRefreshTime = currentTime + 1.0;
+    }
+
     state.buildService.Update();
     BEditorBuildState buildState = state.buildService.State();
 
@@ -1053,6 +1097,8 @@ static void DrawEditorShell(EditorState& state)
         state.uiConfig,
         state.project,
         state.workspaceSession,
+        state.assetService,
+        state.textSpriteDocument,
         state.buildService,
         state.manifestPath.parent_path(),
         state.message,
@@ -1093,15 +1139,15 @@ static void DrawEditorShell(EditorState& state)
     }
 
     if (state.confirmProjectClose)
-        ImGui::OpenPopup("UNSAVED WORKSPACE CHANGES");
+        ImGui::OpenPopup("UNSAVED PROJECT CHANGES");
 
     if (ImGui::BeginPopupModal(
-        "UNSAVED WORKSPACE CHANGES",
+        "UNSAVED PROJECT CHANGES",
         nullptr,
         ImGuiWindowFlags_AlwaysAutoResize
     ))
     {
-        ImGui::TextUnformatted("The active Workspace has unsaved changes.");
+        ImGui::TextUnformatted("The Project has unsaved authoring changes.");
         ImGui::TextDisabled("Save before returning to the Project Browser, discard, or cancel.");
         ImGui::Spacing();
 
@@ -1120,6 +1166,8 @@ static void DrawEditorShell(EditorState& state)
             state.workspaceSession.DiscardRecovery(ignored);
             state.confirmProjectClose = false;
             state.workspaceSession.Reset();
+            state.assetService.Reset();
+            state.textSpriteDocument.Reset();
             ResetViewportPreview(state);
             state.projectOpen = false;
             SetWindowTitle("BasilEditor");
@@ -1163,7 +1211,7 @@ static void DrawEditorShell(EditorState& state)
         ImGui::OpenPopup("EXIT WITH UNSAVED CHANGES");
     if (ImGui::BeginPopupModal("EXIT WITH UNSAVED CHANGES", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::TextUnformatted("The active Workspace has unsaved changes.");
+        ImGui::TextUnformatted("The Project has unsaved authoring changes.");
         if (ImGui::Button("SAVE + EXIT", ImVec2(150.0f, 0.0f)) && SaveWorkspace(state))
         {
             state.confirmApplicationClose = false; state.exitApproved = true; ImGui::CloseCurrentPopup();
@@ -1263,7 +1311,7 @@ static int RunEditor(int argumentCount, char** arguments)
         {
             if (state.buildService.IsBusy())
                 SetMessage(state, "Stop the active build or game before exiting BasilEditor.", true);
-            else if (state.workspaceSession.IsDirty())
+            else if (state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty())
                 state.confirmApplicationClose = true;
             else
                 state.exitApproved = true;

@@ -3,7 +3,7 @@
 
 #include <string>
 
-constexpr int BEDITOR_UI_CONFIG_SCHEMA_VERSION = 1;
+constexpr int BEDITOR_UI_CONFIG_SCHEMA_VERSION = 2;
 
 enum class BEditorPanel
 {
@@ -15,7 +15,8 @@ enum class BEditorPanel
     Console,
     BuildOutput,
     Problems,
-    Terminal
+    Terminal,
+    TextSpriteEditor
 };
 
 struct BEditorUIConfig
@@ -33,6 +34,7 @@ struct BEditorUIConfig
     bool showBuildOutput = false;
     bool showProblems = false;
     bool showTerminal = false;
+    bool showTextSpriteEditor = false;
 };
 
 BEditorUIConfig BEditorUIConfig_Default();

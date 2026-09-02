@@ -16,6 +16,13 @@ component controls, runtime Workspace consumption, native Windows Project/folder
 dialogs, document history/recovery, and portable UI Config persistence are
 implemented.
 
+Projects opened in BasilEditor receive a versioned `.basil/assets.json`
+registry for stable identities across Text Sprite, JSON data, font, and audio
+assets. Paths remain readable and Project-relative; detected moves retain
+identity and remap matching Workspace references transactionally. The bounded
+Text Sprite editor uses the shared decoder and participates in Save All,
+external-change handling, and close protection. See `ASSET_FOUNDATION.md`.
+
 ## User workflow
 
 Launching BasilEditor will open a project browser with New Project, Open

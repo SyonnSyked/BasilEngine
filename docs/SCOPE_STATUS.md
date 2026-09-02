@@ -1,8 +1,8 @@
 # BasilEngine Scope and Course Audit
 
 **Audit date:** 2026-09-02  
-**Project phase:** Alpha Stage 2 editor reliability closeout
-**Overall verdict:** On course; reliable authoring prerequisites are active
+**Project phase:** Alpha Stage 3 asset foundation closeout
+**Overall verdict:** On course; stable asset identity and editing are active
 
 BasilEngine still matches the product charter. The repository has not drifted
 into game-specific engine code, a speculative ECS, or an oversized editor.
@@ -38,7 +38,7 @@ review.
 | Intended outcome | Current evidence | Status | Remaining gap |
 | --- | --- | --- | --- |
 | BasilEngine is reusable; Where Birds Nest is its proving project | Engine and game code remain separate; Where Birds Nest now also has a Workspace-authored reference room using only reusable engine data/APIs | Aligned and proven for static authoring | Migrate gameplay only after the reusable gameplay/module boundary is intentionally designed |
-| ASCII and text art are first-class | Strict Text Sprite decoding/cache, versioned components, deterministic interpretation, standalone rendering, editor preview, and a reference room exist | Shared editor/runtime path proven | Introduce stable asset identities and focused change awareness later |
+| ASCII and text art are first-class | Strict decoding/cache, stable asset registry, change detection, bounded Text Sprite editor, deterministic interpretation, standalone rendering, and reference room exist | Shared authoring/runtime foundation proven | Exercise the visible Stage 3 checklist and later export relocation |
 | Smooth real-time action-RPG play | Delta-time movement, camera, collision, input routing, a target, attack cooldown, damage, and death exist | Feasibility spike complete in breadth; feel unvalidated | Conduct play-feel validation before treating combat APIs as stable |
 | C-first runtime with narrow C++ use | Runtime and public-facing systems are C11; BasilEditor uses C++ for ImGui integration | Aligned | Preserve the C boundary when component and future game-module APIs are introduced |
 | Windows, macOS, and Linux | Cross-platform code paths and CMake structure exist | Not fully verified | Windows is the active verified platform; macOS/Linux need native configure, build, test, and process-control verification |
@@ -118,8 +118,8 @@ review.
 | --- | --- | --- |
 | 0 — Reliable foundation | Mostly achieved on the current Windows development machine | A clean-checkout dependency story and native macOS/Linux verification are still required |
 | 1 — Gameplay feasibility spike | Mechanically implemented; still in progress | Responsiveness and ASCII combat feel need an intentional play-test decision |
-| 2 — Reusable runtime model | In progress with its first coherent slice complete | Explicit ownership, minimal components, asset decoding, and shared rendering exist; stable asset identities and a game-module boundary remain |
-| 3 — Project and asset system | In progress | Stable asset identifiers, file-change detection, actionable asset errors, and relocation across machines remain |
+| 2 — Reusable runtime model | In progress with its first coherent slice complete | Explicit ownership, minimal components, asset identity/decoding, and shared rendering exist; the game-module boundary remains |
+| 3 — Project and asset system | Substantially achieved on Windows | Stable IDs, focused watching, Text Sprite authoring, diagnostics, and relocation tests exist; later runtime asset kinds still need their consumers |
 | 4 — Editor foundation | In progress and healthy | Component authoring and shared-data Viewport preview are active; gameplay remains in the controlled external process |
 | 5 — Project creation | Exit condition achieved on Windows | A new Project can be created, opened, authored, previewed, saved, built, and run end to end; native macOS/Linux and distribution verification remain |
 | 6 — Alpha game-code workflow | Supporting build/diagnostic plumbing only | Code editor, external-editor service, single terminal session, and versioned module boundary remain |
@@ -139,9 +139,10 @@ order merely because a button or panel exists.
 2. **Dependency reproducibility.** Local raylib/ImGui integration works on the
    development machine, but clean-checkout and cross-platform provisioning need
    a deliberate policy before Milestone 0 can be considered fully closed.
-3. **Asset identity and change awareness remain path-based.** Manual preview
-   refresh and transactional caches are safe for this slice, but stable asset
-   identity and focused file-change handling are needed before larger content.
+3. **Asset identity has a deliberate bridge boundary.** The Project registry is
+   authoritative while Workspace schema 3 retains readable path hints. Move
+   repair is transactional, but later component schemas should store IDs
+   directly once custom-component metadata proves the representation.
 4. **Prototype limits may be mistaken for permanent architecture.** The flat
    512-entity Workspace is a useful bounded first format, not a reason to build
    a general ECS now and not a promise of final scale.
@@ -169,14 +170,13 @@ order merely because a button or panel exists.
 
 ### Immediate next work
 
-- Complete the Stage 2 interactive checklist in `EDITOR_RELIABILITY.md`.
-- Begin Stage 3 with stable asset identities and focused file watching.
-- Build the bounded Text Sprite editor on the transactional asset service.
+- Complete the interactive checklists in `EDITOR_RELIABILITY.md` and
+  `ASSET_FOUNDATION.md`.
+- Begin Stage 4 with the versioned native game-module boundary.
+- Define restricted custom-component metadata on stable asset identities.
 
 ### Later
 
-- Stable asset identities and file watching, followed by the bounded Text Sprite
-  editor.
 - Versioned dynamic game modules and safe custom-component metadata.
 - Built-in code editing, external-editor commands, and one terminal session.
 - Alpha runtime services, export, and the Where Birds Nest proof.
@@ -213,12 +213,11 @@ The slice introduced:
 4. Generated entry-point code that runs that shared path.
 5. Tests proving load, validation, render mapping, and the generated workflow.
 
-The slice did not include embedded play, hot reload, hierarchy, arbitrary
-components, a generalized ECS, code editing, terminal hosting, or UI Config
-persistence. Before another implementation slice begins, the next planning
-review should choose one bounded acceptance result. The recommended candidate is
-asset identity and focused file-change/error handling, because it strengthens
-the authoring path without prematurely starting hot reload or a full IDE.
+The completed Runtime Workspace Bridge intentionally excluded the systems above.
+Subsequent alpha stages have now added editor reliability and the bounded asset
+foundation without revising its proven data path. The next bounded acceptance
+result is the native game-module and restricted custom-component metadata
+boundary, not hot reload or a generalized ECS.
 
 ## Recurring scope-check process
 

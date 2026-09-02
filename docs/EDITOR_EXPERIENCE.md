@@ -127,6 +127,11 @@ The core panel set is Workspace Hierarchy, Inspector, Asset Browser, Console,
 Build Output, Problems, Terminal, and Code Editor. The Code Editor remains
 planned; the other windows exist at scaffold level or better.
 
+The dockable Text Sprite Editor is **implemented** as a focused asset tool. It
+provides bounded ASCII editing, dimensions, transparent-space and color preview,
+safe save, and explicit external-change handling. Advanced painting remains
+deferred.
+
 The full-viewport dockspace, main Project/Workspace/View command surface,
 independently dockable Project Details and Workspace Viewport windows, stable
 core-panel identities, and resettable default layout are **implemented**. The

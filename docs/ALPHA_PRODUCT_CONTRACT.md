@@ -265,6 +265,8 @@ manual review, documentation updates, and a reviewable commit.
 
 ### Stage 3: Asset foundation
 
+**Implementation status:** Complete; Windows interactive checklist pending.
+
 - Identity, watching, transactional refresh, and diagnostics work for each alpha
   asset kind.
 - A Text Sprite can be created, edited, previewed, externally changed, moved,

@@ -40,6 +40,7 @@ public:
     bool AddEmptyEntity(std::string& error);
     bool RemoveSelectedEntity(std::string& error);
     bool DuplicateSelectedEntity(std::string& error);
+    bool RemapAssetPath(const std::string& oldPath, const std::string& newPath, std::string& error);
     bool Undo(std::string& error);
     bool Redo(std::string& error);
     bool CanUndo() const;

@@ -53,6 +53,10 @@ bool BEditorDialog_SaveUIConfig(std::filesystem::path& path, std::string& error)
 {
     return FileDialog(true, "BasilEditor UI Configs\0*.basilui.json\0JSON Files\0*.json\0", "basilui.json", path, error);
 }
+bool BEditorDialog_SaveTextSprite(std::filesystem::path& path, std::string& error)
+{
+    return FileDialog(true, "BasilEngine Text Sprites\0*.txt\0", "txt", path, error);
+}
 bool BEditorDialog_SelectFolder(std::filesystem::path& path, std::string& error)
 {
     BROWSEINFOA browse{};
@@ -89,6 +93,7 @@ static bool Unsupported(std::string& error)
 bool BEditorDialog_OpenProject(std::filesystem::path&, std::string& error) { return Unsupported(error); }
 bool BEditorDialog_OpenUIConfig(std::filesystem::path&, std::string& error) { return Unsupported(error); }
 bool BEditorDialog_SaveUIConfig(std::filesystem::path&, std::string& error) { return Unsupported(error); }
+bool BEditorDialog_SaveTextSprite(std::filesystem::path&, std::string& error) { return Unsupported(error); }
 bool BEditorDialog_SelectFolder(std::filesystem::path&, std::string& error) { return Unsupported(error); }
 bool BEditorPlatform_InstallCloseInterceptor(void*, std::string& error) { error.clear(); return true; }
 bool BEditorPlatform_TakeCloseRequest() { return false; }

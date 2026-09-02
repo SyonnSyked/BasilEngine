@@ -69,8 +69,11 @@ bool BEditorUIConfig_Load(const std::string& path, BEditorUIConfig& output, std:
         ReadBool(root, "showAssets", parsed.showAssets) && ReadBool(root, "showConsole", parsed.showConsole) &&
         ReadBool(root, "showBuildOutput", parsed.showBuildOutput) && ReadBool(root, "showProblems", parsed.showProblems) &&
         ReadBool(root, "showTerminal", parsed.showTerminal);
-    if (!validTypes) { cJSON_Delete(root); error = "UI Config is missing required fields or contains incorrect types."; return false; }
-    parsed.schemaVersion = schema->valueint;
+    bool supportedSchema = validTypes && (schema->valueint == 1 || schema->valueint == BEDITOR_UI_CONFIG_SCHEMA_VERSION);
+    if (supportedSchema && schema->valueint == BEDITOR_UI_CONFIG_SCHEMA_VERSION)
+        validTypes = ReadBool(root, "showTextSpriteEditor", parsed.showTextSpriteEditor);
+    if (!validTypes || !supportedSchema) { cJSON_Delete(root); error = "UI Config is missing required fields or uses an unsupported schema."; return false; }
+    parsed.schemaVersion = BEDITOR_UI_CONFIG_SCHEMA_VERSION;
     parsed.leftRatio = static_cast<float>(left->valuedouble);
     parsed.rightRatio = static_cast<float>(right->valuedouble);
     parsed.bottomRatio = static_cast<float>(bottom->valuedouble);
@@ -98,6 +101,7 @@ bool BEditorUIConfig_Save(const std::string& path, const BEditorUIConfig& config
     BASIL_ADD_BOOL(showInspector); BASIL_ADD_BOOL(showWorkspaceViewport);
     BASIL_ADD_BOOL(showAssets); BASIL_ADD_BOOL(showConsole);
     BASIL_ADD_BOOL(showBuildOutput); BASIL_ADD_BOOL(showProblems); BASIL_ADD_BOOL(showTerminal);
+    BASIL_ADD_BOOL(showTextSpriteEditor);
 #undef BASIL_ADD_BOOL
     char* json = cJSON_Print(root); cJSON_Delete(root);
     if (!json) { error = "Could not serialize UI Config."; return false; }
@@ -131,6 +135,7 @@ const char* BEditorPanel_Name(BEditorPanel panel)
         case BEditorPanel::BuildOutput: return "BUILD OUTPUT";
         case BEditorPanel::Problems: return "PROBLEMS";
         case BEditorPanel::Terminal: return "TERMINAL";
+        case BEditorPanel::TextSpriteEditor: return "TEXT SPRITE EDITOR";
     }
 
     return "UNKNOWN PANEL";

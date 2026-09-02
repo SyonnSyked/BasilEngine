@@ -73,6 +73,10 @@ stretch are defined in the [Alpha Product Contract](docs/ALPHA_PRODUCT_CONTRACT.
 - Portable JSON UI Configs with global/Project precedence, import, and export
 - Native Windows Project, folder, and UI Config dialogs
 - Case-insensitive Hierarchy and asset filtering
+- Stable Project asset registry for Text Sprites, JSON data, fonts, and audio,
+  with external change/move detection and reference repair
+- Dockable bounded Text Sprite editor with transactional preview, safe save,
+  transparent-space visualization, and external-edit conflict handling
 - Headless project, generated-build, input, canvas, and combat tests
 
 ## Reference demo

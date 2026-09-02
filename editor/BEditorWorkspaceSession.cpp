@@ -487,6 +487,36 @@ bool BEditorWorkspaceSession::DuplicateSelectedEntity(std::string& error)
     return true;
 }
 
+bool BEditorWorkspaceSession::RemapAssetPath(const std::string& oldPath, const std::string& newPath, std::string& error)
+{
+    if (!loaded_ || oldPath.empty() || newPath.empty() || newPath.size() >= BWORKSPACE_PATH_MAX)
+    { error = "Valid old and new Project asset paths are required."; return false; }
+    std::vector<std::size_t> matches;
+    for (std::size_t i = 0; i < workspace_.entityCount; ++i)
+    {
+        BWorkspaceComponent* component = BWorkspaceEntity_FindComponent(&workspace_.entities[i], BWORKSPACE_ASCII_RENDERABLE_TYPE);
+        if (component && component->data.asciiRenderable.sourceKind == BASCII_SOURCE_TEXT_SPRITE && oldPath == component->data.asciiRenderable.textSpritePath)
+            matches.push_back(i);
+    }
+    if (matches.empty()) { error.clear(); return true; }
+    if (!Capture(undo_, error)) return false;
+    BDiagnosticList diagnostics{};
+    for (std::size_t index : matches)
+    {
+        BWorkspaceComponent* component = BWorkspaceEntity_FindComponent(&workspace_.entities[index], BWORKSPACE_ASCII_RENDERABLE_TYPE);
+        BAsciiRenderable updated = component->data.asciiRenderable;
+        std::snprintf(updated.textSpritePath, sizeof(updated.textSpritePath), "%s", newPath.c_str());
+        if (!BWorkspaceDocument_SetAsciiRenderable(&workspace_, index, &updated, &diagnostics))
+        {
+            auto snapshot = std::move(undo_.back()); undo_.pop_back();
+            Restore(std::move(snapshot), error);
+            error = FirstDiagnosticMessage(diagnostics);
+            return false;
+        }
+    }
+    CommitMutation(); error.clear(); return true;
+}
+
 bool BEditorWorkspaceSession::Undo(std::string& error)
 {
     if (undo_.empty()) { error = "Nothing to undo."; return false; }

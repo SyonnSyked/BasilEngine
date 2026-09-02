@@ -460,11 +460,13 @@ if(BASIL_BUILD_EDITOR_DEPS)
     add_executable(BasilEditor
         editor/BasilEditor.cpp
         editor/BEditorBuildService.cpp
+        editor/BEditorAssetService.cpp
         editor/BEditorGit.cpp
         editor/BEditorPanels.cpp
         editor/BEditorPlatformDialogs.cpp
         editor/BEditorPreferences.cpp
         editor/BEditorTheme.cpp
+        editor/BEditorTextSpriteDocument.cpp
         editor/BEditorUIConfig.cpp
         editor/BEditorWorkspaceSession.cpp
     )
@@ -625,6 +627,30 @@ if(BASIL_BUILD_EDITOR_DEPS)
 
         basil_enable_warnings(BEditorBuildServiceTests)
         add_test(NAME BEditorBuildServiceTests COMMAND BEditorBuildServiceTests)
+
+        add_executable(BEditorAssetServiceTests
+            tests/BEditorAssetServiceTests.cpp
+            editor/BEditorAssetService.cpp
+        )
+        target_include_directories(BEditorAssetServiceTests PRIVATE editor)
+        target_link_libraries(BEditorAssetServiceTests PRIVATE cjson)
+        if(MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            target_link_options(BEditorAssetServiceTests PRIVATE -static -static-libgcc -static-libstdc++)
+        endif()
+        basil_enable_warnings(BEditorAssetServiceTests)
+        add_test(NAME BEditorAssetServiceTests COMMAND BEditorAssetServiceTests)
+
+        add_executable(BEditorTextSpriteDocumentTests
+            tests/BEditorTextSpriteDocumentTests.cpp
+            editor/BEditorTextSpriteDocument.cpp
+        )
+        target_include_directories(BEditorTextSpriteDocumentTests PRIVATE editor)
+        target_link_libraries(BEditorTextSpriteDocumentTests PRIVATE BasilRuntimeWorkspace)
+        if(MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            target_link_options(BEditorTextSpriteDocumentTests PRIVATE -static -static-libgcc -static-libstdc++)
+        endif()
+        basil_enable_warnings(BEditorTextSpriteDocumentTests)
+        add_test(NAME BEditorTextSpriteDocumentTests COMMAND BEditorTextSpriteDocumentTests)
     endif()
 
     add_custom_command(TARGET BasilEditor POST_BUILD

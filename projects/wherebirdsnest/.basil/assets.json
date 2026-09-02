@@ -1,0 +1,16 @@
+{
+	"schemaVersion":	1,
+	"assets":	[{
+			"id":	"asset-4cd22aaa66b511e0",
+			"path":	"assets/arena.txt",
+			"type":	"text-sprite",
+			"size":	1181,
+			"hash":	"20edd3441ced4e03"
+		}, {
+			"id":	"asset-37c7d02565c20340",
+			"path":	"assets/player.txt",
+			"type":	"text-sprite",
+			"size":	8,
+			"hash":	"4a4fe62e21719f94"
+		}]
+}

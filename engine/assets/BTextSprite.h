@@ -44,6 +44,13 @@ bool BTextSprite_Load(
     BTextSprite* destination,
     BDiagnosticList* diagnostics
 );
+bool BTextSprite_Decode(
+    const char* contents,
+    size_t length,
+    const char* relativePath,
+    BTextSprite* destination,
+    BDiagnosticList* diagnostics
+);
 char BTextSprite_Cell(const BTextSprite* sprite, size_t column, size_t row);
 
 void BTextSpriteCache_Init(BTextSpriteCache* cache);

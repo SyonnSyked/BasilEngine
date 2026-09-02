@@ -125,6 +125,10 @@ int main()
             std::string(textRenderable->data.asciiRenderable.textSpritePath) == "assets/sprites/ship.txt",
         "Text Sprite entity stores a portable Project-relative asset path"
     );
+    failures += Check(session.RemapAssetPath("assets/sprites/ship.txt", "assets/sprites/vessel.txt", error), "asset reference remaps transactionally");
+    textRenderable = BWorkspaceEntity_FindComponentConst(session.SelectedEntity(), BWORKSPACE_ASCII_RENDERABLE_TYPE);
+    failures += Check(std::string(textRenderable->data.asciiRenderable.textSpritePath) == "assets/sprites/vessel.txt", "remap updates matching renderable");
+    failures += Check(session.Undo(error), "asset remap participates in undo");
     failures += Check(session.SetSelectedEnabled(false, error), "disabled Text Sprite fixture is configured");
     {
         std::FILE* sprite = std::fopen((root / "assets" / "sprites" / "ship.txt").string().c_str(), "wb");

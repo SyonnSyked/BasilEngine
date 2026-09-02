@@ -58,11 +58,10 @@ deferred.
 
 **Status:** In progress. Versioned JSON manifests, validation, configurable
 C/C++ language rules, a headless empty-project generator, independent build
-verification, and the first editor-facing project browser are implemented.
-Asset identifiers, startup-Workspace runtime loading, native file dialogs, and
-file-change detection remain. A bounded project-relative Text Sprite decoder and
-transactional last-known-good cache are now implemented as the first shared
-asset service.
+verification, editor-facing project browser, stable Project-owned asset
+registry, startup-Workspace runtime loading, native Windows dialogs, focused
+file-change detection, and bounded Text Sprite editor are implemented. Native
+macOS/Linux dialogs and later runtime services remain.
 
 - Add a versioned `.basilproject` manifest.
 - Use portable relative asset paths and stable asset identifiers.

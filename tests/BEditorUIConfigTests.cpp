@@ -52,6 +52,7 @@ int main()
     BEditorUIConfig loaded;
     failures += Check(BEditorUIConfig_Load(path.string(), loaded, error), "UI Config loads");
     failures += Check(loaded.showTerminal && !loaded.showConsole && loaded.leftRatio == 0.3f, "UI Config fields round trip");
+    failures += Check(!loaded.showTextSpriteEditor, "new Text Sprite panel visibility round trips");
     config.showProblems = true;
     failures += Check(BEditorUIConfig_Save(path.string(), config, error), "UI Config replacement saves");
     failures += Check(fs::is_regular_file(path.string() + ".bak"), "UI Config replacement retains backup");
@@ -62,6 +63,15 @@ int main()
     loaded.showTerminal = false;
     failures += Check(!BEditorUIConfig_Load(path.string(), loaded, error), "malformed UI Config is rejected");
     failures += Check(loaded.showTerminal == BEditorUIConfig_Default().showTerminal, "failed load returns safe defaults");
+    {
+        std::ofstream legacy(path, std::ios::trunc);
+        legacy << "{\"schemaVersion\":1,\"leftRatio\":0.22,\"rightRatio\":0.22,\"bottomRatio\":0.25,"
+            "\"showProjectDetails\":true,\"showWorkspaceHierarchy\":true,\"showInspector\":true,"
+            "\"showWorkspaceViewport\":true,\"showAssets\":true,\"showConsole\":true,"
+            "\"showBuildOutput\":false,\"showProblems\":false,\"showTerminal\":false}";
+    }
+    failures += Check(BEditorUIConfig_Load(path.string(), loaded, error), "schema-1 UI Config migrates in memory");
+    failures += Check(loaded.schemaVersion == BEDITOR_UI_CONFIG_SCHEMA_VERSION && !loaded.showTextSpriteEditor, "migration supplies the new panel default");
     fs::remove_all(root);
 
     if (failures == 0)
