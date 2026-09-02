@@ -3,13 +3,15 @@
 
 #include <string>
 
-constexpr int BEDITOR_PREFERENCES_SCHEMA_VERSION = 1;
+constexpr int BEDITOR_PREFERENCES_SCHEMA_VERSION = 2;
 constexpr float BEDITOR_DEFAULT_INTERFACE_SCALE = 1.35f;
 
 struct BEditorPreferences
 {
     int schemaVersion = BEDITOR_PREFERENCES_SCHEMA_VERSION;
     float interfaceScale = BEDITOR_DEFAULT_INTERFACE_SCALE;
+    std::string externalEditor = "notepad.exe";
+    std::string terminal = "powershell.exe";
 };
 
 BEditorPreferences BEditorPreferences_Default();

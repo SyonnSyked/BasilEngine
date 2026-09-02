@@ -69,6 +69,7 @@ struct EditorState
     bool confirmApplicationClose = false;
     bool confirmRecovery = false;
     bool showUIConfigManager = false;
+    bool showToolSettings = false;
     bool exitApproved = false;
     double recoveryDueTime = 0.0;
     std::uint64_t recoveryObservedRevision = 0;
@@ -764,6 +765,12 @@ static void DrawEditorMenuBar(EditorState& state)
         ImGui::EndMenu();
     }
 
+    if (ImGui::BeginMenu("Tools"))
+    {
+        if (ImGui::MenuItem("Programming Tools...")) state.showToolSettings = true;
+        ImGui::EndMenu();
+    }
+
     ImGui::BeginDisabled(state.buildService.IsBusy());
 
     if (ImGui::MenuItem("Build"))
@@ -816,6 +823,25 @@ static void DrawEditorMenuBar(EditorState& state)
         statusText
     );
     ImGui::EndMainMenuBar();
+
+    if (state.showToolSettings) ImGui::OpenPopup("PROGRAMMING TOOL SETTINGS");
+    if (ImGui::BeginPopupModal("PROGRAMMING TOOL SETTINGS", &state.showToolSettings, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        static char editorCommand[1025]{}; static char terminalCommand[1025]{}; static bool initialized = false;
+        if (!initialized) { std::snprintf(editorCommand, sizeof(editorCommand), "%s", state.preferences.externalEditor.c_str()); std::snprintf(terminalCommand, sizeof(terminalCommand), "%s", state.preferences.terminal.c_str()); initialized = true; }
+        ImGui::TextDisabled("Executable names or absolute executable paths");
+        ImGui::InputText("External editor", editorCommand, sizeof(editorCommand));
+        ImGui::InputText("Terminal", terminalCommand, sizeof(terminalCommand));
+        if (ImGui::Button("SAVE"))
+        {
+            state.preferences.externalEditor = editorCommand; state.preferences.terminal = terminalCommand; std::string error;
+            bool ok = BEditorPreferences_Save(state.preferencesPath.string(), state.preferences, error);
+            SetMessage(state, ok ? "Programming tool settings saved." : error.c_str(), !ok);
+            if (ok) { state.showToolSettings = false; initialized = false; ImGui::CloseCurrentPopup(); }
+        }
+        ImGui::SameLine(); if (ImGui::Button("CANCEL")) { state.showToolSettings = false; initialized = false; ImGui::CloseCurrentPopup(); }
+        ImGui::EndPopup();
+    }
 }
 
 static void BuildDefaultDockLayout(ImGuiID dockspaceId, const BEditorUIConfig& config)
@@ -1089,11 +1115,38 @@ static void DrawCodeEditor(EditorState& state)
         BEditorCodeDocument& document = documents[state.activeCodeTab];
         if (ImGui::SmallButton("SAVE")) { std::string error; bool ok = state.codeWorkspace.Save(state.activeCodeTab, error); SetMessage(state, ok ? "Source file saved." : error.c_str(), !ok); }
         ImGui::SameLine();
-        if (ImGui::SmallButton("EXTERNAL EDITOR")) { std::string error; bool ok = BEditorPlatform_OpenExternalEditor(state.codeWorkspace.Root() / document.relativePath, error); SetMessage(state, ok ? "Opened external editor." : error.c_str(), !ok); }
+        if (ImGui::SmallButton("RELOAD")) { std::string error; bool ok = state.codeWorkspace.Reload(state.activeCodeTab, error); SetMessage(state, ok ? "Source file reloaded." : error.c_str(), !ok); }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("CLOSE")) { std::string error; bool ok = state.codeWorkspace.Close(state.activeCodeTab, false, error); SetMessage(state, ok ? "Source tab closed." : error.c_str(), !ok); if (ok) { if (state.activeCodeTab) --state.activeCodeTab; ImGui::EndGroup(); ImGui::End(); return; } }
+        ImGui::SameLine();
+        static char renamePath[512]{};
+        if (ImGui::SmallButton("RENAME")) { std::snprintf(renamePath, sizeof(renamePath), "%s", document.relativePath.c_str()); ImGui::OpenPopup("RENAME PROJECT FILE"); }
+        if (ImGui::BeginPopup("RENAME PROJECT FILE"))
+        {
+            ImGui::InputText("New Project path", renamePath, sizeof(renamePath));
+            if (ImGui::Button("APPLY")) { std::string error; std::string oldPath = document.relativePath; bool ok = state.codeWorkspace.RenameFile(oldPath, renamePath, error); SetMessage(state, ok ? "Project file renamed." : error.c_str(), !ok); if (ok) ImGui::CloseCurrentPopup(); }
+            ImGui::EndPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("DELETE")) ImGui::OpenPopup("DELETE PROJECT FILE");
+        if (ImGui::BeginPopup("DELETE PROJECT FILE"))
+        {
+            ImGui::TextWrapped("Delete %s?", document.relativePath.c_str());
+            if (ImGui::Button("DELETE"))
+            {
+                std::string error; std::string path = document.relativePath;
+                bool ok = state.codeWorkspace.Close(state.activeCodeTab, false, error) && state.codeWorkspace.DeleteFile(path, error);
+                SetMessage(state, ok ? "Project file deleted." : error.c_str(), !ok);
+                if (ok) { if (state.activeCodeTab) --state.activeCodeTab; ImGui::CloseCurrentPopup(); ImGui::EndPopup(); ImGui::EndGroup(); ImGui::End(); return; }
+            }
+            ImGui::EndPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("EXTERNAL EDITOR")) { std::string error; bool ok = BEditorPlatform_OpenExternalEditor(state.codeWorkspace.Root() / document.relativePath, state.preferences.externalEditor, error); SetMessage(state, ok ? "Opened external editor." : error.c_str(), !ok); }
         ImGui::SameLine();
         if (ImGui::SmallButton("REVEAL")) { std::string error; bool ok = BEditorPlatform_RevealFile(state.codeWorkspace.Root() / document.relativePath, error); SetMessage(state, ok ? "Revealed Project file." : error.c_str(), !ok); }
         ImGui::SameLine();
-        if (ImGui::SmallButton("POWERSHELL")) { std::string error; bool ok = BEditorPlatform_OpenTerminal(state.codeWorkspace.Root(), error); SetMessage(state, ok ? "Opened Project terminal." : error.c_str(), !ok); }
+        if (ImGui::SmallButton("TERMINAL")) { std::string error; bool ok = BEditorPlatform_OpenTerminal(state.codeWorkspace.Root(), state.preferences.terminal, error); SetMessage(state, ok ? "Opened Project terminal." : error.c_str(), !ok); }
         ImGui::SetNextItemWidth(180.0f);
         ImGui::InputTextWithHint("##CodeFind", "Find", state.codeFind, sizeof(state.codeFind));
         ImGui::SameLine();
@@ -1263,6 +1316,13 @@ static void DrawEditorShell(EditorState& state)
             state.uiConfig.showCodeEditor = true;
             const auto& documents = state.codeWorkspace.Documents();
             for (std::size_t i = 0; i < documents.size(); ++i) if (documents[i].relativePath == feedback.openFile) state.activeCodeTab = i;
+            if (feedback.openLine > 0)
+            {
+                state.codeGoToLine = feedback.openLine; std::size_t position = 0;
+                const std::string& text = documents[state.activeCodeTab].text;
+                for (int line = 1; line < feedback.openLine && position < text.size(); ++line) { position = text.find('\n', position); if (position == std::string::npos) { position = text.size(); break; } ++position; }
+                state.codeCursorTarget = static_cast<int>(position);
+            }
         }
         else SetMessage(state, error.c_str(), true);
     }

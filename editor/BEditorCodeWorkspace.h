@@ -23,6 +23,8 @@ public:
     bool SetText(std::size_t tab, const std::string& text, std::string& error);
     bool Save(std::size_t tab, std::string& error);
     bool SaveAll(std::string& error);
+    bool Reload(std::size_t tab, std::string& error);
+    bool Close(std::size_t tab, bool discardChanges, std::string& error);
     bool PollExternalChanges(std::string& error);
     bool CreateFile(const std::string& relativePath, std::string& error);
     bool RenameFile(const std::string& oldPath, const std::string& newPath, std::string& error);

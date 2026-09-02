@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstdlib>
 #include <cstdio>
 #include <cstring>
 #include <system_error>
@@ -588,7 +589,13 @@ BEditorPanelFeedback DrawProblems(BEditorUIConfig& config, const BEditorBuildSer
             {
                 if (ImGui::Selectable(problem.c_str()))
                     for (const std::string& path : codeWorkspace.Files())
-                        if (problem.find(path) != std::string::npos) { feedback.openFile = path; break; }
+                        if (std::size_t position = problem.find(path); position != std::string::npos)
+                        {
+                            feedback.openFile = path;
+                            position += path.size();
+                            if (position < problem.size() && problem[position] == ':') feedback.openLine = std::atoi(problem.c_str() + position + 1);
+                            break;
+                        }
             }
         }
     }
@@ -613,7 +620,7 @@ void DrawTerminal(BEditorUIConfig& config, const fs::path& projectRoot)
         if (ImGui::Button("OPEN PROJECT TERMINAL", ImVec2(-1.0f, 0.0f)))
         {
             std::string error;
-            BEditorPlatform_OpenTerminal(projectRoot, error);
+            BEditorPlatform_OpenTerminal(projectRoot, "powershell.exe", error);
         }
         ImGui::Spacing();
         ImGui::TextDisabled("PLANNED DEFAULT");
@@ -654,6 +661,7 @@ BEditorPanelFeedback BEditorPanels_DrawScaffolds(
     DrawBuildOutput(config, buildService);
     BEditorPanelFeedback problemFeedback = DrawProblems(config, buildService, codeWorkspace);
     if (!problemFeedback.openFile.empty()) feedback.openFile = problemFeedback.openFile;
+    if (problemFeedback.openLine > 0) feedback.openLine = problemFeedback.openLine;
     DrawTerminal(config, projectRoot);
     return feedback;
 }

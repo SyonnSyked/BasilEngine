@@ -197,11 +197,12 @@ editing surface are implemented with dirty-state, Save All, close/build
 protection, transactional writes, and external-change conflict detection. It
 also provides find/replace, go-to-line, compiler-problem file navigation, file
 creation, Open in External Editor, Reveal in File Browser, and a Project-root
-terminal launch bridge. External editor and terminal executables can currently
-be overridden with `BASIL_EXTERNAL_EDITOR` and `BASIL_TERMINAL`; persistent
-editor settings and embedded terminal hosting remain in this stage. Line-number
-presentation, syntax highlighting, remaining file operations, bracket/indent
-helpers, and precise diagnostic line placement are the remaining editor polish.
+terminal launch bridge. External editor and terminal executable settings persist
+in the global editor preferences and remain optionally overridable with
+`BASIL_EXTERNAL_EDITOR` and `BASIL_TERMINAL`. Clean-file rename/delete/reload,
+protected tab closing, and precise compiler diagnostic line placement are also
+implemented. Embedded terminal hosting, line-number/syntax presentation, and
+bracket/indent helpers remain in this stage.
 
 Language-server completion, semantic navigation, refactoring, and deeper IDE
 features are **deferred** until the core workflow is useful. External-editor

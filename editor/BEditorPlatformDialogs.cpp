@@ -86,10 +86,10 @@ void BEditorPlatform_RemoveCloseInterceptor()
     if (closeWindow && originalWindowProcedure) SetWindowLongPtrA(closeWindow, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(originalWindowProcedure));
     closeWindow = nullptr; originalWindowProcedure = nullptr; closeRequested = false;
 }
-bool BEditorPlatform_OpenExternalEditor(const std::filesystem::path& file, std::string& error)
+bool BEditorPlatform_OpenExternalEditor(const std::filesystem::path& file, const std::string& command, std::string& error)
 {
     const char* configured = std::getenv("BASIL_EXTERNAL_EDITOR");
-    std::string executable = configured && *configured ? configured : "notepad.exe";
+    std::string executable = configured && *configured ? configured : command;
     std::string arguments = "\"" + file.string() + "\"";
     if ((INT_PTR)ShellExecuteA(nullptr, "open", executable.c_str(), arguments.c_str(), file.parent_path().string().c_str(), SW_SHOWNORMAL) <= 32)
     { error = "Could not launch external editor. Set BASIL_EXTERNAL_EDITOR to an executable path."; return false; }
@@ -102,10 +102,10 @@ bool BEditorPlatform_RevealFile(const std::filesystem::path& file, std::string& 
     { error = "Could not reveal the Project file."; return false; }
     error.clear(); return true;
 }
-bool BEditorPlatform_OpenTerminal(const std::filesystem::path& directory, std::string& error)
+bool BEditorPlatform_OpenTerminal(const std::filesystem::path& directory, const std::string& command, std::string& error)
 {
     const char* configured = std::getenv("BASIL_TERMINAL");
-    std::string executable = configured && *configured ? configured : "powershell.exe";
+    std::string executable = configured && *configured ? configured : command;
     if ((INT_PTR)ShellExecuteA(nullptr, "open", executable.c_str(), nullptr, directory.string().c_str(), SW_SHOWNORMAL) <= 32)
     { error = "Could not launch the configured terminal. Set BASIL_TERMINAL to an executable path."; return false; }
     error.clear(); return true;
@@ -124,7 +124,7 @@ bool BEditorDialog_SelectFolder(std::filesystem::path&, std::string& error) { re
 bool BEditorPlatform_InstallCloseInterceptor(void*, std::string& error) { error.clear(); return true; }
 bool BEditorPlatform_TakeCloseRequest() { return false; }
 void BEditorPlatform_RemoveCloseInterceptor() {}
-bool BEditorPlatform_OpenExternalEditor(const std::filesystem::path&, std::string& error) { return Unsupported(error); }
+bool BEditorPlatform_OpenExternalEditor(const std::filesystem::path&, const std::string&, std::string& error) { return Unsupported(error); }
 bool BEditorPlatform_RevealFile(const std::filesystem::path&, std::string& error) { return Unsupported(error); }
-bool BEditorPlatform_OpenTerminal(const std::filesystem::path&, std::string& error) { return Unsupported(error); }
+bool BEditorPlatform_OpenTerminal(const std::filesystem::path&, const std::string&, std::string& error) { return Unsupported(error); }
 #endif

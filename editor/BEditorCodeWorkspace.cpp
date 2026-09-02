@@ -78,6 +78,8 @@ bool BEditorCodeWorkspace::Save(std::size_t tab, std::string& error)
 }
 
 bool BEditorCodeWorkspace::SaveAll(std::string& error) { for (std::size_t i = 0; i < documents_.size(); ++i) if (documents_[i].dirty && !Save(i, error)) return false; error.clear(); return true; }
+bool BEditorCodeWorkspace::Reload(std::size_t tab, std::string& error) { if (tab >= documents_.size()) { error = "Editor tab is unavailable."; return false; } fs::path path; if (!Resolve(documents_[tab].relativePath, path, error)) return false; std::string text; if (!Read(path, text)) { error = "Could not reload Project file."; return false; } documents_[tab].text = std::move(text); documents_[tab].diskTime = fs::last_write_time(path); documents_[tab].dirty = false; documents_[tab].externalConflict = false; error.clear(); return true; }
+bool BEditorCodeWorkspace::Close(std::size_t tab, bool discardChanges, std::string& error) { if (tab >= documents_.size()) { error = "Editor tab is unavailable."; return false; } if (documents_[tab].dirty && !discardChanges) { error = "File has unsaved changes."; return false; } documents_.erase(documents_.begin() + static_cast<std::ptrdiff_t>(tab)); error.clear(); return true; }
 bool BEditorCodeWorkspace::PollExternalChanges(std::string& error)
 {
     for (auto& document : documents_) { fs::path path; if (!Resolve(document.relativePath, path, error)) return false; std::error_code ec; auto time = fs::last_write_time(path, ec); if (ec) { error = "An open Project file was removed externally."; return false; } if (time != document.diskTime) { if (document.dirty) document.externalConflict = true; else { if (!Read(path, document.text)) { error = "Could not refresh externally changed file."; return false; } document.diskTime = time; } } }

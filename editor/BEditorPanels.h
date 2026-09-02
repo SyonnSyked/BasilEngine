@@ -21,6 +21,7 @@ struct BEditorPanelFeedback
     std::string message;
     bool isError = false;
     std::string openFile;
+    int openLine = 0;
 };
 
 BEditorPanelFeedback BEditorPanels_DrawScaffolds(

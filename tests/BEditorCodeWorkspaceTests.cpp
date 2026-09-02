@@ -17,5 +17,6 @@ int main()
     failures += Check(!code.OpenFile("../outside.c", error), "root escape is rejected");
     std::ofstream(root / "source/game.c", std::ios::binary | std::ios::trunc) << "external\n"; fs::last_write_time(root / "source/game.c", fs::file_time_type::clock::now() + std::chrono::seconds(2)); failures += Check(code.PollExternalChanges(error) && code.Documents()[0].text == "external\n", "clean external edit refreshes");
     code.SetText(0, "dirty\n", error); std::ofstream(root / "source/game.c", std::ios::binary | std::ios::trunc) << "conflict\n"; fs::last_write_time(root / "source/game.c", fs::file_time_type::clock::now() + std::chrono::seconds(4)); failures += Check(code.PollExternalChanges(error) && code.Documents()[0].externalConflict, "dirty external edit becomes conflict");
+    failures += Check(!code.Close(0, false, error), "dirty close is protected"); failures += Check(code.Reload(0, error) && !code.Documents()[0].externalConflict, "explicit reload resolves conflict"); failures += Check(code.Close(0, false, error), "clean tab closes");
     fs::remove_all(root); if (!failures) std::printf("BEditorCodeWorkspaceTests passed.\n"); return failures ? 1 : 0;
 }
