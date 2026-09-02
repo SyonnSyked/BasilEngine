@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(BasilEngine C CXX)
+project(BasilEngine C)
 
 include(CTest)
 
@@ -10,6 +10,16 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BASIL_BUILD_EDITOR_DEPS "Build the currently unwired ImGui editor dependencies" OFF)
+option(BASIL_BUILD_PROJECT_TOOL "Build the headless BasilEngine project tool" ON)
+option(BASIL_BUILD_REFERENCE_GAME "Build the Where Birds Nest reference game" ON)
+
+function(basil_enable_warnings target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4)
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+endfunction()
 
 set(BASIL_RAYLIB_ROOT "" CACHE PATH "Optional root directory of a raylib installation or source tree")
 set(BASIL_TOOLS_ROOT "" CACHE PATH "Optional root directory of a BasilsTools source tree")
@@ -104,6 +114,29 @@ else()
     set(BASIL_TOOLS_TARGET BasilToolsDependency)
 endif()
 
+add_library(cjson STATIC
+    thirdparty/cjson/cJSON.c
+)
+
+target_include_directories(cjson PUBLIC
+    thirdparty/cjson
+)
+
+add_library(BasilProject STATIC
+    engine/project/BProject.c
+    engine/project/BProjectGenerator.c
+)
+
+target_include_directories(BasilProject PUBLIC
+    engine/project
+)
+
+target_link_libraries(BasilProject PRIVATE
+    cjson
+)
+
+basil_enable_warnings(BasilProject)
+
 add_library(BasilEngine STATIC
     engine/core/BEngine.c
     engine/core/BApplication.c
@@ -146,29 +179,87 @@ if(BASIL_RAYLIB_IS_RAW_ARCHIVE)
     endif()
 endif()
 
-if(MSVC)
-    target_compile_options(BasilEngine PRIVATE /W4)
-else()
-    target_compile_options(BasilEngine PRIVATE -Wall -Wextra -Wpedantic)
+basil_enable_warnings(BasilEngine)
+
+if(BASIL_BUILD_PROJECT_TOOL)
+    add_executable(BasilProjectTool
+        tools/project/BProjectTool.c
+    )
+
+    target_link_libraries(BasilProjectTool PRIVATE
+        BasilProject
+    )
+
+    basil_enable_warnings(BasilProjectTool)
 endif()
 
-add_executable(WhereBirdsNest
-    projects/wherebirdsnest/main.c
-    projects/wherebirdsnest/WBNCombat.c
-)
+if(BASIL_BUILD_REFERENCE_GAME)
+    add_executable(WhereBirdsNest
+        projects/wherebirdsnest/main.c
+        projects/wherebirdsnest/WBNCombat.c
+    )
 
-file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/assets/wherebirdsnest")
-configure_file(
-    projects/wherebirdsnest/assets/arena.txt
-    "${CMAKE_CURRENT_BINARY_DIR}/assets/wherebirdsnest/arena.txt"
-    COPYONLY
-)
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/assets/wherebirdsnest")
+    configure_file(
+        projects/wherebirdsnest/assets/arena.txt
+        "${CMAKE_CURRENT_BINARY_DIR}/assets/wherebirdsnest/arena.txt"
+        COPYONLY
+    )
 
-target_link_libraries(WhereBirdsNest PRIVATE
-    BasilEngine
-)
+    target_link_libraries(WhereBirdsNest PRIVATE
+        BasilEngine
+    )
+endif()
 
 if(BUILD_TESTING)
+    add_executable(BProjectTests
+        tests/BProjectTests.c
+    )
+
+    target_link_libraries(BProjectTests PRIVATE
+        BasilProject
+    )
+
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test-fixtures")
+    configure_file(
+        tests/fixtures/project-invalid-json.basilproject
+        "${CMAKE_CURRENT_BINARY_DIR}/test-fixtures/project-invalid-json.basilproject"
+        COPYONLY
+    )
+    configure_file(
+        tests/fixtures/project-fractional-standard.basilproject
+        "${CMAKE_CURRENT_BINARY_DIR}/test-fixtures/project-fractional-standard.basilproject"
+        COPYONLY
+    )
+    configure_file(
+        tests/fixtures/project-unsupported-version.basilproject
+        "${CMAKE_CURRENT_BINARY_DIR}/test-fixtures/project-unsupported-version.basilproject"
+        COPYONLY
+    )
+
+    add_test(NAME BProjectTests COMMAND BProjectTests)
+
+    if(BASIL_BUILD_PROJECT_TOOL)
+        add_test(
+            NAME GeneratedProjectBuild
+            COMMAND ${CMAKE_COMMAND}
+                -DPROJECT_TOOL=$<TARGET_FILE:BasilProjectTool>
+                -DENGINE_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+                -DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/generated-project-test
+                -DTEST_GENERATOR=${CMAKE_GENERATOR}
+                -DTEST_C_COMPILER=${CMAKE_C_COMPILER}
+                -DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                -DTEST_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+                -DRAYLIB_ROOT=${BASIL_RAYLIB_ROOT}
+                -DTOOLS_ROOT=${BASIL_TOOLS_ROOT}
+                -DRAYLIB_INCLUDE_DIR=${BASIL_RAYLIB_INCLUDE_DIR}
+                -DRAYLIB_LIBRARY=${BASIL_RAYLIB_LIBRARY}
+                -DTOOLS_INCLUDE_DIR=${BASIL_TOOLS_INCLUDE_DIR}
+                -DTOOLS_LIBRARY=${BASIL_TOOLS_LIBRARY}
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/GeneratedProjectBuild.cmake
+        )
+    endif()
+
     add_executable(WBNCombatTests
         tests/WBNCombatTests.c
         projects/wherebirdsnest/WBNCombat.c
@@ -202,6 +293,8 @@ if(BUILD_TESTING)
 endif()
 
 if(BASIL_BUILD_EDITOR_DEPS)
+    enable_language(CXX)
+
     if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/imgui/imgui.cpp"
         OR NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/rlimgui/rlImGui.cpp")
         message(FATAL_ERROR

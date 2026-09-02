@@ -25,7 +25,8 @@ See the [project charter](docs/PROJECT_CHARTER.md), [roadmap](docs/ROADMAP.md),
 - Plain-text ASCII asset loading and runtime glyph editing
 - Smooth world-space movement, camera tracking, and collision
 - A small `WhereBirdsNest` combat feasibility arena
-- Headless input, canvas, and combat tests
+- Versioned JSON project manifests and a headless empty-project generator
+- Headless project, generated-build, input, canvas, and combat tests
 
 ## Reference demo
 
@@ -76,6 +77,35 @@ trees are available. They remain off by default until an editor target uses
 them.
 
 The demo executable is generated at `build/WhereBirdsNest.exe`.
+
+## Creating an empty project
+
+The current headless tool creates C-only, C++-only, or mixed projects. Mixed
+C11/C++26 is the default:
+
+```powershell
+.\build\BasilProjectTool.exe create "My Game" MyGame C:\Projects
+```
+
+Language rules can be selected without editing the generator:
+
+```powershell
+.\build\BasilProjectTool.exe create "My C Game" MyCGame C:\Projects `
+    --language c --c-standard 17
+```
+
+Generated projects contain a versioned `.basilproject` manifest, editable CMake
+configuration, an engine lifecycle entry point, empty asset/scene directories,
+and a suitable `.gitignore`. Configure one by supplying the current engine
+source location and the same dependency hints used by BasilEngine:
+
+```powershell
+cmake -S C:\Projects\MyGame -B C:\Projects\MyGame\build `
+    -DBASIL_ENGINE_ROOT=C:\path\to\BasilEngine `
+    -DBASIL_RAYLIB_ROOT=C:\path\to\raylib `
+    -DBASIL_TOOLS_ROOT=C:\path\to\BasilsTools
+cmake --build C:\Projects\MyGame\build
+```
 
 ## Repository layout
 

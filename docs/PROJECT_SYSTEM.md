@@ -1,8 +1,9 @@
 # BasilEngine Project System
 
 This document records the agreed direction for creating and opening independent
-BasilEngine projects. It is a product specification, not a claim that these
-features are already implemented.
+BasilEngine projects. The versioned manifest, validation, JSON persistence,
+headless generator, and independent generated-project build are implemented.
+The BasilEditor workflow remains future work.
 
 ## User workflow
 

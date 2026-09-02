@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "name": "Fractional",
+  "identifier": "Fractional",
+  "languages": {
+    "mode": "mixed",
+    "cStandard": 11.5,
+    "cppStandard": 26
+  },
+  "startupScene": ""
+}
+

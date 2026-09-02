@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 999,
+  "name": "Future Project",
+  "identifier": "FutureProject",
+  "languages": {
+    "mode": "mixed",
+    "cStandard": 11,
+    "cppStandard": 26
+  },
+  "startupScene": ""
+}
+

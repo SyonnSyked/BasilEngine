@@ -52,6 +52,11 @@ deferred.
 
 ## Milestone 3: Project and asset system
 
+**Status:** In progress. Versioned JSON manifests, validation, configurable
+C/C++ language rules, a headless empty-project generator, and independent build
+verification are implemented. Asset identifiers, startup-scene loading,
+file-change detection, and the editor-facing project browser remain.
+
 - Add a versioned `.basilproject` manifest.
 - Use portable relative asset paths and stable asset identifiers.
 - Store startup scene, renderer settings, and input mappings.
