@@ -178,7 +178,11 @@ BEditorPanelFeedback DrawWorkspaceHierarchy(
     return feedback;
 }
 
-BEditorPanelFeedback DrawInspector(BEditorUIConfig& config, BEditorWorkspaceSession& session)
+BEditorPanelFeedback DrawInspector(
+    BEditorUIConfig& config,
+    BEditorWorkspaceSession& session,
+    const BEditorComponentRegistry& registry
+)
 {
     if (!config.showInspector)
         return {};
@@ -324,6 +328,35 @@ BEditorPanelFeedback DrawInspector(BEditorUIConfig& config, BEditorWorkspaceSess
                     std::string error;
                     SetFeedback(feedback, session.SetSelectedRenderable(renderable, error), "ASCII Renderable modified.", error);
                 }
+            }
+
+            for (const BEditorComponentType& type : registry.Types())
+            {
+                BWorkspaceComponent* component = BWorkspaceEntity_FindComponent(entity, type.id.c_str());
+                if (component)
+                {
+                    ImGui::SeparatorText(type.displayName.c_str());
+                    for (const BEditorComponentField& field : type.fields)
+                        ImGui::TextDisabled("%s // %s", field.displayName.c_str(), field.id.c_str());
+                    ImGui::TextWrapped("%s", component->data.unknownDataJson);
+                }
+            }
+
+            if (!registry.Types().empty() && ImGui::BeginCombo("ADD PROJECT COMPONENT", "SELECT TYPE"))
+            {
+                for (const BEditorComponentType& type : registry.Types())
+                {
+                    bool exists = BWorkspaceEntity_FindComponent(entity, type.id.c_str()) != nullptr;
+                    if (ImGui::Selectable(type.displayName.c_str(), false, exists ? ImGuiSelectableFlags_Disabled : 0))
+                    {
+                        std::string data;
+                        std::string error;
+                        bool succeeded = registry.DefaultDataJson(type.id, data, error) &&
+                            session.AddSelectedCustomComponent(type.id, type.version, data, error);
+                        SetFeedback(feedback, succeeded, "Project component added.", error);
+                    }
+                }
+                ImGui::EndCombo();
             }
 
             ImGui::Spacing();
@@ -586,6 +619,7 @@ BEditorPanelFeedback BEditorPanels_DrawScaffolds(
     const BProject& project,
     BEditorWorkspaceSession& workspaceSession,
     BEditorAssetService& assetService,
+    const BEditorComponentRegistry& componentRegistry,
     BEditorTextSpriteDocument& textSpriteDocument,
     const BEditorBuildService& buildService,
     const fs::path& projectRoot,
@@ -594,7 +628,7 @@ BEditorPanelFeedback BEditorPanels_DrawScaffolds(
 )
 {
     BEditorPanelFeedback feedback = DrawWorkspaceHierarchy(config, project, workspaceSession);
-    BEditorPanelFeedback inspectorFeedback = DrawInspector(config, workspaceSession);
+    BEditorPanelFeedback inspectorFeedback = DrawInspector(config, workspaceSession, componentRegistry);
 
     if (!inspectorFeedback.message.empty())
         feedback = inspectorFeedback;

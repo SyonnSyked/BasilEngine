@@ -18,4 +18,13 @@ set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 add_subdirectory("${BASIL_ENGINE_ROOT}" "${CMAKE_BINARY_DIR}/_basilengine")
 
 add_executable(WhereBirdsNest source/main.c)
+add_library(WhereBirdsNestGame MODULE source/game.c)
+set_target_properties(WhereBirdsNestGame PROPERTIES PREFIX "" OUTPUT_NAME "WhereBirdsNest.candidate")
 target_link_libraries(WhereBirdsNest PRIVATE BasilEngine)
+target_link_libraries(WhereBirdsNestGame PRIVATE BasilGameAPI)
+add_dependencies(WhereBirdsNest WhereBirdsNestGame)
+add_custom_command(TARGET WhereBirdsNestGame POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "$<TARGET_FILE:WhereBirdsNestGame>"
+        "$<TARGET_FILE_DIR:WhereBirdsNest>/WhereBirdsNest.game${CMAKE_SHARED_MODULE_SUFFIX}"
+)

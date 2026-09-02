@@ -177,19 +177,25 @@ add_library(BasilEngine STATIC
     engine/debug/BConsole.c 
     engine/input/BInput.c
     engine/runtime/BGeneratedRuntime.c
+    engine/runtime/BDynamicLibrary.c
 )
+
+add_library(BasilGameAPI INTERFACE)
+target_include_directories(BasilGameAPI INTERFACE engine/runtime)
 
 target_include_directories(BasilEngine PUBLIC
     engine/core
     engine/rendering
     engine/debug
     engine/input
+    engine/runtime
 )
 
 target_link_libraries(BasilEngine PUBLIC
     BasilRuntimeWorkspace
     ${BASIL_RAYLIB_TARGET}
     ${BASIL_TOOLS_TARGET}
+    ${CMAKE_DL_LIBS}
 )
 
 # A raw static archive does not carry raylib's platform link requirements.
@@ -461,6 +467,7 @@ if(BASIL_BUILD_EDITOR_DEPS)
         editor/BasilEditor.cpp
         editor/BEditorBuildService.cpp
         editor/BEditorAssetService.cpp
+        editor/BEditorComponentRegistry.cpp
         editor/BEditorGit.cpp
         editor/BEditorPanels.cpp
         editor/BEditorPlatformDialogs.cpp
@@ -651,6 +658,18 @@ if(BASIL_BUILD_EDITOR_DEPS)
         endif()
         basil_enable_warnings(BEditorTextSpriteDocumentTests)
         add_test(NAME BEditorTextSpriteDocumentTests COMMAND BEditorTextSpriteDocumentTests)
+
+        add_executable(BEditorComponentRegistryTests
+            tests/BEditorComponentRegistryTests.cpp
+            editor/BEditorComponentRegistry.cpp
+        )
+        target_include_directories(BEditorComponentRegistryTests PRIVATE editor)
+        target_link_libraries(BEditorComponentRegistryTests PRIVATE BasilRuntimeWorkspace cjson)
+        if(MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            target_link_options(BEditorComponentRegistryTests PRIVATE -static -static-libgcc -static-libstdc++)
+        endif()
+        basil_enable_warnings(BEditorComponentRegistryTests)
+        add_test(NAME BEditorComponentRegistryTests COMMAND BEditorComponentRegistryTests)
     endif()
 
     add_custom_command(TARGET BasilEditor POST_BUILD

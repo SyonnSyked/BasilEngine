@@ -99,18 +99,24 @@ int main(void)
     char manifestPath[BPROJECT_PATH_MAX];
     char cmakePath[BPROJECT_PATH_MAX];
     char mainPath[BPROJECT_PATH_MAX];
+    char gamePath[BPROJECT_PATH_MAX];
+    char componentsPath[BPROJECT_PATH_MAX];
     char cppPath[BPROJECT_PATH_MAX];
     char workspacePath[BPROJECT_PATH_MAX];
     snprintf(root, sizeof(root), "./%s", uniqueIdentifier);
     snprintf(manifestPath, sizeof(manifestPath), "%s/%s.basilproject", root, uniqueIdentifier);
     snprintf(cmakePath, sizeof(cmakePath), "%s/CMakeLists.txt", root);
     snprintf(mainPath, sizeof(mainPath), "%s/source/main.c", root);
+    snprintf(gamePath, sizeof(gamePath), "%s/source/game.c", root);
+    snprintf(componentsPath, sizeof(componentsPath), "%s/.basil/components.json", root);
     snprintf(cppPath, sizeof(cppPath), "%s/source/ProjectExtension.cpp", root);
     snprintf(workspacePath, sizeof(workspacePath), "%s/workspaces/Main.basilworkspace", root);
 
     failures += Check(FileExists(manifestPath), "generator writes manifest");
     failures += Check(FileExists(cmakePath), "generator writes editable CMake file");
     failures += Check(FileExists(mainPath), "generator writes C entry point");
+    failures += Check(FileExists(gamePath), "generator writes native game module");
+    failures += Check(FileExists(componentsPath), "generator writes versioned component metadata");
     failures += Check(FileExists(cppPath), "mixed project includes C++ source");
     failures += Check(FileExists(workspacePath), "generator writes starter Workspace");
     failures += Check(

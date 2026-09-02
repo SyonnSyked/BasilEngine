@@ -274,6 +274,8 @@ manual review, documentation updates, and a reviewable commit.
 
 ### Stage 4: Native game-code boundary
 
+**Implementation status:** Complete; Windows interactive checklist pending.
+
 - C, C++, and mixed Projects execute through the versioned module interface.
 - Custom metadata/data round-trip without executing Project code in Inspector.
 - Compatibility and failed-build paths preserve the last valid state/artifact.

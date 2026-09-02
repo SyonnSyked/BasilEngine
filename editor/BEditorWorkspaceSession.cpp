@@ -487,6 +487,32 @@ bool BEditorWorkspaceSession::DuplicateSelectedEntity(std::string& error)
     return true;
 }
 
+bool BEditorWorkspaceSession::AddSelectedCustomComponent(
+    const std::string& type,
+    int version,
+    const std::string& dataJson,
+    std::string& error
+)
+{
+    if (!loaded_ || selectedIndex_ >= workspace_.entityCount)
+    {
+        error = "No Workspace entity is selected.";
+        return false;
+    }
+    if (!Capture(undo_, error)) return false;
+    BDiagnosticList diagnostics{};
+    if (!BWorkspaceDocument_AddCustomComponentJson(
+        &workspace_, selectedIndex_, type.c_str(), version, dataJson.c_str(), &diagnostics))
+    {
+        CancelMutation();
+        error = FirstDiagnosticMessage(diagnostics);
+        return false;
+    }
+    CommitMutation();
+    error.clear();
+    return true;
+}
+
 bool BEditorWorkspaceSession::RemapAssetPath(const std::string& oldPath, const std::string& newPath, std::string& error)
 {
     if (!loaded_ || oldPath.empty() || newPath.empty() || newPath.size() >= BWORKSPACE_PATH_MAX)

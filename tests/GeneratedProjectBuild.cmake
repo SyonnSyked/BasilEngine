@@ -89,6 +89,57 @@ foreach(language_mode IN ITEMS mixed c cpp)
     else()
         set(project_executable "${build_directory}/${identifier}")
     endif()
+    if(WIN32)
+        set(game_module "${build_directory}/${identifier}.game.dll")
+    elseif(APPLE)
+        set(game_module "${build_directory}/${identifier}.game.dylib")
+    else()
+        set(game_module "${build_directory}/${identifier}.game.so")
+    endif()
+    if(NOT EXISTS "${game_module}")
+        message(FATAL_ERROR "${language_mode} build did not promote its game module")
+    endif()
+
+    if(language_mode STREQUAL "cpp")
+        set(game_source "${source_directory}/source/game.cpp")
+    else()
+        set(game_source "${source_directory}/source/game.c")
+    endif()
+    file(READ "${game_source}" valid_game_source)
+    file(SHA256 "${game_module}" valid_module_hash)
+    file(APPEND "${game_source}" "\nthis intentionally does not compile\n")
+    execute_process(
+        COMMAND "${CMAKE_COMMAND}" --build "${build_directory}" --target "${identifier}Game"
+        RESULT_VARIABLE failed_build_result OUTPUT_QUIET ERROR_QUIET
+    )
+    file(SHA256 "${game_module}" preserved_module_hash)
+    if(failed_build_result EQUAL 0 OR NOT valid_module_hash STREQUAL preserved_module_hash)
+        message(FATAL_ERROR "${language_mode} failed build did not preserve the last valid module")
+    endif()
+
+    string(REPLACE "module->version = BGAME_API_VERSION;" "module->version = BGAME_API_VERSION + 1;" incompatible_game_source "${valid_game_source}")
+    file(WRITE "${game_source}" "${incompatible_game_source}")
+    execute_process(
+        COMMAND "${CMAKE_COMMAND}" --build "${build_directory}" --target "${identifier}Game"
+        RESULT_VARIABLE incompatible_build_result OUTPUT_QUIET ERROR_QUIET
+    )
+    execute_process(
+        COMMAND "${project_executable}" --basil-validate --project "${source_directory}/${identifier}.basilproject"
+        RESULT_VARIABLE incompatible_result OUTPUT_VARIABLE incompatible_output ERROR_VARIABLE incompatible_error
+    )
+    if(NOT incompatible_build_result EQUAL 0 OR incompatible_result EQUAL 0 OR
+        NOT incompatible_error MATCHES "API mismatch: host requires 1, module provided 2")
+        message(FATAL_ERROR "${language_mode} incompatible module was not rejected clearly:\n${incompatible_output}\n${incompatible_error}")
+    endif()
+    file(WRITE "${game_source}" "${valid_game_source}")
+    execute_process(
+        COMMAND "${CMAKE_COMMAND}" --build "${build_directory}" --target "${identifier}Game"
+        RESULT_VARIABLE restore_build_result OUTPUT_QUIET ERROR_QUIET
+    )
+    if(NOT restore_build_result EQUAL 0)
+        message(FATAL_ERROR "${language_mode} valid module restoration failed")
+    endif()
+
     set(manifest "${source_directory}/${identifier}.basilproject")
     execute_process(
         COMMAND "${project_executable}" --basil-validate --project "${manifest}"

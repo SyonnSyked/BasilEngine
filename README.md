@@ -20,7 +20,8 @@ the [visual-foundation closeout](docs/EDITOR_VISUAL_FOUNDATION.md). The current
 capabilities, roadmap alignment, risks, scope guardrails, and next bounded slice
 are tracked in the [scope and course audit](docs/SCOPE_STATUS.md). The proposed
 technical contract for that next slice is the
-[Runtime Workspace Bridge design](docs/RUNTIME_WORKSPACE_BRIDGE.md).
+[Runtime Workspace Bridge design](docs/RUNTIME_WORKSPACE_BRIDGE.md), followed by
+the implemented [game-module and Project-component boundary](docs/GAME_MODULE_AND_COMPONENTS.md).
 The requirements and measurable completion boundary for the current final
 stretch are defined in the [Alpha Product Contract](docs/ALPHA_PRODUCT_CONTRACT.md).
 
@@ -77,6 +78,10 @@ stretch are defined in the [Alpha Product Contract](docs/ALPHA_PRODUCT_CONTRACT.
   with external change/move detection and reference repair
 - Dockable bounded Text Sprite editor with transactional preview, safe save,
   transparent-space visualization, and external-edit conflict handling
+- Versioned C-compatible native game modules for C, C++, and mixed Projects,
+  with compatibility checks and last-valid artifact preservation
+- Strict Project component metadata and human-readable custom Workspace data,
+  inspected without executing Project code
 - Headless project, generated-build, input, canvas, and combat tests
 
 ## Reference demo

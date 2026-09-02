@@ -792,6 +792,104 @@ static bool BWorkspaceDocument_AppendComponent(
     return true;
 }
 
+static bool BWorkspaceDocument_IsValidComponentType(const char* type)
+{
+    if (type == 0 || type[0] == '\0' || strlen(type) >= BWORKSPACE_COMPONENT_TYPE_MAX ||
+        !isalpha((unsigned char)type[0]))
+        return false;
+    for (const char* cursor = type; *cursor; ++cursor)
+    {
+        if (!isalnum((unsigned char)*cursor) && *cursor != '.' && *cursor != '-' && *cursor != '_')
+            return false;
+    }
+    return true;
+}
+
+static char* BWorkspaceDocument_CopyCustomData(
+    const char* dataJson,
+    BDiagnosticList* diagnostics
+)
+{
+    if (dataJson == 0 || strlen(dataJson) > BWORKSPACE_UNKNOWN_DATA_MAX)
+    {
+        BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA, "Custom component data is missing or too large.");
+        return 0;
+    }
+    cJSON* data = cJSON_Parse(dataJson);
+    if (data == 0 || !cJSON_IsObject(data))
+    {
+        cJSON_Delete(data);
+        BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA, "Custom component data must be one JSON object.");
+        return 0;
+    }
+    char* normalized = cJSON_PrintUnformatted(data);
+    cJSON_Delete(data);
+    if (normalized == 0)
+    {
+        BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_OUT_OF_MEMORY, "Could not copy custom component data.");
+        return 0;
+    }
+    size_t length = strlen(normalized);
+    char* copy = (char*)malloc(length + 1);
+    if (copy != 0)
+        memcpy(copy, normalized, length + 1);
+    cJSON_free(normalized);
+    if (copy == 0)
+        BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_OUT_OF_MEMORY, "Could not copy custom component data.");
+    return copy;
+}
+
+bool BWorkspaceDocument_AddCustomComponentJson(
+    BWorkspaceDocument* document,
+    size_t entityIndex,
+    const char* type,
+    int version,
+    const char* dataJson,
+    BDiagnosticList* diagnostics
+)
+{
+    BWorkspaceDocument_ClearError(diagnostics);
+    if (!BWorkspaceDocument_IsValidComponentType(type) || version < 1)
+        return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_ARGUMENT, "Custom component type and positive version are required.");
+    char* copy = BWorkspaceDocument_CopyCustomData(dataJson, diagnostics);
+    if (copy == 0)
+        return false;
+    BWorkspaceComponent component = {0};
+    snprintf(component.type, sizeof(component.type), "%s", type);
+    component.version = version;
+    component.required = false;
+    component.kind = BWORKSPACE_COMPONENT_UNKNOWN;
+    component.data.unknownDataJson = copy;
+    if (!BWorkspaceDocument_AppendComponent(document, entityIndex, &component, diagnostics))
+    {
+        free(copy);
+        return false;
+    }
+    return true;
+}
+
+bool BWorkspaceDocument_SetCustomComponentJson(
+    BWorkspaceDocument* document,
+    size_t entityIndex,
+    const char* type,
+    const char* dataJson,
+    BDiagnosticList* diagnostics
+)
+{
+    BWorkspaceDocument_ClearError(diagnostics);
+    if (document == 0 || entityIndex >= document->entityCount || type == 0)
+        return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_ARGUMENT, "Workspace, entity, and custom component type are required.");
+    BWorkspaceComponent* component = BWorkspaceEntity_FindComponent(&document->entities[entityIndex], type);
+    if (component == 0 || component->kind != BWORKSPACE_COMPONENT_UNKNOWN || component->required)
+        return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA, "Editable custom component was not found.");
+    char* copy = BWorkspaceDocument_CopyCustomData(dataJson, diagnostics);
+    if (copy == 0)
+        return false;
+    free(component->data.unknownDataJson);
+    component->data.unknownDataJson = copy;
+    return true;
+}
+
 bool BWorkspaceDocument_AddTransform2D(
     BWorkspaceDocument* document,
     size_t entityIndex,

@@ -200,6 +200,21 @@ bool BWorkspaceDocument_SetAsciiRenderable(
     const BAsciiRenderable* renderable,
     BDiagnosticList* diagnostics
 );
+bool BWorkspaceDocument_AddCustomComponentJson(
+    BWorkspaceDocument* document,
+    size_t entityIndex,
+    const char* type,
+    int version,
+    const char* dataJson,
+    BDiagnosticList* diagnostics
+);
+bool BWorkspaceDocument_SetCustomComponentJson(
+    BWorkspaceDocument* document,
+    size_t entityIndex,
+    const char* type,
+    const char* dataJson,
+    BDiagnosticList* diagnostics
+);
 bool BWorkspaceDocument_RemoveComponent(
     BWorkspaceDocument* document,
     size_t entityIndex,

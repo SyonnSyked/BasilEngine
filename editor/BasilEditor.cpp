@@ -3,6 +3,7 @@
 #include "BRecentProjects.h"
 #include "BEditorGit.h"
 #include "BEditorBuildService.h"
+#include "BEditorComponentRegistry.h"
 #include "BEditorPanels.h"
 #include "BEditorPlatformDialogs.h"
 #include "BEditorPreferences.h"
@@ -52,6 +53,7 @@ struct EditorState
     BEditorUIConfig uiConfig = BEditorUIConfig_Default();
     BEditorWorkspaceSession workspaceSession;
     BEditorAssetService assetService;
+    BEditorComponentRegistry componentRegistry;
     BEditorTextSpriteDocument textSpriteDocument;
     double nextAssetRefreshTime = 0.0;
     bool confirmProjectClose = false;
@@ -210,9 +212,11 @@ static bool OpenProject(EditorState& state, const fs::path& manifestPath)
     );
     std::string assetError;
     bool assetsOpened = state.assetService.Open(absolutePath.parent_path(), assetError);
+    std::string componentError;
+    bool componentsOpened = state.componentRegistry.Open(absolutePath.parent_path(), componentError);
     state.nextAssetRefreshTime = GetTime() + 1.0;
 
-    if (!workspaceLoaded)
+    if (!workspaceLoaded || !componentsOpened)
         state.uiConfig.showProblems = true;
     else
         state.confirmRecovery = state.workspaceSession.HasNewerRecovery();
@@ -224,12 +228,12 @@ static bool OpenProject(EditorState& state, const fs::path& manifestPath)
     SetWindowTitle(TextFormat("BasilEditor - %s", state.project.name));
     SetMessage(
         state,
-        !uiConfigError.empty() ? uiConfigError.c_str() : !assetsOpened ? assetError.c_str() : workspaceLoaded ?
+        !uiConfigError.empty() ? uiConfigError.c_str() : !assetsOpened ? assetError.c_str() : !componentsOpened ? componentError.c_str() : workspaceLoaded ?
             (state.workspaceSession.RequiresMigration() ?
                 "Project opened. Startup Workspace will migrate safely on first save." :
                 "Project and startup Workspace opened successfully.") :
             workspaceError.c_str(),
-        !uiConfigError.empty() || !assetsOpened || !workspaceLoaded
+        !uiConfigError.empty() || !assetsOpened || !componentsOpened || !workspaceLoaded
     );
     return true;
 }
@@ -1098,6 +1102,7 @@ static void DrawEditorShell(EditorState& state)
         state.project,
         state.workspaceSession,
         state.assetService,
+        state.componentRegistry,
         state.textSpriteDocument,
         state.buildService,
         state.manifestPath.parent_path(),

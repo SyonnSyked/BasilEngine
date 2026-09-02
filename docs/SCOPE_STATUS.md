@@ -171,13 +171,12 @@ order merely because a button or panel exists.
 ### Immediate next work
 
 - Complete the interactive checklists in `EDITOR_RELIABILITY.md` and
-  `ASSET_FOUNDATION.md`.
-- Begin Stage 4 with the versioned native game-module boundary.
-- Define restricted custom-component metadata on stable asset identities.
+  `ASSET_FOUNDATION.md`, plus the Stage 4 checklist in
+  `GAME_MODULE_AND_COMPONENTS.md`.
+- Begin Stage 5 with the integrated programming workflow.
 
 ### Later
 
-- Versioned dynamic game modules and safe custom-component metadata.
 - Built-in code editing, external-editor commands, and one terminal session.
 - Alpha runtime services, export, and the Where Birds Nest proof.
 - After alpha: safe hot reload, in-Viewport play, semantic IDE features, and a
@@ -214,10 +213,10 @@ The slice introduced:
 5. Tests proving load, validation, render mapping, and the generated workflow.
 
 The completed Runtime Workspace Bridge intentionally excluded the systems above.
-Subsequent alpha stages have now added editor reliability and the bounded asset
-foundation without revising its proven data path. The next bounded acceptance
-result is the native game-module and restricted custom-component metadata
-boundary, not hot reload or a generalized ECS.
+Subsequent alpha stages have now added editor reliability, the bounded asset
+foundation, and the native game-module/restricted component metadata boundary
+without revising its proven data path. The next bounded acceptance result is an
+integrated programming workflow, not hot reload or a generalized ECS.
 
 ## Recurring scope-check process
 

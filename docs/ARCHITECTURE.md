@@ -81,22 +81,24 @@ BasilEditor must not load arbitrary Project code merely to inspect a Workspace.
 The exact alpha boundary and supported field types are defined in
 `ALPHA_PRODUCT_CONTRACT.md`.
 
-## Current runtime flow
+## Current generated-Project runtime flow
 
 ```text
-Project main
+Project host main
+  -> discover Project and load startup Workspace
+  -> load and validate <identifier>.game native module
+  -> module initialize through versioned host function table
   -> BApplication_Init
      -> BEngine_Init
         -> window, console, input
-     -> game onStart
   -> BApplication_Run
      -> time and console update
-     -> game onUpdate
+     -> module update
      -> begin frame
-     -> game onRender
+     -> Workspace ASCII render and module render contribution
      -> console overlay
      -> end frame
-  -> game onShutdown
+  -> module shutdown and unload
   -> BEngine_Shutdown
 ```
 

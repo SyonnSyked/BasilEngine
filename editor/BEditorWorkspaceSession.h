@@ -49,6 +49,7 @@ public:
     bool SetSelectedEnabled(bool enabled, std::string& error);
     bool SetSelectedTransform(BTransform2D transform, std::string& error);
     bool SetSelectedRenderable(const BAsciiRenderable& renderable, std::string& error);
+    bool AddSelectedCustomComponent(const std::string& type, int version, const std::string& dataJson, std::string& error);
     bool ValidateForRun(BDiagnosticList& diagnostics, std::string& error) const;
 
     bool IsLoaded() const;
