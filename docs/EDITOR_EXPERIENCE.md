@@ -227,10 +227,13 @@ unspecified.
 
 ### Typography
 
-A cyberpunk monospace font will be bundled for consistent cross-platform
-identity. Long-session readability and code legibility outrank decorative
-novelty. The exact font and redistribution review are **unresolved**.
-JetBrains Mono is the current recommendation, not a confirmed dependency.
+JetBrains Mono is the **confirmed** bundled typeface for consistent
+cross-platform identity. Long-session readability and code legibility outrank
+decorative novelty. Regular and Bold from the pinned v2.304 release are stored
+with their SIL Open Font License in `assets/editor/fonts/JetBrainsMono`.
+
+The files are present, but loading them in BasilEditor is part of the next
+visual-theme implementation step.
 
 ### Motion
 
@@ -266,7 +269,6 @@ platform embedding remain unresolved.
 
 ## Remaining decisions
 
-- Final bundled font and licensing treatment
 - Final application/document icons
 - Workspace schema, extension, and additive semantics
 - UI Config schema and extension

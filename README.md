@@ -131,6 +131,7 @@ cmake --build C:\Projects\MyGame\build
 engine/                 Reusable runtime systems
 projects/wherebirdsnest Reference game and engine proving ground
 editor/                 BasilEditor application
+assets/editor/          Bundled editor fonts and branding assets
 tests/                  Headless engine tests
 thirdparty/             Local ImGui and rlImGui sources
 docs/                   Product, roadmap, and architecture decisions
