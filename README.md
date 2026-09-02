@@ -32,7 +32,8 @@ the [visual-foundation closeout](docs/EDITOR_VISUAL_FOUNDATION.md).
 - Versioned JSON Project and empty-Workspace formats with a headless generator
 - A graphical BasilEditor project browser with New, Open, and Recent workflows
 - A centralized cyberpunk editor theme with bundled JetBrains Mono typography
-- NetRunner-styled Project Browser and Project Overview screens
+- NetRunner-styled Project Browser, Project Details, and Workspace Viewport
+- A genuine dockable editor shell with a resettable slim default UI Config
 - Geometric circuit-leaf application branding and embedded Windows icon
 - Persistent global interface-scale presets from 100% through 175%
 - Optional Git initialization during or after project creation
@@ -57,7 +58,8 @@ Prerequisites:
 - UCRT64 GCC
 - raylib
 - BasilsTools
-- Local Dear ImGui and rlImGui source trees only when editor dependencies are enabled
+- Local Dear ImGui docking-branch and rlImGui source trees only when editor
+  dependencies are enabled
 
 Configure dependency locations with `BASIL_RAYLIB_ROOT` and
 `BASIL_TOOLS_ROOT`. BasilEngine first looks for installed CMake packages, then
@@ -84,7 +86,9 @@ ctest --test-dir build --output-on-failure
 ```
 
 Set `BASIL_BUILD_EDITOR_DEPS=ON` to build `BasilEditor` using the vendored ImGui
-and rlImGui source trees:
+and rlImGui source trees. BasilEditor requires the official ImGui `docking`
+branch; configuration stops with an actionable error if a master-branch
+checkout is supplied:
 
 ```powershell
 cmake --preset ucrt64-debug -DBASIL_BUILD_EDITOR_DEPS=ON

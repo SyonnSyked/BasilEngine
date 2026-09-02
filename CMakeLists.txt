@@ -381,12 +381,25 @@ if(BASIL_BUILD_EDITOR_DEPS)
         editor/BEditorGit.cpp
         editor/BEditorPreferences.cpp
         editor/BEditorTheme.cpp
+        editor/BEditorUIConfig.cpp
     )
 
     if(WIN32)
         enable_language(RC)
         target_sources(BasilEditor PRIVATE
             editor/windows/BasilEditor.rc
+        )
+    endif()
+
+    file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/imgui/imgui.h"
+        BASIL_IMGUI_DOCKING_MARKER
+        REGEX "^#define IMGUI_HAS_DOCK"
+    )
+
+    if(NOT BASIL_IMGUI_DOCKING_MARKER)
+        message(FATAL_ERROR
+            "BasilEditor requires the official Dear ImGui docking branch. "
+            "Switch thirdparty/imgui to origin/docking or disable BASIL_BUILD_EDITOR_DEPS."
         )
     endif()
 
@@ -452,6 +465,24 @@ if(BASIL_BUILD_EDITOR_DEPS)
 
         basil_enable_warnings(BEditorGitTests)
         add_test(NAME BEditorGitTests COMMAND BEditorGitTests)
+
+        add_executable(BEditorUIConfigTests
+            tests/BEditorUIConfigTests.cpp
+            editor/BEditorUIConfig.cpp
+        )
+
+        target_include_directories(BEditorUIConfigTests PRIVATE
+            editor
+        )
+
+        if(MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            target_link_options(BEditorUIConfigTests PRIVATE
+                -static -static-libgcc -static-libstdc++
+            )
+        endif()
+
+        basil_enable_warnings(BEditorUIConfigTests)
+        add_test(NAME BEditorUIConfigTests COMMAND BEditorUIConfigTests)
     endif()
 
     add_custom_command(TARGET BasilEditor POST_BUILD

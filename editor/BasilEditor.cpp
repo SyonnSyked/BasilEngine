@@ -4,8 +4,10 @@
 #include "BEditorGit.h"
 #include "BEditorPreferences.h"
 #include "BEditorTheme.h"
+#include "BEditorUIConfig.h"
 
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "raylib.h"
 #include "rlImGui.h"
 
@@ -36,6 +38,8 @@ struct EditorState
     bool gitInitialized = false;
     double nextGitRefreshTime = 0.0;
     bool projectOpen = false;
+    bool resetDockLayout = true;
+    BEditorUIConfig uiConfig = BEditorUIConfig_Default();
     std::string message;
     bool messageIsError = false;
 };
@@ -132,6 +136,8 @@ static bool OpenProject(EditorState& state, const fs::path& manifestPath)
     state.gitInitialized = BEditorGit_IsInitialized(absolutePath.parent_path());
     state.nextGitRefreshTime = GetTime() + 1.0;
     state.projectOpen = true;
+    state.resetDockLayout = true;
+    state.uiConfig = BEditorUIConfig_Default();
     BRecentProjects_Add(&state.recent, absolutePath.string().c_str());
     SaveRecentProjects(state);
     SetWindowTitle(TextFormat("BasilEditor - %s", state.project.name));
@@ -413,7 +419,167 @@ static void DrawProjectBrowser(EditorState& state)
     ImGui::PopStyleVar();
 }
 
-static void DrawProjectOverview(EditorState& state)
+static void ReturnToProjectBrowser(EditorState& state)
+{
+    state.projectOpen = false;
+    SetWindowTitle("BasilEditor");
+}
+
+static void DrawEditorMenuBar(EditorState& state)
+{
+    const BEditorThemePalette& palette = BEditorTheme_GetPalette();
+
+    if (!ImGui::BeginMainMenuBar())
+        return;
+
+    ImGui::TextColored(palette.cyan, "[ BASIL//EDITOR ]");
+    ImGui::Separator();
+
+    if (ImGui::BeginMenu("Project"))
+    {
+        ImGui::TextDisabled("ACTIVE // %s", state.project.name);
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Return to Project Browser"))
+            ReturnToProjectBrowser(state);
+
+        ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("Workspace"))
+    {
+        ImGui::BeginDisabled();
+        ImGui::MenuItem("New Workspace");
+        ImGui::MenuItem("Open Workspace...");
+        ImGui::MenuItem("Save Workspace");
+        ImGui::EndDisabled();
+        ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("View"))
+    {
+        ImGui::MenuItem("Project Details", nullptr, &state.uiConfig.showProjectDetails);
+        ImGui::MenuItem("Workspace Viewport", nullptr, &state.uiConfig.showWorkspaceViewport);
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Reset Default UI Config"))
+        {
+            state.uiConfig = BEditorUIConfig_Default();
+            state.resetDockLayout = true;
+            SetMessage(state, "Default UI Config restored.", false);
+        }
+
+        ImGui::EndMenu();
+    }
+
+    ImGui::BeginDisabled();
+    ImGui::MenuItem("Build");
+    ImGui::MenuItem("Run");
+    ImGui::MenuItem("Terminal");
+    ImGui::EndDisabled();
+
+    float statusWidth = ImGui::CalcTextSize("PROJECT LINK // STABLE").x;
+    ImGui::SameLine(ImGui::GetWindowWidth() - statusWidth - ImGui::GetStyle().ItemSpacing.x);
+    ImGui::TextColored(palette.success, "PROJECT LINK // STABLE");
+    ImGui::EndMainMenuBar();
+}
+
+static void BuildDefaultDockLayout(ImGuiID dockspaceId, const BEditorUIConfig& config)
+{
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::DockBuilderRemoveNode(dockspaceId);
+    ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
+    ImGui::DockBuilderSetNodeSize(dockspaceId, viewport->WorkSize);
+
+    ImGuiID center = dockspaceId;
+    ImGuiID left = ImGui::DockBuilderSplitNode(center, ImGuiDir_Left, config.leftRatio, nullptr, &center);
+    ImGuiID right = ImGui::DockBuilderSplitNode(center, ImGuiDir_Right, config.rightRatio, nullptr, &center);
+    ImGuiID bottom = ImGui::DockBuilderSplitNode(center, ImGuiDir_Down, config.bottomRatio, nullptr, &center);
+
+    ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::ProjectDetails), left);
+    ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::WorkspaceHierarchy), left);
+    ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::Inspector), right);
+    ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::WorkspaceViewport), center);
+    ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::Assets), bottom);
+    ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::Console), bottom);
+    ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::BuildOutput), bottom);
+    ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::Problems), bottom);
+    ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::Terminal), bottom);
+    ImGui::DockBuilderFinish(dockspaceId);
+}
+
+static void DrawProjectDetails(EditorState& state)
+{
+    if (!state.uiConfig.showProjectDetails)
+        return;
+
+    ImGui::Begin(
+        BEditorPanel_Name(BEditorPanel::ProjectDetails),
+        &state.uiConfig.showProjectDetails
+    );
+    const BEditorThemePalette& palette = BEditorTheme_GetPalette();
+    ImGui::TextColored(palette.cyan, "[ PROJECT//ACTIVE ]");
+    DrawHeading(state.project.name);
+    ImGui::Separator();
+    ImGui::TextDisabled("PROJECT MANIFEST");
+    ImGui::TextWrapped("%s", state.manifestPath.string().c_str());
+    ImGui::Spacing();
+    ImGui::SeparatorText("IDENTITY");
+    ImGui::TextDisabled("CODE IDENTIFIER");
+    ImGui::TextUnformatted(state.project.identifier);
+    ImGui::TextDisabled("STARTUP WORKSPACE");
+    ImGui::TextWrapped("%s", state.project.startupWorkspace);
+    ImGui::TextDisabled("LANGUAGE MODE");
+    ImGui::TextUnformatted(BProject_LanguageModeToString(state.project.languageMode));
+    ImGui::TextDisabled("LANGUAGE STANDARDS");
+    ImGui::Text("C%d // C++%d", state.project.cStandard, state.project.cppStandard);
+    ImGui::Spacing();
+    ImGui::SeparatorText("PROJECT OPERATIONS");
+
+    ImGui::BeginDisabled(state.gitInitialized);
+    const char* gitButtonLabel = state.gitInitialized ?
+        "GIT REPOSITORY ACTIVE" : "INITIALIZE GIT";
+
+    if (ImGui::Button(gitButtonLabel, ImVec2(-1.0f, 0.0f)))
+    {
+        bool succeeded = BEditorGit_Initialize(state.manifestPath.parent_path());
+        state.gitInitialized = succeeded;
+        SetMessage(state, succeeded ? "Git repository initialized." : "Git initialization failed. Verify that Git is installed and available on PATH.", !succeeded);
+    }
+
+    ImGui::EndDisabled();
+    ImGui::Spacing();
+    DrawInterfaceScale(state);
+    ImGui::Spacing();
+    DrawMessage(state);
+    ImGui::End();
+}
+
+static void DrawWorkspaceViewport(EditorState& state)
+{
+    if (!state.uiConfig.showWorkspaceViewport)
+        return;
+
+    const BEditorThemePalette& palette = BEditorTheme_GetPalette();
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, palette.background);
+    ImGui::Begin(
+        BEditorPanel_Name(BEditorPanel::WorkspaceViewport),
+        &state.uiConfig.showWorkspaceViewport
+    );
+    ImGui::TextColored(palette.violet, "WORKSPACE VIEWPORT // FOUNDATION ONLINE");
+    ImGui::Separator();
+    ImVec2 available = ImGui::GetContentRegionAvail();
+    float headingWidth = ImGui::CalcTextSize("[ STARTUP WORKSPACE READY ]").x;
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + available.y * 0.38f);
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (available.x - headingWidth) * 0.5f);
+    ImGui::TextColored(palette.cyan, "[ STARTUP WORKSPACE READY ]");
+    ImGui::Spacing();
+    ImGui::TextDisabled("Dockable panel shell active. Workspace rendering arrives after panel scaffolding.");
+    ImGui::End();
+    ImGui::PopStyleColor();
+}
+
+static void DrawEditorShell(EditorState& state)
 {
     double currentTime = GetTime();
 
@@ -423,78 +589,22 @@ static void DrawProjectOverview(EditorState& state)
         state.nextGitRefreshTime = currentTime + 1.0;
     }
 
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
-    ImGui::Begin("Project Overview", nullptr, ImGuiWindowFlags_NoTitleBar |
-        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-    const BEditorThemePalette& palette = BEditorTheme_GetPalette();
-    ImGui::TextColored(palette.cyan, "[ PROJECT//ACTIVE ]");
-    ImGui::SameLine();
-    DrawHeading(state.project.name);
-    ImGui::SameLine(ImGui::GetWindowWidth() - 210.0f * state.preferences.interfaceScale);
+    DrawEditorMenuBar(state);
+    ImGuiID dockspaceId = ImGui::GetID("BasilEditorDockspace");
+    ImGui::DockSpaceOverViewport(
+        dockspaceId,
+        ImGui::GetMainViewport(),
+        ImGuiDockNodeFlags_PassthruCentralNode
+    );
 
-    if (ImGui::Button("< PROJECT BROWSER"))
+    if (state.resetDockLayout)
     {
-        state.projectOpen = false;
-        SetWindowTitle("BasilEditor");
+        BuildDefaultDockLayout(dockspaceId, state.uiConfig);
+        state.resetDockLayout = false;
     }
 
-    ImGui::Separator();
-
-    if (ImGui::BeginTable("##ProjectOverviewLayout", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV))
-    {
-        ImGui::TableSetupColumn("ProjectData", ImGuiTableColumnFlags_WidthFixed, 310.0f * state.preferences.interfaceScale);
-        ImGui::TableSetupColumn("ViewportPreview", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableNextColumn();
-        ImGui::TextDisabled("PROJECT MANIFEST");
-        ImGui::TextWrapped("%s", state.manifestPath.string().c_str());
-        ImGui::Spacing();
-        ImGui::SeparatorText("IDENTITY");
-        ImGui::TextDisabled("CODE IDENTIFIER");
-        ImGui::TextUnformatted(state.project.identifier);
-        ImGui::TextDisabled("LANGUAGE MODE");
-        ImGui::TextUnformatted(BProject_LanguageModeToString(state.project.languageMode));
-        ImGui::TextDisabled("LANGUAGE STANDARDS");
-        ImGui::Text("C%d // C++%d", state.project.cStandard, state.project.cppStandard);
-        ImGui::Spacing();
-        ImGui::SeparatorText("PROJECT OPERATIONS");
-
-        ImGui::BeginDisabled(state.gitInitialized);
-        const char* gitButtonLabel = state.gitInitialized ?
-            "GIT REPOSITORY ACTIVE" : "INITIALIZE GIT";
-
-        if (ImGui::Button(gitButtonLabel, ImVec2(-1.0f, 0.0f)))
-        {
-            bool succeeded = BEditorGit_Initialize(state.manifestPath.parent_path());
-            state.gitInitialized = succeeded;
-            SetMessage(state, succeeded ? "Git repository initialized." : "Git initialization failed. Verify that Git is installed and available on PATH.", !succeeded);
-        }
-
-        ImGui::EndDisabled();
-
-        ImGui::Spacing();
-        DrawInterfaceScale(state);
-        ImGui::TableNextColumn();
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, palette.background);
-        ImGui::BeginChild("##FutureViewport", ImVec2(0.0f, -ImGui::GetTextLineHeightWithSpacing() * 3.5f), true);
-        ImGui::TextColored(palette.violet, "WORKSPACE VIEWPORT // OFFLINE");
-        ImGui::Separator();
-        ImGui::SetCursorPosY(ImGui::GetWindowHeight() * 0.42f);
-        float labelWidth = ImGui::CalcTextSize("[ NO WORKSPACE LOADED ]").x;
-        ImGui::SetCursorPosX((ImGui::GetWindowWidth() - labelWidth) * 0.5f);
-        ImGui::TextColored(palette.cyan, "[ NO WORKSPACE LOADED ]");
-        ImGui::SetCursorPosX(ImGui::GetWindowWidth() * 0.25f);
-        ImGui::TextDisabled("Workspace editing and in-editor play arrive in the next functional stage.");
-        ImGui::EndChild();
-        ImGui::PopStyleColor();
-        ImGui::Spacing();
-        DrawMessage(state);
-        ImGui::EndTable();
-    }
-
-    ImGui::Spacing();
-    ImGui::TextDisabled("BASIL NETWORK // PROJECT LINK STABLE // EDITOR FOUNDATION ACTIVE");
-    ImGui::End();
+    DrawProjectDetails(state);
+    DrawWorkspaceViewport(state);
 }
 
 static int RunEditor(int argumentCount, char** arguments)
@@ -515,6 +625,7 @@ static int RunEditor(int argumentCount, char** arguments)
     );
 
     rlImGuiBeginInitImGui();
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     bool bundledFontsLoaded = BEditorTheme_Initialize(state.preferences.interfaceScale);
     rlImGuiEndInitImGui();
 
@@ -544,7 +655,7 @@ static int RunEditor(int argumentCount, char** arguments)
         ClearBackground(Color{ 22, 25, 31, 255 });
         rlImGuiBegin();
         if (state.projectOpen)
-            DrawProjectOverview(state);
+            DrawEditorShell(state);
         else
             DrawProjectBrowser(state);
         rlImGuiEnd();

@@ -76,21 +76,23 @@ engine source or machine-specific paths.
   complete and recorded in `EDITOR_VISUAL_FOUNDATION.md`; dockable content
   panels and actual Workspace editing remain. The versioned empty-Workspace
   format, `.basilworkspace` extension, starter generation, and legacy manifest
-  load path are implemented.
-- Create a dockable editor application.
+  load path are implemented. The genuine ImGui dockspace, stable panel registry,
+  main command surface, and resettable slim default UI Config are implemented;
+  portable UI Config persistence and the remaining panel windows are not.
+- Create a dockable editor application. **Implemented.**
 - Add an ASCII viewport, hierarchy, inspector, asset browser, and log console.
 - Load, edit, save, play, and stop the reference Workspace.
 - Add a slim default UI Config and portable JSON UI Config persistence.
+  **Default model implemented; persistence remains.**
 - Establish the restrained cyberpunk visual system and bundled monospace font.
 - Route editor mutations through APIs compatible with future undo/redo.
 
 **Exit condition:** The reference-game test room can be meaningfully edited and
 saved without hand-editing its Workspace representation.
 
-The next implementation slice introduces the dockable editor shell and a slim
-default UI Config before
-placing hierarchy, inspector, asset-browser, and Viewport behavior on top of
-real Workspace data.
+The next implementation slice adds the reserved hierarchy, inspector,
+asset-browser, console, build-output, problems, and terminal panel windows to
+the dockable shell, then begins placing behavior on top of real Workspace data.
 
 ## Milestone 5: Project creation
 

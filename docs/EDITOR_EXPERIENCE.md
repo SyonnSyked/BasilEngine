@@ -124,6 +124,13 @@ This is not a commitment to exact dimensions.
 Planned core panels are Workspace Hierarchy, Inspector, Asset Browser, Console,
 Build Output, Problems, Terminal, and Code Editor.
 
+The full-viewport dockspace, main Project/Workspace/View command surface,
+independently dockable Project Details and Workspace Viewport windows, stable
+core-panel identities, and resettable default layout are **implemented**. The
+default reserves the dominant center for the Viewport, side regions for Project
+Details/Hierarchy and Inspector, and a lower tab region for operational panels.
+The remaining panel windows and their actual content are planned.
+
 ## UI Configs
 
 The following behavior is **confirmed**:
@@ -137,6 +144,11 @@ The following behavior is **confirmed**:
 - A UI Config becomes Project-owned only through an explicit user choice.
 - Users may select a global default; Projects may explicitly override it.
 - Reset to the maintained BasilEditor default remains available.
+
+The versioned in-memory default UI Config model, validated layout ratios, stable
+panel registry, and Reset Default UI Config action are **implemented**. Saving,
+loading, importing, and exporting JSON UI Config files remain **planned**; raw
+ImGui docking state is not being presented as the portable format.
 
 The public JSON should describe stable panel identities, visibility, and
 editor-owned layout concepts. Raw ImGui state must not be the only long-lived
@@ -235,12 +247,12 @@ geometry, and non-compounding scale application are **implemented** in the
 BasilEditor theme module. Current and future panels should consume that module
 rather than define unrelated local themes.
 
-The implemented Project Browser and Project Overview consume this visual
+The implemented Project Browser and dockable editor shell consume this visual
 system. The browser uses a restrained system rail, terminal-style status
-language, structured Project actions, and clear full-width forms. The overview
-uses a compact Project data/control column beside a dominant placeholder
-Viewport. That placeholder communicates the planned next stage without
-presenting Workspace editing as implemented.
+language, structured Project actions, and clear full-width forms. The shell
+uses independently dockable Project Details and Workspace Viewport windows;
+the Viewport remains a deliberate placeholder that communicates the planned
+next stage without presenting Workspace editing as implemented.
 
 Global editor preferences are stored as versioned JSON in BasilEngine's user
 configuration directory. Missing preferences use safe defaults. Malformed or
@@ -298,7 +310,7 @@ Future macOS application-bundle packaging will require an ICNS export.
 
 - Final `.basilproject` and Where Birds Nest icons
 - Workspace entity/component schema and additive semantics
-- UI Config schema and extension
+- Portable UI Config JSON schema and extension
 - External-editor configuration schema and placeholders
 - Exact default docking measurements
 - Native file-dialog strategy per platform

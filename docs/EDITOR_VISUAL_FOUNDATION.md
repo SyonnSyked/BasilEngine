@@ -55,7 +55,7 @@ support remains an engineering target rather than a verified release claim.
 
 ## Intentional boundaries
 
-This pass does not implement dockable content panels, Workspace persistence or
+This pass did not implement dockable content panels, Workspace persistence or
 editing, UI Config persistence, native file dialogs, operating-system file
 association, build/run controls, the built-in code editor, terminal hosting,
 or hot reload. The macOS ICNS and distinct `.basilproject` and Where Birds Nest
@@ -66,15 +66,17 @@ but it must not be mistaken for functional editing capability.
 
 ## Next milestone handoff
 
-The initial Workspace-format item below was completed immediately after this
-closeout. The remaining sequence still defines the editor-foundation handoff:
+The initial Workspace-format and dockable-shell items below were completed after
+this closeout. The remaining sequence still defines the editor-foundation
+handoff:
 
 1. Define a versioned Workspace model, serialization schema, and extension,
    including compatibility with the legacy `scenes/` directory and
    `startupScene` manifest field. **Completed:** the empty format and load path
    exist; backup-aware on-disk migration remains part of future editing work.
 2. Add the dockable editor shell and the maintained slim default UI Config,
-   keeping UI Config state separate from Project content.
+   keeping UI Config state separate from Project content. **Completed:** the
+   shell and resettable default model exist; portable JSON persistence remains.
 3. Introduce Workspace Hierarchy, Inspector, Asset Browser, Console, and
    Viewport panel scaffolds backed by shared services rather than local widget
    state.

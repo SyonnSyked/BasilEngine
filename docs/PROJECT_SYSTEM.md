@@ -4,10 +4,12 @@ This document records the agreed direction for creating and opening independent
 BasilEngine projects. The versioned manifest, validation, JSON persistence,
 versioned empty Workspace format, headless generator, and independent
 generated-project build are implemented.
-The first BasilEditor project-browser slice is implemented. It creates and
-opens projects through the shared headless project APIs, tracks recent projects,
-accepts a manifest path on the command line, and displays an opened project's
-metadata. Native file dialogs and editable content panels remain future work.
+The BasilEditor project browser and initial dockable shell are implemented. The
+browser creates and opens projects through shared headless project APIs, tracks
+recent projects, accepts a manifest path on the command line, and exposes an
+opened Project through independently dockable Project Details and Workspace
+Viewport windows. Native file dialogs and editable content panels remain future
+work.
 
 ## User workflow
 
