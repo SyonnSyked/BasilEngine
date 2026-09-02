@@ -9,8 +9,10 @@ browser creates and opens projects through shared headless project APIs, tracks
 recent projects, accepts a manifest path on the command line, and exposes an
 opened Project through independently dockable Project Details and Workspace
 Viewport windows. The remaining core panel windows are present as dockable
-scaffolds, including a read-only top-level asset listing. Native file dialogs
-and editable Workspace content remain future work.
+scaffolds, including a read-only top-level asset listing. Startup Workspace
+entities can now be edited and saved through the Hierarchy and Inspector.
+Native file dialogs, component/spatial data, and runtime Workspace consumption
+remain future work.
 
 ## User workflow
 

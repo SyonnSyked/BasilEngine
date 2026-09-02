@@ -2,6 +2,8 @@
 
 This roadmap is outcome-based. A stage is complete only when its acceptance
 criteria are demonstrated; creating empty subsystem directories does not count.
+The current cross-milestone assessment and two-person-team guardrails are
+maintained in `SCOPE_STATUS.md`.
 
 ## Milestone 0: Reliable foundation
 

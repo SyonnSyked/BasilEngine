@@ -16,7 +16,9 @@ See the [project charter](docs/PROJECT_CHARTER.md), [roadmap](docs/ROADMAP.md),
 The authoritative visual and interaction plan is recorded in the
 [BasilEditor experience specification](docs/EDITOR_EXPERIENCE.md). The completed
 editor visual-foundation pass and its verification evidence are summarized in
-the [visual-foundation closeout](docs/EDITOR_VISUAL_FOUNDATION.md).
+the [visual-foundation closeout](docs/EDITOR_VISUAL_FOUNDATION.md). The current
+capabilities, roadmap alignment, risks, scope guardrails, and next bounded slice
+are tracked in the [scope and course audit](docs/SCOPE_STATUS.md).
 
 ## Current capabilities
 
