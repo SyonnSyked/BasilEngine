@@ -31,11 +31,11 @@ review.
 | Intended outcome | Current evidence | Status | Remaining gap |
 | --- | --- | --- | --- |
 | BasilEngine is reusable; Where Birds Nest is its proving project | Engine and reference game are separate, and documented architecture forbids game concepts in engine code | Aligned | Move the feasibility arena onto the same Project/Workspace runtime path used by generated projects |
-| ASCII and text art are first-class | Layered glyph rendering, foreground/background color, text-asset loading, and runtime glyph editing exist | Foundation proven | Represent renderable text assets through stable Workspace/component data and asset identities |
+| ASCII and text art are first-class | Layered glyph rendering, text-asset loading, and versioned Transform2D/ASCII Renderable Workspace data exist | Foundation proven | Decode Text Sprites through the new component path and introduce stable asset identities later |
 | Smooth real-time action-RPG play | Delta-time movement, camera, collision, input routing, a target, attack cooldown, damage, and death exist | Feasibility spike complete in breadth; feel unvalidated | Conduct play-feel validation before treating combat APIs as stable |
 | C-first runtime with narrow C++ use | Runtime and public-facing systems are C11; BasilEditor uses C++ for ImGui integration | Aligned | Preserve the C boundary when component and future game-module APIs are introduced |
 | Windows, macOS, and Linux | Cross-platform code paths and CMake structure exist | Not fully verified | Windows is the active verified platform; macOS/Linux need native configure, build, test, and process-control verification |
-| Medium-ambition, practical editor | Browser, dock shell, core panels, Workspace entity editing, build/run controls, diagnostics, and preferences exist | Strong foundation | Viewport content editing, components, runtime consumption, and later code workflow remain |
+| Medium-ambition, practical editor | Browser, dock shell, core panels, Workspace entity editing, build/run controls, diagnostics, and preferences exist | Strong foundation | Component controls, Viewport content rendering, runtime consumption, and later code workflow remain |
 | New empty Projects work without manual engine setup | Generator creates manifests, editable CMake, source, assets, and a starter Workspace; editor can create, open, edit, build, and launch them | Partial end-to-end | The launched program does not yet consume or render its Workspace, so “runnable Project” is not fully achieved |
 | Editor and runtime use the same data and APIs | Project and Workspace parsing/editing are shared engine-side capabilities | Partial | Standalone runtime still bypasses Workspace entity data; this is the highest-priority mismatch |
 | Built-in coding and terminal workflow, with Neovim first-class | Build Output and Problems plumbing exist; terminal and code-editor panels are planned | Deliberately deferred | Implement only after the runtime/project boundary is stable; avoid building an IDE or terminal emulator prematurely |
@@ -96,9 +96,9 @@ review.
 | --- | --- | --- |
 | 0 — Reliable foundation | Mostly achieved on the current Windows development machine | A clean-checkout dependency story and native macOS/Linux verification are still required |
 | 1 — Gameplay feasibility spike | Mechanically implemented; still in progress | Responsiveness and ASCII combat feel need an intentional play-test decision |
-| 2 — Reusable runtime model | Partially started | Explicit ownership, minimal components, asset handles, and the Project/Workspace-driven runtime path are missing |
+| 2 — Reusable runtime model | In progress | Explicit Workspace ownership and minimal serialized components exist; asset handles and the Project/Workspace-driven runtime path are missing |
 | 3 — Project and asset system | In progress | Stable asset identifiers, file-change detection, actionable asset errors, and relocation across machines remain |
-| 4 — Editor foundation | In progress and healthy | The Viewport does not render editable content, components are absent, and runtime play is external |
+| 4 — Editor foundation | In progress and healthy | The Viewport does not render editable content, component controls are absent, and runtime play is external |
 | 5 — Project creation | Workflow shell implemented, outcome incomplete | A generated Project builds and launches, but its runtime does not yet render editor-authored Workspace data |
 | 6 — Code workflow and hot reload | Supporting build/diagnostic plumbing only | Code editor, external-editor service, real terminal hosting, module boundary, and reload safety are intentionally deferred |
 | 7 — Action-RPG vertical slice | Not started as a production slice | The current arena is a feasibility proof, not a Workspace-authored vertical slice |
@@ -112,9 +112,10 @@ order merely because a button or panel exists.
 1. **Runtime/Workspace disconnect.** The editor can author entity records and
    launch a process, but that process does not consume those records. This is
    the main product gap and the next course correction.
-2. **Runtime model lag.** Stable IDs exist, but transform, ASCII-renderable,
-   component, asset-handle, and ownership models do not. They should be added
-   only in the smallest form needed by the reference room.
+2. **Runtime model lag.** Stable IDs, ownership, and minimal Transform2D/ASCII
+   Renderable persistence now exist, but runtime interpretation and asset handles
+   do not. They should be added only in the smallest form needed by the
+   reference room.
 3. **Portability is promised but not demonstrated.** Build-service defaults
    currently reflect the toolchain and paths used to build BasilEditor. That is
    acceptable for this development milestone, not an install/distribution

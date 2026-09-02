@@ -1,6 +1,6 @@
 # Runtime Workspace Bridge Technical Design
 
-**Status:** Accepted; implementation in progress (Step 1 complete)
+**Status:** Accepted; implementation in progress (Steps 1–2 complete)
 **Design date:** 2026-09-02  
 **Target slice:** BasilEditor-authored entities render in a generated standalone
 Project through shared C runtime APIs
@@ -559,8 +559,9 @@ Each step must build, pass its focused tests, and leave a reviewable commit.
    dynamically allocated Workspace entity storage are active without changing
    visible behavior. Load and clone replace destinations transactionally; all
    engine, generator, test, and editor callers use the single document API.
-2. **Schema 3 components:** implement envelopes, migration, strict known data,
-   and opaque optional preservation.
+2. **Schema 3 components — Implemented:** bounded versioned envelopes,
+   Transform2D and ASCII Renderable typed data, schema-1/2 migration, strict
+   validation, mutation APIs, and opaque optional preservation are active.
 3. **Text Sprite service:** implement bounded decoding, project-relative path
    handling, cache ownership, and tests.
 4. **Shared interpretation:** produce deterministic `BAsciiDrawList` data from

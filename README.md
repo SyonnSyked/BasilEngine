@@ -44,6 +44,8 @@ technical contract for that next slice is the
   changes, dirty-state protection, and backup-assisted saves
 - Lifecycle-managed Workspace documents with transactional load/clone and
   structured diagnostics
+- Workspace schema v3 with versioned Transform2D/ASCII Renderable components,
+  safe legacy migration, and preservation of unknown optional component data
 - Asynchronous CMake Build and Run controls with streamed output, extracted
   problems, and native Pause, Resume, and Stop process control
 - Geometric circuit-leaf application branding and embedded Windows icon

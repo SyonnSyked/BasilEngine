@@ -60,7 +60,7 @@ Workspace, Open Workspace, Save Workspace, Active Workspace, Workspace
 Hierarchy, and loading an additional Workspace.
 
 Multiple/additive Workspaces are intended, but their exact runtime and ownership
-semantics remain **unresolved**. Workspace schema version 2 is **implemented**
+semantics remain **unresolved**. Workspace schema version 3 is **implemented**
 as JSON using `.basilworkspace`. It supports a flat list of entities with stable
 immutable IDs, editable names, and enabled state. Component serialization,
 parenting, and runtime ownership remain deliberately undefined until their

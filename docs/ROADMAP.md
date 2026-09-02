@@ -84,7 +84,9 @@ engine source or machine-specific paths.
   now exist. The startup Workspace loads into an editor session; flat entities
   can be created, selected, renamed, enabled/disabled, deleted, and safely saved.
   Asynchronous CMake Build/Run, output capture, problem extraction, and native
-  Pause/Resume/Stop process control are implemented. Component/spatial runtime,
+  Pause/Resume/Stop process control are implemented. Lifecycle-owned Workspace
+  documents and the first versioned Transform2D/ASCII Renderable component
+  schema are implemented. Runtime interpretation, editor component controls,
   in-Viewport play, source navigation, and terminal services remain.
 - Create a dockable editor application. **Implemented.**
 - Add an ASCII viewport, hierarchy, inspector, asset browser, and log console.
@@ -101,11 +103,11 @@ engine source or machine-specific paths.
 saved without hand-editing its Workspace representation.
 
 The next implementation slice connects the generated runtime to Project and
-Workspace loading, introduces the first transform/renderable component data,
+Workspace loading, interprets the first transform/renderable component data,
 and proves that editor-authored entities appear in the running application.
 That shared runtime path is required before standalone Run can evolve into
-in-Viewport development play. Its proposed implementation contract is recorded
-in `RUNTIME_WORKSPACE_BRIDGE.md` for review before code changes begin.
+in-Viewport development play. Its accepted implementation contract and progress
+are recorded in `RUNTIME_WORKSPACE_BRIDGE.md`.
 
 ## Milestone 5: Project creation
 

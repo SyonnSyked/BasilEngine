@@ -30,6 +30,37 @@ static bool FileExists(const char* path)
     return stat(path, &information) == 0;
 }
 
+static bool CopyFileContents(const char* sourcePath, const char* destinationPath)
+{
+    FILE* source = fopen(sourcePath, "rb");
+    FILE* destination = fopen(destinationPath, "wb");
+
+    if (source == NULL || destination == NULL)
+    {
+        if (source != NULL)
+            fclose(source);
+        if (destination != NULL)
+            fclose(destination);
+        return false;
+    }
+
+    char buffer[4096];
+    size_t count = 0;
+    bool succeeded = true;
+
+    while ((count = fread(buffer, 1, sizeof(buffer), source)) > 0)
+    {
+        if (fwrite(buffer, 1, count, destination) != count)
+        {
+            succeeded = false;
+            break;
+        }
+    }
+
+    succeeded = succeeded && !ferror(source) && fclose(source) == 0 && fclose(destination) == 0;
+    return succeeded;
+}
+
 static BDiagnosticCode FirstErrorCode(const BDiagnosticList* diagnostics)
 {
     const BDiagnostic* diagnostic = BDiagnosticList_FirstError(diagnostics);
@@ -166,6 +197,149 @@ int main(void)
         "unknown fields are rejected instead of discarded"
     );
     failures += Check(strcmp(loaded.identifier, "LegacyEmpty") == 0, "all failed loads remain transactional");
+
+    BWorkspaceDocument components;
+    BWorkspaceDocument_Init(&components);
+    failures += Check(
+        BWorkspaceDocument_Load("test-fixtures/workspace-components-v3.basilworkspace", &components, &diagnostics),
+        "schema 3 components load"
+    );
+    failures += Check(components.entityCount == 1 && components.componentCount == 3, "component totals load");
+    failures += Check(
+        diagnostics.count == 1 && diagnostics.items[0].severity == BDIAGNOSTIC_WARNING &&
+            strcmp(diagnostics.items[0].entityId, "entity-0000000000000001") == 0 &&
+            strcmp(diagnostics.items[0].componentType, "example.gameplay-note") == 0,
+        "unknown optional component produces a structured warning"
+    );
+    const BWorkspaceEntity* rendered = &components.entities[0];
+    const BWorkspaceComponent* transform = BWorkspaceEntity_FindComponentConst(rendered, BWORKSPACE_TRANSFORM2D_TYPE);
+    const BWorkspaceComponent* ascii = BWorkspaceEntity_FindComponentConst(rendered, BWORKSPACE_ASCII_RENDERABLE_TYPE);
+    const BWorkspaceComponent* unknown = BWorkspaceEntity_FindComponentConst(rendered, "example.gameplay-note");
+    failures += Check(
+        transform != NULL && transform->kind == BWORKSPACE_COMPONENT_TRANSFORM2D &&
+            transform->data.transform2d.x == 12.5f && transform->data.transform2d.y == -3.25f,
+        "Transform2D decodes into typed data"
+    );
+    failures += Check(
+        ascii != NULL && ascii->kind == BWORKSPACE_COMPONENT_ASCII_RENDERABLE &&
+            ascii->data.asciiRenderable.sourceKind == BASCII_SOURCE_TEXT_SPRITE &&
+            strcmp(ascii->data.asciiRenderable.textSpritePath, "assets/sprites/player.txt") == 0 &&
+            ascii->data.asciiRenderable.anchor == BASCII_ANCHOR_CENTER &&
+            ascii->data.asciiRenderable.layer == 7,
+        "ASCII Renderable decodes into typed data"
+    );
+    failures += Check(
+        unknown != NULL && unknown->kind == BWORKSPACE_COMPONENT_UNKNOWN &&
+            strstr(unknown->data.unknownDataJson, "preserve me") != NULL,
+        "unknown optional component is preserved"
+    );
+
+    BWorkspaceDocument componentClone;
+    BWorkspaceDocument_Init(&componentClone);
+    failures += Check(
+        BWorkspaceDocument_Clone(&components, &componentClone, &diagnostics),
+        "component Workspace deep clones"
+    );
+    const BWorkspaceComponent* clonedUnknown = BWorkspaceEntity_FindComponentConst(
+        &componentClone.entities[0],
+        "example.gameplay-note"
+    );
+    failures += Check(
+        clonedUnknown != NULL && clonedUnknown->data.unknownDataJson != unknown->data.unknownDataJson &&
+            strcmp(clonedUnknown->data.unknownDataJson, unknown->data.unknownDataJson) == 0,
+        "unknown component payload has independent ownership"
+    );
+
+    char componentPath[BPROJECT_PATH_MAX];
+    snprintf(componentPath, sizeof(componentPath), "Components_%ld_%d.basilworkspace", (long)time(0), (int)GET_PROCESS_ID());
+    failures += Check(BWorkspaceDocument_Save(&components, componentPath, &diagnostics), "component Workspace saves");
+    BWorkspaceDocument roundTrip;
+    BWorkspaceDocument_Init(&roundTrip);
+    failures += Check(BWorkspaceDocument_Load(componentPath, &roundTrip, &diagnostics), "component Workspace reloads");
+    const BWorkspaceComponent* roundTripUnknown = BWorkspaceEntity_FindComponentConst(
+        &roundTrip.entities[0],
+        "example.gameplay-note"
+    );
+    failures += Check(
+        roundTripUnknown != NULL && strstr(roundTripUnknown->data.unknownDataJson, "preserve me") != NULL,
+        "unknown optional data survives load-save-load"
+    );
+    remove(componentPath);
+
+    failures += Check(
+        !BWorkspaceDocument_Load("test-fixtures/workspace-required-unknown-v3.basilworkspace", &roundTrip, &diagnostics) &&
+            FirstErrorCode(&diagnostics) == BDIAGNOSTIC_UNSUPPORTED_VERSION &&
+            strcmp(roundTrip.identifier, "Components") == 0,
+        "unknown required component is rejected transactionally"
+    );
+    failures += Check(
+        !BWorkspaceDocument_Load("test-fixtures/workspace-duplicate-components-v3.basilworkspace", &roundTrip, &diagnostics) &&
+            FirstErrorCode(&diagnostics) == BDIAGNOSTIC_INVALID_DATA,
+        "duplicate component types are rejected"
+    );
+
+    BWorkspaceDocument previous;
+    BWorkspaceDocument_Init(&previous);
+    failures += Check(
+        BWorkspaceDocument_Load("test-fixtures/workspace-entities-v2.basilworkspace", &previous, &diagnostics),
+        "schema 2 entity Workspace loads"
+    );
+    failures += Check(
+        previous.schemaVersion == BWORKSPACE_SCHEMA_VERSION && previous.entityCount == 1 &&
+            previous.entities[0].componentCount == 0,
+        "schema 2 entities migrate in memory without invented components"
+    );
+    failures += Check(BWorkspaceDocument_RequiresMigration(&previous), "schema 2 source records pending migration");
+
+    char migrationPath[BPROJECT_PATH_MAX];
+    snprintf(migrationPath, sizeof(migrationPath), "Migration_%ld_%d.basilworkspace", (long)time(0), (int)GET_PROCESS_ID());
+    failures += Check(
+        CopyFileContents("test-fixtures/workspace-entities-v2.basilworkspace", migrationPath),
+        "migration fixture is copied"
+    );
+    failures += Check(BWorkspaceDocument_Save(&previous, migrationPath, &diagnostics), "schema 2 document saves as schema 3");
+    char migrationBackup[BPROJECT_PATH_MAX + 8];
+    snprintf(migrationBackup, sizeof(migrationBackup), "%s.bak", migrationPath);
+    failures += Check(FileExists(migrationBackup), "schema migration retains the original backup");
+    BWorkspaceDocument migrated;
+    BWorkspaceDocument_Init(&migrated);
+    failures += Check(BWorkspaceDocument_Load(migrationPath, &migrated, &diagnostics), "saved schema 3 migration reloads");
+    remove(migrationPath);
+    remove(migrationBackup);
+
+    BWorkspaceDocument mutations;
+    BWorkspaceDocument_Init(&mutations);
+    failures += Check(
+        BWorkspaceDocument_CreateDefault(&mutations, "Mutation Workspace", "Mutations", &diagnostics),
+        "mutation Workspace is created"
+    );
+    size_t mutationEntity = 0;
+    failures += Check(BWorkspaceDocument_AddEntity(&mutations, "Actor", &mutationEntity, &diagnostics), "mutation entity is added");
+    failures += Check(
+        BWorkspaceDocument_AddTransform2D(&mutations, mutationEntity, (BTransform2D){ 1.5f, 2.5f }, true, &diagnostics),
+        "Transform2D can be added"
+    );
+    BAsciiRenderable glyph = BAsciiRenderable_DefaultGlyph('@');
+    failures += Check(
+        BWorkspaceDocument_AddAsciiRenderable(&mutations, mutationEntity, &glyph, true, &diagnostics),
+        "ASCII Renderable can be added"
+    );
+    failures += Check(
+        !BWorkspaceDocument_AddTransform2D(&mutations, mutationEntity, (BTransform2D){ 0.0f, 0.0f }, true, &diagnostics),
+        "duplicate component mutation is rejected"
+    );
+    failures += Check(
+        BWorkspaceDocument_RemoveComponent(&mutations, mutationEntity, BWORKSPACE_ASCII_RENDERABLE_TYPE, &diagnostics) &&
+            mutations.componentCount == 1,
+        "component can be removed with totals repaired"
+    );
+
+    BWorkspaceDocument_Destroy(&mutations);
+    BWorkspaceDocument_Destroy(&migrated);
+    BWorkspaceDocument_Destroy(&previous);
+    BWorkspaceDocument_Destroy(&roundTrip);
+    BWorkspaceDocument_Destroy(&componentClone);
+    BWorkspaceDocument_Destroy(&components);
 
     BWorkspaceDocument_Destroy(&loaded);
     BWorkspaceDocument_Destroy(&invalid);

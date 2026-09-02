@@ -31,6 +31,7 @@ public:
 
     bool IsLoaded() const;
     bool IsDirty() const;
+    bool RequiresMigration() const;
     void MarkDirty();
 
     const std::filesystem::path& Path() const;

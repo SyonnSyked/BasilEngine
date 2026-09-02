@@ -11,7 +11,7 @@ opened Project through independently dockable Project Details and Workspace
 Viewport windows. The remaining core panel windows are present as dockable
 scaffolds, including a read-only top-level asset listing. Startup Workspace
 entities can now be edited and saved through the Hierarchy and Inspector.
-Native file dialogs, component/spatial data, and runtime Workspace consumption
+Native file dialogs, editor component controls, and runtime Workspace consumption
 remain future work.
 
 ## User workflow
@@ -83,11 +83,12 @@ Empty files or directories are included only when they serve an immediate
 workflow purpose.
 
 Project schema version 2 uses a `startupWorkspace` path and generated Projects
-store `workspaces/Main.basilworkspace`. Workspace schema version 2 is versioned
-JSON containing its identity, next stable entity ID, and a bounded flat entity
-list. The first entity record contains an immutable ID, editable display name,
-and enabled state. Component data and parent/child relationships are not yet
-part of the contract.
+store `workspaces/Main.basilworkspace`. Workspace schema version 3 contains its
+identity, next stable entity ID, a bounded flat entity list, and bounded
+versioned component envelopes. Transform2D position and ASCII Renderable data
+are the first typed components. Unknown optional component JSON is owned and
+preserved; unknown required components are rejected. Parent/child relationships
+are not part of the contract.
 
 BasilEditor loads the startup Workspace into an explicitly owned, lifecycle-safe
 document held by the editor session. Loads and clones are transactional, so a
@@ -111,10 +112,12 @@ final in-editor development-play model: generated runtimes do not yet load the
 Workspace entity file, and their rendering is not yet hosted in the editor
 Viewport.
 
-Schema version 2 rejects unknown and duplicate fields rather than accepting
-data it cannot preserve. Empty schema-version-1 Workspace files remain loadable
-and are represented as version 2 in memory; their first save retains the
-original file as a backup.
+Schema version 3 rejects unknown and duplicate structural fields. It preserves
+bounded unknown optional component `data` without interpreting it, while
+rejecting required component types or versions it cannot execute. Schema-1 empty
+Workspaces and schema-2 entity Workspaces remain loadable and are represented as
+version 3 in memory without inventing components. Their first save retains the
+original file as a backup and writes the current schema.
 
 Project schema version 1 remains loadable. Its `startupScene` path is preserved
 in memory while the Project is represented using the current API. Loading does

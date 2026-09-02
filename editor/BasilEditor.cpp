@@ -161,7 +161,11 @@ static bool OpenProject(EditorState& state, const fs::path& manifestPath)
     SetWindowTitle(TextFormat("BasilEditor - %s", state.project.name));
     SetMessage(
         state,
-        workspaceLoaded ? "Project and startup Workspace opened successfully." : workspaceError.c_str(),
+        workspaceLoaded ?
+            (state.workspaceSession.RequiresMigration() ?
+                "Project opened. Startup Workspace will migrate safely on first save." :
+                "Project and startup Workspace opened successfully.") :
+            workspaceError.c_str(),
         !workspaceLoaded
     );
     return true;

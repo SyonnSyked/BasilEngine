@@ -261,6 +261,10 @@ if(BUILD_TESTING)
         workspace-nonempty-entities.basilworkspace
         workspace-legacy-empty.basilworkspace
         workspace-unknown-field.basilworkspace
+        workspace-components-v3.basilworkspace
+        workspace-required-unknown-v3.basilworkspace
+        workspace-entities-v2.basilworkspace
+        workspace-duplicate-components-v3.basilworkspace
     )
         configure_file(
             "tests/fixtures/${workspace_fixture}"

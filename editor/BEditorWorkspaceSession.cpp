@@ -98,6 +98,7 @@ bool BEditorWorkspaceSession::Save(std::string& error)
         return false;
     }
 
+    workspace_.sourceSchemaVersion = BWORKSPACE_SCHEMA_VERSION;
     dirty_ = false;
     error.clear();
     return true;
@@ -152,6 +153,10 @@ bool BEditorWorkspaceSession::RemoveSelectedEntity(std::string& error)
 
 bool BEditorWorkspaceSession::IsLoaded() const { return loaded_; }
 bool BEditorWorkspaceSession::IsDirty() const { return dirty_; }
+bool BEditorWorkspaceSession::RequiresMigration() const
+{
+    return loaded_ && BWorkspaceDocument_RequiresMigration(&workspace_);
+}
 void BEditorWorkspaceSession::MarkDirty() { if (loaded_) dirty_ = true; }
 const std::filesystem::path& BEditorWorkspaceSession::Path() const { return path_; }
 const BWorkspaceDocument& BEditorWorkspaceSession::Workspace() const { return workspace_; }
