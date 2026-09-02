@@ -632,6 +632,13 @@ bool BWorkspaceDocument_AddEntity(
     return true;
 }
 
+static bool BWorkspaceDocument_AppendComponent(
+    BWorkspaceDocument* document,
+    size_t entityIndex,
+    const BWorkspaceComponent* component,
+    BDiagnosticList* diagnostics
+);
+
 bool BWorkspaceDocument_RemoveEntity(BWorkspaceDocument* document, size_t index, BDiagnosticList* error)
 {
     BWorkspaceDocument_ClearError(error);
@@ -650,6 +657,57 @@ bool BWorkspaceDocument_RemoveEntity(BWorkspaceDocument* document, size_t index,
 
     document->entityCount -= 1;
     memset(&document->entities[document->entityCount], 0, sizeof(BWorkspaceEntity));
+    return true;
+}
+
+bool BWorkspaceDocument_DuplicateEntity(
+    BWorkspaceDocument* document,
+    size_t sourceIndex,
+    size_t* outIndex,
+    BDiagnosticList* diagnostics
+)
+{
+    BWorkspaceDocument_ClearError(diagnostics);
+    if (document == 0 || sourceIndex >= document->entityCount)
+        return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_ARGUMENT, "Workspace and source entity are required.");
+
+    char name[BWORKSPACE_ENTITY_NAME_MAX];
+    int written = snprintf(name, sizeof(name), "%s Copy", document->entities[sourceIndex].name);
+    if (written < 0 || (size_t)written >= sizeof(name))
+        snprintf(name, sizeof(name), "Entity %llu Copy", document->nextEntityId);
+
+    size_t duplicateIndex = 0;
+    if (!BWorkspaceDocument_AddEntity(document, name, &duplicateIndex, diagnostics))
+        return false;
+
+    BWorkspaceEntity* source = &document->entities[sourceIndex];
+    BWorkspaceEntity* duplicate = &document->entities[duplicateIndex];
+    duplicate->enabled = source->enabled;
+
+    for (size_t i = 0; i < source->componentCount; ++i)
+    {
+        BWorkspaceComponent component = source->components[i];
+        if (component.kind == BWORKSPACE_COMPONENT_UNKNOWN)
+        {
+            size_t length = strlen(component.data.unknownDataJson);
+            component.data.unknownDataJson = (char*)malloc(length + 1);
+            if (component.data.unknownDataJson == 0)
+            {
+                BWorkspaceDocument_RemoveEntity(document, duplicateIndex, 0);
+                return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_OUT_OF_MEMORY, "Out of memory while duplicating component data.");
+            }
+            memcpy(component.data.unknownDataJson, source->components[i].data.unknownDataJson, length + 1);
+        }
+        if (!BWorkspaceDocument_AppendComponent(document, duplicateIndex, &component, diagnostics))
+        {
+            if (component.kind == BWORKSPACE_COMPONENT_UNKNOWN)
+                free(component.data.unknownDataJson);
+            BWorkspaceDocument_RemoveEntity(document, duplicateIndex, 0);
+            return false;
+        }
+    }
+
+    if (outIndex != 0) *outIndex = duplicateIndex;
     return true;
 }
 

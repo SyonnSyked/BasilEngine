@@ -4,6 +4,7 @@
 #include "BEditorGit.h"
 #include "BEditorBuildService.h"
 #include "BEditorPanels.h"
+#include "BEditorPlatformDialogs.h"
 #include "BEditorPreferences.h"
 #include "BEditorTheme.h"
 #include "BEditorUIConfig.h"
@@ -34,6 +35,7 @@ struct EditorState
     fs::path manifestPath;
     fs::path recentPath;
     fs::path preferencesPath;
+    fs::path globalUIConfigPath;
     BEditorPreferences preferences{};
     char openPath[BPROJECT_PATH_MAX]{};
     char projectName[BPROJECT_NAME_MAX] = "My Basil Game";
@@ -50,6 +52,12 @@ struct EditorState
     BEditorUIConfig uiConfig = BEditorUIConfig_Default();
     BEditorWorkspaceSession workspaceSession;
     bool confirmProjectClose = false;
+    bool confirmApplicationClose = false;
+    bool confirmRecovery = false;
+    bool showUIConfigManager = false;
+    bool exitApproved = false;
+    double recoveryDueTime = 0.0;
+    std::uint64_t recoveryObservedRevision = 0;
     BEditorBuildService buildService;
     BEditorBuildState observedBuildState = BEditorBuildState::Idle;
     std::string message;
@@ -169,6 +177,12 @@ static bool OpenProject(EditorState& state, const fs::path& manifestPath)
     state.projectOpen = true;
     state.resetDockLayout = true;
     state.uiConfig = BEditorUIConfig_Default();
+    std::string uiConfigError;
+    fs::path projectUIConfig = absolutePath.parent_path() / ".basil" / "editor-ui.basilui.json";
+    if (fs::is_regular_file(projectUIConfig))
+        BEditorUIConfig_Load(projectUIConfig.string(), state.uiConfig, uiConfigError);
+    else if (fs::is_regular_file(state.globalUIConfigPath))
+        BEditorUIConfig_Load(state.globalUIConfigPath.string(), state.uiConfig, uiConfigError);
     state.workspaceSession.Reset();
     std::string workspaceError;
     bool workspaceLoaded = state.workspaceSession.Load(
@@ -179,18 +193,22 @@ static bool OpenProject(EditorState& state, const fs::path& manifestPath)
 
     if (!workspaceLoaded)
         state.uiConfig.showProblems = true;
+    else
+        state.confirmRecovery = state.workspaceSession.HasNewerRecovery();
+    state.recoveryObservedRevision = state.workspaceSession.Revision();
+    state.recoveryDueTime = 0.0;
 
     BRecentProjects_Add(&state.recent, absolutePath.string().c_str());
     SaveRecentProjects(state);
     SetWindowTitle(TextFormat("BasilEditor - %s", state.project.name));
     SetMessage(
         state,
-        workspaceLoaded ?
+        !uiConfigError.empty() ? uiConfigError.c_str() : workspaceLoaded ?
             (state.workspaceSession.RequiresMigration() ?
                 "Project opened. Startup Workspace will migrate safely on first save." :
                 "Project and startup Workspace opened successfully.") :
             workspaceError.c_str(),
-        !workspaceLoaded
+        !uiConfigError.empty() || !workspaceLoaded
     );
     return true;
 }
@@ -374,11 +392,18 @@ static void DrawOpenProject(EditorState& state)
     ImGui::InputText("##ManifestPath", state.openPath, sizeof(state.openPath));
     ImGui::Spacing();
 
+    if (ImGui::Button("BROWSE...", ImVec2(-1.0f, 0.0f)))
+    {
+        fs::path selected = state.openPath;
+        std::string error;
+        if (BEditorDialog_OpenProject(selected, error))
+            std::snprintf(state.openPath, sizeof(state.openPath), "%s", selected.string().c_str());
+        else if (!error.empty())
+            SetMessage(state, error.c_str(), true);
+    }
+
     if (ImGui::Button("OPEN PROJECT LINK", ImVec2(-1.0f, 0.0f)))
         OpenProject(state, state.openPath);
-
-    ImGui::Spacing();
-    ImGui::TextDisabled("Native platform file selection arrives with the platform-integration stage.");
 }
 
 static void DrawNewProject(EditorState& state)
@@ -394,6 +419,15 @@ static void DrawNewProject(EditorState& state)
     ImGui::InputText("Code identifier", state.identifier, sizeof(state.identifier));
     ImGui::SetNextItemWidth(-1.0f);
     ImGui::InputText("Project location", state.parentDirectory, sizeof(state.parentDirectory));
+    if (ImGui::Button("SELECT PROJECT LOCATION...", ImVec2(-1.0f, 0.0f)))
+    {
+        fs::path selected = state.parentDirectory;
+        std::string error;
+        if (BEditorDialog_SelectFolder(selected, error))
+            std::snprintf(state.parentDirectory, sizeof(state.parentDirectory), "%s", selected.string().c_str());
+        else if (!error.empty())
+            SetMessage(state, error.c_str(), true);
+    }
     ImGui::Spacing();
     ImGui::SeparatorText("LANGUAGE MATRIX");
     ImGui::SetNextItemWidth(-1.0f);
@@ -550,6 +584,18 @@ static void StartProjectBuild(EditorState& state, bool runAfterBuild)
     SetMessage(state, runAfterBuild ? "Project build started; the game will run after success." : "Project build started.", false);
 }
 
+static void CaptureUIConfigLayout(EditorState& state)
+{
+    const ImVec2 display = ImGui::GetIO().DisplaySize;
+    if (display.x <= 0.0f || display.y <= 0.0f) return;
+    ImGuiWindow* left = ImGui::FindWindowByName(BEditorPanel_Name(BEditorPanel::ProjectDetails));
+    ImGuiWindow* right = ImGui::FindWindowByName(BEditorPanel_Name(BEditorPanel::Inspector));
+    ImGuiWindow* bottom = ImGui::FindWindowByName(BEditorPanel_Name(BEditorPanel::Assets));
+    if (left && left->DockNode) state.uiConfig.leftRatio = std::clamp(left->DockNode->Size.x / display.x, 0.1f, 0.4f);
+    if (right && right->DockNode) state.uiConfig.rightRatio = std::clamp(right->DockNode->Size.x / display.x, 0.1f, 0.4f);
+    if (bottom && bottom->DockNode) state.uiConfig.bottomRatio = std::clamp(bottom->DockNode->Size.y / display.y, 0.1f, 0.45f);
+}
+
 static void DrawEditorMenuBar(EditorState& state)
 {
     const BEditorThemePalette& palette = BEditorTheme_GetPalette();
@@ -568,6 +614,13 @@ static void DrawEditorMenuBar(EditorState& state)
         if (ImGui::MenuItem("Return to Project Browser"))
             ReturnToProjectBrowser(state);
 
+        ImGui::Separator();
+        if (ImGui::MenuItem("Exit BasilEditor"))
+        {
+            state.confirmApplicationClose = state.workspaceSession.IsDirty();
+            state.exitApproved = !state.confirmApplicationClose;
+        }
+
         ImGui::EndMenu();
     }
 
@@ -580,7 +633,18 @@ static void DrawEditorMenuBar(EditorState& state)
 
         ImGui::BeginDisabled(!state.workspaceSession.IsLoaded());
 
-        if (ImGui::MenuItem("Save Workspace", "Ctrl+S"))
+        ImGui::BeginDisabled(!state.workspaceSession.CanUndo());
+        if (ImGui::MenuItem("Undo", "Ctrl+Z")) { std::string error; if (!state.workspaceSession.Undo(error)) SetMessage(state, error.c_str(), true); }
+        ImGui::EndDisabled();
+        ImGui::BeginDisabled(!state.workspaceSession.CanRedo());
+        if (ImGui::MenuItem("Redo", "Ctrl+Y")) { std::string error; if (!state.workspaceSession.Redo(error)) SetMessage(state, error.c_str(), true); }
+        ImGui::EndDisabled();
+        ImGui::BeginDisabled(state.workspaceSession.SelectedEntity() == nullptr);
+        if (ImGui::MenuItem("Duplicate Entity", "Ctrl+D")) { std::string error; bool ok = state.workspaceSession.DuplicateSelectedEntity(error); SetMessage(state, ok ? "Entity duplicated." : error.c_str(), !ok); }
+        ImGui::EndDisabled();
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Save All", "Ctrl+S"))
             SaveWorkspace(state);
 
         ImGui::EndDisabled();
@@ -600,11 +664,50 @@ static void DrawEditorMenuBar(EditorState& state)
         ImGui::MenuItem("Terminal", nullptr, &state.uiConfig.showTerminal);
         ImGui::Separator();
 
+        ImGui::MenuItem("UI Config Manager", nullptr, &state.showUIConfigManager);
+
         if (ImGui::MenuItem("Reset Default UI Config"))
         {
             state.uiConfig = BEditorUIConfig_Default();
             state.resetDockLayout = true;
             SetMessage(state, "Default UI Config restored.", false);
+        }
+
+        if (ImGui::MenuItem("Save as Global Default"))
+        {
+            CaptureUIConfigLayout(state);
+            std::string error; bool ok = BEditorUIConfig_Save(state.globalUIConfigPath.string(), state.uiConfig, error);
+            SetMessage(state, ok ? "Global UI Config saved." : error.c_str(), !ok);
+        }
+        if (ImGui::MenuItem("Save for This Project"))
+        {
+            CaptureUIConfigLayout(state);
+            fs::path path = state.manifestPath.parent_path() / ".basil" / "editor-ui.basilui.json";
+            std::string error; bool ok = BEditorUIConfig_Save(path.string(), state.uiConfig, error);
+            SetMessage(state, ok ? "Project UI Config saved." : error.c_str(), !ok);
+        }
+        if (ImGui::MenuItem("Import UI Config..."))
+        {
+            fs::path path; std::string error;
+            if (BEditorDialog_OpenUIConfig(path, error))
+            {
+                BEditorUIConfig loaded;
+                bool ok = BEditorUIConfig_Load(path.string(), loaded, error);
+                if (ok) { state.uiConfig = loaded; state.resetDockLayout = true; }
+                SetMessage(state, ok ? "UI Config imported." : error.c_str(), !ok);
+            }
+            else if (!error.empty()) SetMessage(state, error.c_str(), true);
+        }
+        if (ImGui::MenuItem("Export UI Config..."))
+        {
+            fs::path path = "BasilEditor.basilui.json"; std::string error;
+            if (BEditorDialog_SaveUIConfig(path, error))
+            {
+                CaptureUIConfigLayout(state);
+                bool ok = BEditorUIConfig_Save(path.string(), state.uiConfig, error);
+                SetMessage(state, ok ? "UI Config exported." : error.c_str(), !ok);
+            }
+            else if (!error.empty()) SetMessage(state, error.c_str(), true);
         }
 
         ImGui::EndMenu();
@@ -915,6 +1018,22 @@ static void DrawEditorShell(EditorState& state)
     {
         SaveWorkspace(state);
     }
+    if (state.workspaceSession.IsLoaded() && ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Z, false))
+    {
+        std::string error;
+        if (!state.workspaceSession.Undo(error)) SetMessage(state, error.c_str(), true);
+    }
+    if (state.workspaceSession.IsLoaded() && ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y, false))
+    {
+        std::string error;
+        if (!state.workspaceSession.Redo(error)) SetMessage(state, error.c_str(), true);
+    }
+    if (state.workspaceSession.IsLoaded() && ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D, false))
+    {
+        std::string error;
+        bool ok = state.workspaceSession.DuplicateSelectedEntity(error);
+        SetMessage(state, ok ? "Entity duplicated." : error.c_str(), !ok);
+    }
     ImGuiID dockspaceId = ImGui::GetID("BasilEditorDockspace");
     ImGui::DockSpaceOverViewport(
         dockspaceId,
@@ -943,6 +1062,36 @@ static void DrawEditorShell(EditorState& state)
     if (!feedback.message.empty())
         SetMessage(state, feedback.message.c_str(), feedback.isError);
 
+    if (state.showUIConfigManager)
+    {
+        if (ImGui::Begin("UI CONFIG MANAGER", &state.showUIConfigManager))
+        {
+            ImGui::TextUnformatted("Save a reusable global default or an explicit Project-owned layout.");
+            ImGui::TextDisabled("GLOBAL // %s", state.globalUIConfigPath.string().c_str());
+            ImGui::TextDisabled("PROJECT // .basil/editor-ui.basilui.json");
+            ImGui::Separator();
+            if (ImGui::Button("SAVE GLOBAL DEFAULT", ImVec2(-1.0f, 0.0f)))
+            {
+                CaptureUIConfigLayout(state);
+                std::string error; bool ok = BEditorUIConfig_Save(state.globalUIConfigPath.string(), state.uiConfig, error);
+                SetMessage(state, ok ? "Global UI Config saved." : error.c_str(), !ok);
+            }
+            if (ImGui::Button("SAVE FOR THIS PROJECT", ImVec2(-1.0f, 0.0f)))
+            {
+                CaptureUIConfigLayout(state);
+                fs::path path = state.manifestPath.parent_path() / ".basil" / "editor-ui.basilui.json";
+                std::string error; bool ok = BEditorUIConfig_Save(path.string(), state.uiConfig, error);
+                SetMessage(state, ok ? "Project UI Config saved." : error.c_str(), !ok);
+            }
+            if (ImGui::Button("RESET MAINTAINED DEFAULT", ImVec2(-1.0f, 0.0f)))
+            {
+                state.uiConfig = BEditorUIConfig_Default(); state.resetDockLayout = true;
+                SetMessage(state, "Maintained default UI Config restored.", false);
+            }
+        }
+        ImGui::End();
+    }
+
     if (state.confirmProjectClose)
         ImGui::OpenPopup("UNSAVED WORKSPACE CHANGES");
 
@@ -967,6 +1116,8 @@ static void DrawEditorShell(EditorState& state)
 
         if (ImGui::Button("DISCARD", ImVec2(120.0f, 0.0f)))
         {
+            std::string ignored;
+            state.workspaceSession.DiscardRecovery(ignored);
             state.confirmProjectClose = false;
             state.workspaceSession.Reset();
             ResetViewportPreview(state);
@@ -985,6 +1136,52 @@ static void DrawEditorShell(EditorState& state)
 
         ImGui::EndPopup();
     }
+
+    if (state.confirmRecovery)
+        ImGui::OpenPopup("WORKSPACE RECOVERY AVAILABLE");
+    if (ImGui::BeginPopupModal("WORKSPACE RECOVERY AVAILABLE", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextUnformatted("A newer recovery snapshot exists for this Workspace.");
+        ImGui::TextDisabled("Restore it as unsaved work, or discard the snapshot.");
+        if (ImGui::Button("RESTORE", ImVec2(140.0f, 0.0f)))
+        {
+            std::string error; bool ok = state.workspaceSession.RestoreRecovery(error);
+            if (ok) { state.confirmRecovery = false; SetMessage(state, "Workspace recovery restored as unsaved work.", false); ImGui::CloseCurrentPopup(); }
+            else SetMessage(state, error.c_str(), true);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("DISCARD", ImVec2(140.0f, 0.0f)))
+        {
+            std::string error; bool ok = state.workspaceSession.DiscardRecovery(error);
+            if (ok) { state.confirmRecovery = false; SetMessage(state, "Workspace recovery discarded.", false); ImGui::CloseCurrentPopup(); }
+            else SetMessage(state, error.c_str(), true);
+        }
+        ImGui::EndPopup();
+    }
+
+    if (state.confirmApplicationClose)
+        ImGui::OpenPopup("EXIT WITH UNSAVED CHANGES");
+    if (ImGui::BeginPopupModal("EXIT WITH UNSAVED CHANGES", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::TextUnformatted("The active Workspace has unsaved changes.");
+        if (ImGui::Button("SAVE + EXIT", ImVec2(150.0f, 0.0f)) && SaveWorkspace(state))
+        {
+            state.confirmApplicationClose = false; state.exitApproved = true; ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("DISCARD + EXIT", ImVec2(150.0f, 0.0f)))
+        {
+            std::string ignored;
+            state.workspaceSession.DiscardRecovery(ignored);
+            state.confirmApplicationClose = false; state.exitApproved = true; ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("CANCEL", ImVec2(100.0f, 0.0f)))
+        {
+            state.confirmApplicationClose = false; ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
 }
 
 static int RunEditor(int argumentCount, char** arguments)
@@ -993,10 +1190,14 @@ static int RunEditor(int argumentCount, char** arguments)
     InitWindow(1100, 700, "BasilEditor");
     ApplyApplicationIcons();
     SetTargetFPS(60);
+    SetExitKey(KEY_NULL);
 
     EditorState state;
     state.recentPath = EditorDataDirectory() / "recent-projects.json";
     state.preferencesPath = EditorDataDirectory() / "preferences.json";
+    state.globalUIConfigPath = EditorDataDirectory() / "ui-configs" / "default.basilui.json";
+    std::string closeInterceptorError;
+    bool closeInterceptorInstalled = BEditorPlatform_InstallCloseInterceptor(GetWindowHandle(), closeInterceptorError);
     std::string preferencesError;
     bool preferencesLoaded = BEditorPreferences_Load(
         state.preferencesPath.string(),
@@ -1025,12 +1226,29 @@ static int RunEditor(int argumentCount, char** arguments)
         SetMessage(state, recentError.message, true);
     else if (!bundledFontsLoaded)
         SetMessage(state, "JetBrains Mono could not be loaded; BasilEditor is using its fallback font.", true);
+    else if (!closeInterceptorInstalled)
+        SetMessage(state, closeInterceptorError.c_str(), true);
 
     if (argumentCount > 1)
         OpenProject(state, arguments[1]);
 
-    while (!WindowShouldClose())
+    while (!state.exitApproved)
     {
+        if (state.workspaceSession.IsLoaded() && state.workspaceSession.IsDirty())
+        {
+            if (state.recoveryObservedRevision != state.workspaceSession.Revision())
+            {
+                state.recoveryObservedRevision = state.workspaceSession.Revision();
+                state.recoveryDueTime = GetTime() + 10.0;
+            }
+            else if (state.recoveryDueTime > 0.0 && GetTime() >= state.recoveryDueTime)
+            {
+                std::string recoveryError;
+                if (!state.workspaceSession.SaveRecovery(recoveryError))
+                    SetMessage(state, recoveryError.c_str(), true);
+                state.recoveryDueTime = 0.0;
+            }
+        }
         BeginDrawing();
         ClearBackground(Color{ 22, 25, 31, 255 });
         rlImGuiBegin();
@@ -1040,10 +1258,21 @@ static int RunEditor(int argumentCount, char** arguments)
             DrawProjectBrowser(state);
         rlImGuiEnd();
         EndDrawing();
+
+        if (BEditorPlatform_TakeCloseRequest() || WindowShouldClose())
+        {
+            if (state.buildService.IsBusy())
+                SetMessage(state, "Stop the active build or game before exiting BasilEditor.", true);
+            else if (state.workspaceSession.IsDirty())
+                state.confirmApplicationClose = true;
+            else
+                state.exitApproved = true;
+        }
     }
 
     rlImGuiShutdown();
     ResetViewportPreview(state);
+    BEditorPlatform_RemoveCloseInterceptor();
     CloseWindow();
     return 0;
 }

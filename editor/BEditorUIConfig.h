@@ -37,6 +37,8 @@ struct BEditorUIConfig
 
 BEditorUIConfig BEditorUIConfig_Default();
 bool BEditorUIConfig_Validate(const BEditorUIConfig& config, std::string& error);
+bool BEditorUIConfig_Load(const std::string& path, BEditorUIConfig& output, std::string& error);
+bool BEditorUIConfig_Save(const std::string& path, const BEditorUIConfig& config, std::string& error);
 const char* BEditorPanel_Name(BEditorPanel panel);
 
 #endif

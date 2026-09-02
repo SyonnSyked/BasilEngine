@@ -249,6 +249,21 @@ int main(void)
             strcmp(clonedUnknown->data.unknownDataJson, unknown->data.unknownDataJson) == 0,
         "unknown component payload has independent ownership"
     );
+    size_t duplicateIndex = 0;
+    failures += Check(
+        BWorkspaceDocument_DuplicateEntity(&components, 0, &duplicateIndex, &diagnostics),
+        "entity with optional component duplicates"
+    );
+    unknown = BWorkspaceEntity_FindComponentConst(&components.entities[0], "example.gameplay-note");
+    const BWorkspaceComponent* duplicatedUnknown = BWorkspaceEntity_FindComponentConst(
+        &components.entities[duplicateIndex], "example.gameplay-note"
+    );
+    failures += Check(
+        duplicateIndex == 1 && duplicatedUnknown != NULL &&
+            duplicatedUnknown->data.unknownDataJson != unknown->data.unknownDataJson &&
+            strcmp(duplicatedUnknown->data.unknownDataJson, unknown->data.unknownDataJson) == 0,
+        "duplicated optional component has independent preserved data"
+    );
 
     char componentPath[BPROJECT_PATH_MAX];
     snprintf(componentPath, sizeof(componentPath), "Components_%ld_%d.basilworkspace", (long)time(0), (int)GET_PROCESS_ID());

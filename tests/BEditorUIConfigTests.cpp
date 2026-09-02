@@ -1,6 +1,9 @@
 #include "BEditorUIConfig.h"
 
 #include <cstdio>
+#include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <string>
 
 static int Check(bool condition, const char* message)
@@ -36,6 +39,30 @@ int main()
     config.bottomRatio = 0.9f;
     failures += Check(!BEditorUIConfig_Validate(config, error), "invalid panel ratio is rejected");
     failures += Check(!error.empty(), "invalid config provides an explanation");
+
+    namespace fs = std::filesystem;
+    fs::path root = fs::temp_directory_path() / ("basil-ui-config-" + std::to_string(
+        std::chrono::steady_clock::now().time_since_epoch().count()));
+    fs::path path = root / "custom.basilui.json";
+    config = BEditorUIConfig_Default();
+    config.showTerminal = true;
+    config.showConsole = false;
+    config.leftRatio = 0.3f;
+    failures += Check(BEditorUIConfig_Save(path.string(), config, error), "UI Config saves as JSON");
+    BEditorUIConfig loaded;
+    failures += Check(BEditorUIConfig_Load(path.string(), loaded, error), "UI Config loads");
+    failures += Check(loaded.showTerminal && !loaded.showConsole && loaded.leftRatio == 0.3f, "UI Config fields round trip");
+    config.showProblems = true;
+    failures += Check(BEditorUIConfig_Save(path.string(), config, error), "UI Config replacement saves");
+    failures += Check(fs::is_regular_file(path.string() + ".bak"), "UI Config replacement retains backup");
+    {
+        std::ofstream malformed(path, std::ios::trunc);
+        malformed << "{ bad json";
+    }
+    loaded.showTerminal = false;
+    failures += Check(!BEditorUIConfig_Load(path.string(), loaded, error), "malformed UI Config is rejected");
+    failures += Check(loaded.showTerminal == BEditorUIConfig_Default().showTerminal, "failed load returns safe defaults");
+    fs::remove_all(root);
 
     if (failures == 0)
         std::printf("BEditorUIConfigTests passed.\n");

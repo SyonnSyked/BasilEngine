@@ -68,6 +68,11 @@ stretch are defined in the [Alpha Product Contract](docs/ALPHA_PRODUCT_CONTRACT.
 - Persistent global interface-scale presets from 100% through 175%
 - Optional Git initialization during or after project creation
 - Project-root Git detection that avoids redundant initialization controls
+- Workspace undo/redo, safe duplication, recovery snapshots, and native-window
+  unsaved-change protection
+- Portable JSON UI Configs with global/Project precedence, import, and export
+- Native Windows Project, folder, and UI Config dialogs
+- Case-insensitive Hierarchy and asset filtering
 - Headless project, generated-build, input, canvas, and combat tests
 
 ## Reference demo

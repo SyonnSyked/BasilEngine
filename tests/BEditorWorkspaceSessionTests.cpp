@@ -72,6 +72,11 @@ int main()
             BWorkspaceEntity_FindComponentConst(session.SelectedEntity(), BWORKSPACE_ASCII_RENDERABLE_TYPE) != nullptr,
         "normal entity is immediately visible with Transform2D and ASCII Renderable"
     );
+    failures += Check(session.DuplicateSelectedEntity(error), "selected entity duplicates");
+    failures += Check(session.Workspace().entityCount == 2 && session.SelectedIndex() == 1, "duplicate has a new selected entity");
+    failures += Check(session.Undo(error) && session.Workspace().entityCount == 1, "undo restores pre-duplicate document");
+    failures += Check(session.Redo(error) && session.Workspace().entityCount == 2, "redo restores duplicate");
+    failures += Check(session.Undo(error) && session.Workspace().entityCount == 1, "second undo returns fixture to one entity");
 
     BWorkspaceEntity* selected = session.MutableSelectedEntity();
     std::string originalName = selected->name;
@@ -92,6 +97,13 @@ int main()
     failures += Check(renderComponent->data.asciiRenderable.glyph == '#', "invalid renderable preserves the last valid value");
     failures += Check(session.Save(error), "session saves edits");
     failures += Check(!session.IsDirty(), "save clears dirty state");
+    session.Select(0);
+    failures += Check(session.SetSelectedEnabled(true, error), "post-save mutation succeeds");
+    failures += Check(session.IsDirty(), "post-save mutation is dirty");
+    failures += Check(session.Undo(error), "post-save mutation can be undone");
+    failures += Check(!session.IsDirty(), "undo to saved state clears dirty status");
+    failures += Check(session.Redo(error) && session.IsDirty(), "redo away from saved state restores dirty status");
+    failures += Check(session.Undo(error), "fixture returns to saved state");
     failures += Check(session.Reload(error), "session reloads saved Workspace");
     failures += Check(
         session.Workspace().entityCount == 1 &&
@@ -152,6 +164,19 @@ int main()
     session.Select(0);
     failures += Check(session.RemoveSelectedEntity(error), "Text Sprite entity can be removed");
     failures += Check(session.Workspace().entityCount == 0, "authoring fixture returns to empty state");
+
+    failures += Check(session.SaveRecovery(error), "dirty Workspace recovery saves separately");
+    fs::last_write_time(
+        fs::path(workspacePath.string() + ".recovery"),
+        fs::last_write_time(workspacePath) + std::chrono::seconds(1)
+    );
+    BEditorWorkspaceSession recovered;
+    failures += Check(recovered.Load(root, "workspaces/Main.basilworkspace", error), "recovery fixture loads canonical Workspace");
+    failures += Check(recovered.HasNewerRecovery(), "newer recovery is detected");
+    failures += Check(recovered.RestoreRecovery(error), "recovery restores transactionally");
+    failures += Check(recovered.IsDirty() && recovered.Workspace().entityCount == 0, "restored recovery remains unsaved");
+    failures += Check(recovered.DiscardRecovery(error), "recovery can be explicitly discarded");
+    failures += Check(!recovered.HasNewerRecovery(), "discard removes recovery marker");
 
     fs::remove_all(root);
 

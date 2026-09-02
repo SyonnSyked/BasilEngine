@@ -145,8 +145,9 @@ hosting is not connected.
 Save Workspace and Ctrl+S are implemented with full-model validation,
 temporary-file writing, and a recovery `.bak`. The editor reports clean/dirty
 state and guards the transition back to the Project Browser with Save, Discard,
-and Cancel choices. Additional Workspace creation/opening, undo/redo, parenting,
-and protection around every operating-system shutdown path remain planned.
+and Cancel choices. Undo/redo, duplication, recovery snapshots, and native
+Windows shutdown protection are **implemented**. Additional Workspace
+creation/opening, parenting, and non-Windows shutdown adapters remain planned.
 
 ## UI Configs
 
@@ -162,10 +163,10 @@ The following behavior is **confirmed**:
 - Users may select a global default; Projects may explicitly override it.
 - Reset to the maintained BasilEditor default remains available.
 
-The versioned in-memory default UI Config model, validated layout ratios, stable
-panel registry, and Reset Default UI Config action are **implemented**. Saving,
-loading, importing, and exporting JSON UI Config files remain **planned**; raw
-ImGui docking state is not being presented as the portable format.
+The versioned default model, validated layout ratios, stable panel registry,
+Reset action, JSON saving/loading, global and explicit Project ownership,
+import/export, and UI Config Manager are **implemented**. Raw ImGui docking state
+is not presented as the portable format.
 
 The public JSON should describe stable panel identities, visibility, and
 editor-owned layout concepts. Raw ImGui state must not be the only long-lived
@@ -345,10 +346,10 @@ Future macOS application-bundle packaging will require an ICNS export.
 
 - Final `.basilproject` and Where Birds Nest icons
 - Workspace component/parenting schema and additive semantics
-- Portable UI Config JSON schema and extension
+- Richer UI Config preset-library organization beyond global and Project files
 - External-editor configuration schema and placeholders
 - Exact default docking measurements
-- Native file-dialog strategy per platform
+- Native file-dialog adapters for macOS and Linux
 - Post-alpha custom terminal-emulation approach
 
 Gameplay questions remain in `OPEN_DESIGN_QUESTIONS.md` and must not distract

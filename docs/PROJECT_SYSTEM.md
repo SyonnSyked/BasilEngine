@@ -11,8 +11,9 @@ opened Project through independently dockable Project Details and Workspace
 Viewport windows. The remaining core panel windows are present as dockable
 scaffolds, including a read-only top-level asset listing. Startup Workspace
 entities can now be edited and saved through the Hierarchy and Inspector.
-Native file dialogs and the broader alpha asset/code/export workflow remain
-future work. Editor component controls and runtime Workspace consumption are
+The broader alpha asset/code/export workflow remains future work. Editor
+component controls, runtime Workspace consumption, native Windows Project/folder
+dialogs, document history/recovery, and portable UI Config persistence are
 implemented.
 
 ## User workflow

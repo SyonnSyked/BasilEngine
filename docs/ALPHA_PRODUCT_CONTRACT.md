@@ -257,6 +257,8 @@ manual review, documentation updates, and a reviewable commit.
 
 ### Stage 2: Editor reliability
 
+**Implementation status:** Complete; Windows interactive checklist pending.
+
 - Supported mutations participate in undo/redo and close protection.
 - Recovery survives forced termination without silently overwriting files.
 - UI Configs and native file dialogs complete their agreed workflows.

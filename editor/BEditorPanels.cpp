@@ -5,6 +5,7 @@
 #include "imgui.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -15,6 +16,15 @@ namespace fs = std::filesystem;
 
 namespace
 {
+bool ContainsInsensitive(const std::string& value, const char* filter)
+{
+    if (filter == nullptr || filter[0] == '\0') return true;
+    std::string needle(filter);
+    std::string haystack(value);
+    std::transform(needle.begin(), needle.end(), needle.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    std::transform(haystack.begin(), haystack.end(), haystack.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return haystack.find(needle) != std::string::npos;
+}
 void DrawPanelState(const char* state, const char* explanation)
 {
     const BEditorThemePalette& palette = BEditorTheme_GetPalette();
@@ -84,6 +94,10 @@ BEditorPanelFeedback DrawWorkspaceHierarchy(
         if (ImGui::Button("+ ADD ENTITY", ImVec2(-1.0f, 0.0f)))
             ImGui::OpenPopup("AddEntityPopup");
 
+        static char entityFilter[128]{};
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::InputTextWithHint("##EntityFilter", "Filter entities...", entityFilter, sizeof(entityFilter));
+
         if (ImGui::BeginPopup("AddEntityPopup"))
         {
             ImGui::TextColored(palette.violet, "VISIBLE GLYPH");
@@ -140,6 +154,8 @@ BEditorPanelFeedback DrawWorkspaceHierarchy(
             for (size_t i = 0; i < workspace.entityCount; ++i)
             {
                 const BWorkspaceEntity& entity = workspace.entities[i];
+                if (!ContainsInsensitive(entity.name, entityFilter) && !ContainsInsensitive(entity.id, entityFilter))
+                    continue;
                 ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf |
                     ImGuiTreeNodeFlags_NoTreePushOnOpen |
                     ImGuiTreeNodeFlags_SpanAvailWidth;
@@ -342,6 +358,10 @@ void DrawAssets(BEditorUIConfig& config, const fs::path& projectRoot)
         ImGui::TextDisabled("%s", assetRoot.string().c_str());
         ImGui::Separator();
 
+        static char assetFilter[128]{};
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::InputTextWithHint("##AssetFilter", "Filter assets...", assetFilter, sizeof(assetFilter));
+
         std::error_code error;
         std::vector<fs::directory_entry> entries;
         bool assetDirectoryExists = fs::is_directory(assetRoot, error);
@@ -371,6 +391,8 @@ void DrawAssets(BEditorUIConfig& config, const fs::path& projectRoot)
         {
             for (const fs::directory_entry& entry : entries)
             {
+                if (!ContainsInsensitive(entry.path().filename().string(), assetFilter))
+                    continue;
                 std::error_code typeError;
                 bool directory = entry.is_directory(typeError);
                 ImGui::BulletText("%s %s", directory ? "[DIR]" : "[FILE]", entry.path().filename().string().c_str());

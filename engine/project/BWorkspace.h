@@ -156,6 +156,12 @@ bool BWorkspaceDocument_RemoveEntity(
     size_t index,
     BDiagnosticList* diagnostics
 );
+bool BWorkspaceDocument_DuplicateEntity(
+    BWorkspaceDocument* document,
+    size_t sourceIndex,
+    size_t* outIndex,
+    BDiagnosticList* diagnostics
+);
 bool BWorkspaceDocument_SetEntityName(
     BWorkspaceDocument* document,
     size_t entityIndex,

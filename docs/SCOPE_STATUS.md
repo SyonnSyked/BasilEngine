@@ -1,8 +1,8 @@
 # BasilEngine Scope and Course Audit
 
 **Audit date:** 2026-09-02  
-**Project phase:** Windows alpha contract and baseline
-**Overall verdict:** On course; alpha scope is bounded and testable
+**Project phase:** Alpha Stage 2 editor reliability closeout
+**Overall verdict:** On course; reliable authoring prerequisites are active
 
 BasilEngine still matches the product charter. The repository has not drifted
 into game-specific engine code, a speculative ECS, or an oversized editor.
@@ -169,9 +169,9 @@ order merely because a button or panel exists.
 
 ### Immediate next work
 
-- Add complete close protection, Save All, recovery snapshots, and undo/redo.
-- Finish portable JSON UI Config persistence and native file/folder dialogs.
-- Establish regression tests for recovery and editor-owned mutations.
+- Complete the Stage 2 interactive checklist in `EDITOR_RELIABILITY.md`.
+- Begin Stage 3 with stable asset identities and focused file watching.
+- Build the bounded Text Sprite editor on the transactional asset service.
 
 ### Later
 

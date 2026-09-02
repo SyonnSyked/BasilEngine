@@ -462,6 +462,7 @@ if(BASIL_BUILD_EDITOR_DEPS)
         editor/BEditorBuildService.cpp
         editor/BEditorGit.cpp
         editor/BEditorPanels.cpp
+        editor/BEditorPlatformDialogs.cpp
         editor/BEditorPreferences.cpp
         editor/BEditorTheme.cpp
         editor/BEditorUIConfig.cpp
@@ -493,6 +494,10 @@ if(BASIL_BUILD_EDITOR_DEPS)
         rlimgui
         cjson
     )
+
+    if(WIN32)
+        target_link_libraries(BasilEditor PRIVATE comdlg32 shell32 ole32)
+    endif()
 
     target_include_directories(BasilEditor PRIVATE
         "${CMAKE_CURRENT_BINARY_DIR}/generated"
@@ -561,6 +566,10 @@ if(BASIL_BUILD_EDITOR_DEPS)
 
         target_include_directories(BEditorUIConfigTests PRIVATE
             editor
+        )
+
+        target_link_libraries(BEditorUIConfigTests PRIVATE
+            cjson
         )
 
         if(MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
