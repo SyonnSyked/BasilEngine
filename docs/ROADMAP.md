@@ -78,9 +78,11 @@ engine source or machine-specific paths.
   format, `.basilworkspace` extension, starter generation, and legacy manifest
   load path are implemented. The genuine ImGui dockspace, stable panel registry,
   main command surface, and resettable slim default UI Config are implemented;
-  portable UI Config persistence and the remaining panel windows are not.
+  portable UI Config persistence is not. All planned foundation panel windows
+  now exist, while their editing/build/diagnostic/terminal services remain.
 - Create a dockable editor application. **Implemented.**
 - Add an ASCII viewport, hierarchy, inspector, asset browser, and log console.
+  **Panel scaffolds implemented; editing and rendering behavior remains.**
 - Load, edit, save, play, and stop the reference Workspace.
 - Add a slim default UI Config and portable JSON UI Config persistence.
   **Default model implemented; persistence remains.**
@@ -90,9 +92,9 @@ engine source or machine-specific paths.
 **Exit condition:** The reference-game test room can be meaningfully edited and
 saved without hand-editing its Workspace representation.
 
-The next implementation slice adds the reserved hierarchy, inspector,
-asset-browser, console, build-output, problems, and terminal panel windows to
-the dockable shell, then begins placing behavior on top of real Workspace data.
+The next implementation slice loads the startup Workspace into an editor
+session, introduces an editable entity model, connects selection across
+Hierarchy and Inspector, and saves changes without losing unrecognized data.
 
 ## Milestone 5: Project creation
 

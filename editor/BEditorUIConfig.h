@@ -25,7 +25,14 @@ struct BEditorUIConfig
     float rightRatio = 0.22f;
     float bottomRatio = 0.25f;
     bool showProjectDetails = true;
+    bool showWorkspaceHierarchy = true;
+    bool showInspector = true;
     bool showWorkspaceViewport = true;
+    bool showAssets = true;
+    bool showConsole = true;
+    bool showBuildOutput = false;
+    bool showProblems = false;
+    bool showTerminal = false;
 };
 
 BEditorUIConfig BEditorUIConfig_Default();

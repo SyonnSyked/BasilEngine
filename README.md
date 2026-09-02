@@ -34,6 +34,8 @@ the [visual-foundation closeout](docs/EDITOR_VISUAL_FOUNDATION.md).
 - A centralized cyberpunk editor theme with bundled JetBrains Mono typography
 - NetRunner-styled Project Browser, Project Details, and Workspace Viewport
 - A genuine dockable editor shell with a resettable slim default UI Config
+- Dockable Hierarchy, Inspector, Assets, Console, Build Output, Problems, and
+  Terminal scaffolds with honest service states
 - Geometric circuit-leaf application branding and embedded Windows icon
 - Persistent global interface-scale presets from 100% through 175%
 - Optional Git initialization during or after project creation

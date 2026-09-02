@@ -379,6 +379,7 @@ if(BASIL_BUILD_EDITOR_DEPS)
     add_executable(BasilEditor
         editor/BasilEditor.cpp
         editor/BEditorGit.cpp
+        editor/BEditorPanels.cpp
         editor/BEditorPreferences.cpp
         editor/BEditorTheme.cpp
         editor/BEditorUIConfig.cpp

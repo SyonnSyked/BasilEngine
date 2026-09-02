@@ -129,7 +129,12 @@ independently dockable Project Details and Workspace Viewport windows, stable
 core-panel identities, and resettable default layout are **implemented**. The
 default reserves the dominant center for the Viewport, side regions for Project
 Details/Hierarchy and Inspector, and a lower tab region for operational panels.
-The remaining panel windows and their actual content are planned.
+Workspace Hierarchy, Inspector, Assets, Console, Build Output, Problems, and
+Terminal scaffold windows are also **implemented** and independently dockable.
+Hierarchy exposes the configured startup path, Assets safely lists the real
+top-level asset directory, and Console reports current editor status. The other
+scaffolds state clearly when their build, diagnostic, terminal, selection, or
+editing services are not connected; those services remain planned.
 
 ## UI Configs
 

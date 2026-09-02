@@ -79,7 +79,8 @@ handoff:
    shell and resettable default model exist; portable JSON persistence remains.
 3. Introduce Workspace Hierarchy, Inspector, Asset Browser, Console, and
    Viewport panel scaffolds backed by shared services rather than local widget
-   state.
+   state. **Scaffolds completed:** panels consume shared Project/UI Config state
+   where it exists; deeper Workspace/build/terminal services remain separate.
 4. Load, create, edit, and save one empty Workspace reliably before additive
    Workspace behavior or development play is attempted.
 5. Add build/run integration only after the Project and Workspace paths are

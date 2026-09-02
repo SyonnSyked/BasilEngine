@@ -20,7 +20,14 @@ int main()
 
     failures += Check(BEditorUIConfig_Validate(config, error), "default UI Config validates");
     failures += Check(config.showProjectDetails, "default shows Project Details");
+    failures += Check(config.showWorkspaceHierarchy, "default shows Workspace Hierarchy");
+    failures += Check(config.showInspector, "default shows Inspector");
     failures += Check(config.showWorkspaceViewport, "default shows Workspace Viewport");
+    failures += Check(config.showAssets, "default shows Assets");
+    failures += Check(config.showConsole, "default shows Console");
+    failures += Check(!config.showBuildOutput, "default hides inactive Build Output");
+    failures += Check(!config.showProblems, "default hides inactive Problems");
+    failures += Check(!config.showTerminal, "default hides inactive Terminal");
     failures += Check(
         std::string(BEditorPanel_Name(BEditorPanel::WorkspaceHierarchy)) == "WORKSPACE HIERARCHY",
         "panel identity is stable"

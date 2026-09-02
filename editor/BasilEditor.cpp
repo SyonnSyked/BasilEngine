@@ -2,6 +2,7 @@
 #include "BProjectGenerator.h"
 #include "BRecentProjects.h"
 #include "BEditorGit.h"
+#include "BEditorPanels.h"
 #include "BEditorPreferences.h"
 #include "BEditorTheme.h"
 #include "BEditorUIConfig.h"
@@ -459,7 +460,14 @@ static void DrawEditorMenuBar(EditorState& state)
     if (ImGui::BeginMenu("View"))
     {
         ImGui::MenuItem("Project Details", nullptr, &state.uiConfig.showProjectDetails);
+        ImGui::MenuItem("Workspace Hierarchy", nullptr, &state.uiConfig.showWorkspaceHierarchy);
+        ImGui::MenuItem("Inspector", nullptr, &state.uiConfig.showInspector);
         ImGui::MenuItem("Workspace Viewport", nullptr, &state.uiConfig.showWorkspaceViewport);
+        ImGui::MenuItem("Assets", nullptr, &state.uiConfig.showAssets);
+        ImGui::MenuItem("Console", nullptr, &state.uiConfig.showConsole);
+        ImGui::MenuItem("Build Output", nullptr, &state.uiConfig.showBuildOutput);
+        ImGui::MenuItem("Problems", nullptr, &state.uiConfig.showProblems);
+        ImGui::MenuItem("Terminal", nullptr, &state.uiConfig.showTerminal);
         ImGui::Separator();
 
         if (ImGui::MenuItem("Reset Default UI Config"))
@@ -475,8 +483,10 @@ static void DrawEditorMenuBar(EditorState& state)
     ImGui::BeginDisabled();
     ImGui::MenuItem("Build");
     ImGui::MenuItem("Run");
-    ImGui::MenuItem("Terminal");
     ImGui::EndDisabled();
+
+    if (ImGui::MenuItem("Terminal"))
+        state.uiConfig.showTerminal = true;
 
     float statusWidth = ImGui::CalcTextSize("PROJECT LINK // STABLE").x;
     ImGui::SameLine(ImGui::GetWindowWidth() - statusWidth - ImGui::GetStyle().ItemSpacing.x);
@@ -605,6 +615,13 @@ static void DrawEditorShell(EditorState& state)
 
     DrawProjectDetails(state);
     DrawWorkspaceViewport(state);
+    BEditorPanels_DrawScaffolds(
+        state.uiConfig,
+        state.project,
+        state.manifestPath.parent_path(),
+        state.message,
+        state.messageIsError
+    );
 }
 
 static int RunEditor(int argumentCount, char** arguments)
