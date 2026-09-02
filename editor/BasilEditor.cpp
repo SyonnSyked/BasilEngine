@@ -12,6 +12,8 @@
 
 namespace fs = std::filesystem;
 
+static constexpr float EDITOR_UI_SCALE = 1.35f;
+
 struct EditorState
 {
     BRecentProjects recent{};
@@ -269,12 +271,24 @@ static void DrawProjectOverview(EditorState& state)
     ImGui::End();
 }
 
+static void ConfigureEditorInterface()
+{
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.ScaleAllSizes(EDITOR_UI_SCALE);
+    style.FontScaleMain = EDITOR_UI_SCALE;
+    style.MouseCursorScale = EDITOR_UI_SCALE;
+}
+
 int main(int argumentCount, char** arguments)
 {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
     InitWindow(1100, 700, "BasilEditor");
     SetTargetFPS(60);
     rlImGuiSetup(true);
+    ConfigureEditorInterface();
 
     EditorState state;
     state.recentPath = EditorDataDirectory() / "recent-projects.json";
