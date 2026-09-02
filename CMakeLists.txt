@@ -354,6 +354,13 @@ if(BASIL_BUILD_EDITOR_DEPS)
         editor/BEditorTheme.cpp
     )
 
+    if(WIN32)
+        enable_language(RC)
+        target_sources(BasilEditor PRIVATE
+            editor/windows/BasilEditor.rc
+        )
+    endif()
+
     target_link_libraries(BasilEditor PRIVATE
         BasilProject
         BasilEngine
@@ -403,11 +410,22 @@ if(BASIL_BUILD_EDITOR_DEPS)
     add_custom_command(TARGET BasilEditor POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory
             "$<TARGET_FILE_DIR:BasilEditor>/assets/editor/fonts/JetBrainsMono"
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:BasilEditor>/assets/editor/branding/icons"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CMAKE_CURRENT_SOURCE_DIR}/assets/editor/fonts/JetBrainsMono/JetBrainsMono-Regular.ttf"
             "${CMAKE_CURRENT_SOURCE_DIR}/assets/editor/fonts/JetBrainsMono/JetBrainsMono-Bold.ttf"
             "${CMAKE_CURRENT_SOURCE_DIR}/assets/editor/fonts/JetBrainsMono/OFL.txt"
             "$<TARGET_FILE_DIR:BasilEditor>/assets/editor/fonts/JetBrainsMono"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/editor/branding/icons/basil-editor-16.png"
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/editor/branding/icons/basil-editor-24.png"
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/editor/branding/icons/basil-editor-32.png"
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/editor/branding/icons/basil-editor-48.png"
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/editor/branding/icons/basil-editor-64.png"
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/editor/branding/icons/basil-editor-128.png"
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/editor/branding/icons/basil-editor-256.png"
+            "$<TARGET_FILE_DIR:BasilEditor>/assets/editor/branding/icons"
         VERBATIM
     )
 endif()

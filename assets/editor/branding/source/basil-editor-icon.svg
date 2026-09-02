@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 1024 1024" preserveAspectRatio="xMidYMid meet">
+  <title>BasilEditor circuit leaf icon</title>
+  <desc>A geometric basil leaf constructed from electric-cyan circuit segments on a dark field.</desc>
+  <defs>
+    <linearGradient id="field" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#091522"/>
+      <stop offset="1" stop-color="#03080f"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a2934"/>
+      <stop offset="1" stop-color="#07151f"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" fill="#03080f"/>
+  <rect x="32" y="32" width="960" height="960" rx="190" fill="url(#field)"/>
+  <path d="M512 128 L650 222 L736 356 L710 526 L626 686 L512 856 L398 686 L314 526 L288 356 L374 222 Z"
+        fill="url(#leaf)" stroke="#00e6f2" stroke-width="42" stroke-linejoin="bevel"/>
+
+  <path d="M512 216 V770"
+        fill="none" stroke="#00e6f2" stroke-width="38" stroke-linecap="square"/>
+  <path d="M512 330 H430 L354 388"
+        fill="none" stroke="#00e6f2" stroke-width="34" stroke-linejoin="bevel"/>
+  <path d="M512 330 H594 L670 388"
+        fill="none" stroke="#00e6f2" stroke-width="34" stroke-linejoin="bevel"/>
+  <path d="M512 482 H404 L340 536"
+        fill="none" stroke="#00e6f2" stroke-width="34" stroke-linejoin="bevel"/>
+  <path d="M512 482 H620 L684 536"
+        fill="none" stroke="#00e6f2" stroke-width="34" stroke-linejoin="bevel"/>
+  <path d="M512 634 H438 L404 678"
+        fill="none" stroke="#00e6f2" stroke-width="34" stroke-linejoin="bevel"/>
+  <path d="M512 634 H586 L620 678"
+        fill="none" stroke="#00e6f2" stroke-width="34" stroke-linejoin="bevel"/>
+
+  <g fill="#7f4dd9" stroke="#bf9aff" stroke-width="10">
+    <rect x="326" y="360" width="56" height="56" rx="8"/>
+    <rect x="642" y="360" width="56" height="56" rx="8"/>
+    <rect x="312" y="508" width="56" height="56" rx="8"/>
+    <rect x="656" y="508" width="56" height="56" rx="8"/>
+  </g>
+
+  <rect x="476" y="180" width="72" height="72" rx="10" fill="#00e6f2"/>
+  <rect x="476" y="742" width="72" height="72" rx="10" fill="#00e6f2"/>
+</svg>

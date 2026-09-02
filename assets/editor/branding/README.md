@@ -12,5 +12,6 @@ taskbar sizes and must avoid excessive detail or decorative noise.
 - `icons/` holds reviewed PNG, ICO, and future platform exports derived from
   the master artwork.
 
-The application icon has not been designed yet. Empty or provisional artwork
-must not be presented as final branding.
+The selected BasilEditor mark is the geometric circuit leaf in
+`source/basil-editor-icon.svg`. Platform exports must be derived from that
+master without independently changing its geometry or palette.

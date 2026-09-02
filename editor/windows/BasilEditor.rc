@@ -1,0 +1,3 @@
+#define BASIL_EDITOR_ICON 101
+
+BASIL_EDITOR_ICON ICON "../../assets/editor/branding/icons/basil-editor.ico"

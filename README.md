@@ -31,6 +31,7 @@ The authoritative visual and interaction plan is recorded in the
 - A graphical BasilEditor project browser with New, Open, and Recent workflows
 - A centralized cyberpunk editor theme with bundled JetBrains Mono typography
 - NetRunner-styled Project Browser and Project Overview screens
+- Geometric circuit-leaf application branding and embedded Windows icon
 - Persistent global interface-scale presets from 100% through 175%
 - Optional Git initialization during or after project creation
 - Headless project, generated-build, input, canvas, and combat tests

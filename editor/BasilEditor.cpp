@@ -67,6 +67,34 @@ static fs::path EditorDataDirectory()
     return UserHome() / ".basilengine";
 }
 
+static void ApplyApplicationIcons()
+{
+    static const int sizes[] = { 16, 24, 32, 48, 64, 128, 256 };
+    Image images[IM_ARRAYSIZE(sizes)]{};
+    int imageCount = 0;
+    fs::path iconRoot = fs::path(GetApplicationDirectory()) / "assets" /
+        "editor" / "branding" / "icons";
+
+    for (int size : sizes)
+    {
+        fs::path path = iconRoot / ("basil-editor-" + std::to_string(size) + ".png");
+
+        if (!fs::is_regular_file(path))
+            continue;
+
+        Image image = LoadImage(path.string().c_str());
+
+        if (IsImageValid(image))
+            images[imageCount++] = image;
+    }
+
+    if (imageCount > 0)
+        SetWindowIcons(images, imageCount);
+
+    for (int i = 0; i < imageCount; ++i)
+        UnloadImage(images[i]);
+}
+
 static void SetMessage(EditorState& state, const char* message, bool isError)
 {
     state.message = message != nullptr ? message : "Unknown error.";
@@ -469,6 +497,7 @@ int main(int argumentCount, char** arguments)
 {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
     InitWindow(1100, 700, "BasilEditor");
+    ApplyApplicationIcons();
     SetTargetFPS(60);
 
     EditorState state;

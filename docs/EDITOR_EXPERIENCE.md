@@ -262,18 +262,22 @@ motion preferences.
 
 ## Application icon
 
-The icon is **planned** with these confirmed constraints:
+The icon follows these confirmed constraints:
 
 - Simple, sleek, mature, and unmistakably cyberpunk
 - Compatible with the dark/electric-cyan palette
 - Legible at small taskbar, window, and file-list sizes
 - Not flashy, crowded, or overly detailed
 
-A basil-leaf silhouette constructed from terminal-like geometric lines or glyph
-cells on a dark field is the current recommendation, not a selected design.
-BasilEditor, `.basilproject` documents, and Where Birds Nest eventually need
-related but distinct identity assets. Final artwork, source format, exports, and
-platform embedding remain unresolved.
+A geometric basil leaf constructed from angular electric-cyan circuit segments,
+with restrained violet nodes on a dark blue-black field, is **implemented** as
+the BasilEditor application mark. The SVG master and reviewed PNG/ICO exports
+live under `assets/editor/branding`. Windows builds embed the multi-resolution
+ICO in the executable, and the running editor loads its PNG size set for window
+identity.
+
+Distinct `.basilproject` and Where Birds Nest identity assets remain planned.
+Future macOS application-bundle packaging will require an ICNS export.
 
 ## Explicitly deferred
 
@@ -287,7 +291,7 @@ platform embedding remain unresolved.
 
 ## Remaining decisions
 
-- Final application/document icons
+- Final `.basilproject` and Where Birds Nest icons
 - Workspace schema, extension, and additive semantics
 - UI Config schema and extension
 - External-editor configuration schema and placeholders
