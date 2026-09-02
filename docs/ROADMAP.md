@@ -89,8 +89,9 @@ engine source or machine-specific paths.
   Pause/Resume/Stop process control are implemented. Lifecycle-owned Workspace
   documents and the first versioned Transform2D/ASCII Renderable component
   schema and the shared Text Sprite loading/cache service are implemented.
-  Shared host-neutral draw-list interpretation is also implemented. Generated
-  runtime consumption, editor component controls,
+  Shared host-neutral draw-list interpretation and generated-runtime Project/
+  Workspace discovery, loading, and presentation are also implemented. Editor
+  component controls,
   in-Viewport play, source navigation, and terminal services remain.
 - Create a dockable editor application. **Implemented.**
 - Add an ASCII viewport, hierarchy, inspector, asset browser, and log console.
@@ -106,12 +107,11 @@ engine source or machine-specific paths.
 **Exit condition:** The reference-game test room can be meaningfully edited and
 saved without hand-editing its Workspace representation.
 
-The next implementation slice connects the generated runtime to Project and
-Workspace loading, interprets the first transform/renderable component data,
-and proves that editor-authored entities appear in the running application.
-That shared runtime path is required before standalone Run can evolve into
-in-Viewport development play. Its accepted implementation contract and progress
-are recorded in `RUNTIME_WORKSPACE_BRIDGE.md`.
+The active implementation slice now has a complete shared path from generated
+runtime Project discovery through Workspace/Text Sprite interpretation and
+standalone presentation. Editor component authoring, the explicit Run contract,
+and Viewport reuse remain. Its accepted contract and progress are recorded in
+`RUNTIME_WORKSPACE_BRIDGE.md`.
 
 ## Milestone 5: Project creation
 

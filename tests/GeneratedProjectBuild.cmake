@@ -23,6 +23,25 @@ foreach(language_mode IN ITEMS mixed c cpp)
 
     set(source_directory "${TEST_ROOT}/${identifier}")
     set(build_directory "${source_directory}/build")
+    file(WRITE "${source_directory}/assets/ship.txt" "A \nBC\n")
+    file(WRITE "${source_directory}/workspaces/Main.basilworkspace"
+        "{\n"
+        "  \"schemaVersion\": 3,\n"
+        "  \"name\": \"Main Workspace\",\n"
+        "  \"identifier\": \"Main\",\n"
+        "  \"nextEntityId\": \"3\",\n"
+        "  \"entities\": [\n"
+        "    { \"id\": \"entity-0000000000000001\", \"name\": \"Glyph\", \"enabled\": true, \"components\": [\n"
+        "      { \"type\": \"basil.transform2d\", \"version\": 1, \"required\": true, \"data\": { \"x\": 0, \"y\": 0 } },\n"
+        "      { \"type\": \"basil.ascii-renderable\", \"version\": 1, \"required\": true, \"data\": { \"source\": { \"kind\": \"glyph\", \"glyph\": \"@\" }, \"foreground\": \"#00E5FFFF\", \"background\": \"#00000000\", \"layer\": 1, \"anchor\": \"bottom-center\", \"visible\": true, \"transparentSpaces\": true } }\n"
+        "    ] },\n"
+        "    { \"id\": \"entity-0000000000000002\", \"name\": \"Ship\", \"enabled\": true, \"components\": [\n"
+        "      { \"type\": \"basil.transform2d\", \"version\": 1, \"required\": true, \"data\": { \"x\": 3.5, \"y\": -2 } },\n"
+        "      { \"type\": \"basil.ascii-renderable\", \"version\": 1, \"required\": true, \"data\": { \"source\": { \"kind\": \"text-sprite\", \"path\": \"assets/ship.txt\" }, \"foreground\": \"#E6EDF3FF\", \"background\": \"#120C1FFF\", \"layer\": 0, \"anchor\": \"center\", \"visible\": true, \"transparentSpaces\": true } }\n"
+        "    ] }\n"
+        "  ]\n"
+        "}\n"
+    )
     set(configure_command
         "${CMAKE_COMMAND}"
         -S "${source_directory}"
@@ -63,5 +82,68 @@ foreach(language_mode IN ITEMS mixed c cpp)
 
     if(NOT build_result EQUAL 0)
         message(FATAL_ERROR "${language_mode} project build failed:\n${build_output}\n${build_error}")
+    endif()
+
+    if(WIN32)
+        set(project_executable "${build_directory}/${identifier}.exe")
+    else()
+        set(project_executable "${build_directory}/${identifier}")
+    endif()
+    set(manifest "${source_directory}/${identifier}.basilproject")
+    execute_process(
+        COMMAND "${project_executable}" --basil-validate --project "${manifest}"
+        WORKING_DIRECTORY "${source_directory}"
+        RESULT_VARIABLE validate_result OUTPUT_VARIABLE validate_output ERROR_VARIABLE validate_error
+    )
+    if(NOT validate_result EQUAL 0 OR NOT validate_output MATCHES "BASIL_RUNTIME_READY.*items=4")
+        message(FATAL_ERROR "${language_mode} explicit runtime validation failed:\n${validate_output}\n${validate_error}")
+    endif()
+
+    execute_process(
+        COMMAND "${project_executable}" --basil-validate
+        WORKING_DIRECTORY "${build_directory}"
+        RESULT_VARIABLE direct_result OUTPUT_VARIABLE direct_output ERROR_VARIABLE direct_error
+    )
+    if(NOT direct_result EQUAL 0 OR NOT direct_output MATCHES "items=4")
+        message(FATAL_ERROR "${language_mode} direct discovery failed:\n${direct_output}\n${direct_error}")
+    endif()
+
+    set(relocated_directory "${TEST_ROOT}/${identifier} Relocated")
+    file(RENAME "${source_directory}" "${relocated_directory}")
+    set(source_directory "${relocated_directory}")
+    set(build_directory "${source_directory}/build")
+    if(WIN32)
+        set(project_executable "${build_directory}/${identifier}.exe")
+    else()
+        set(project_executable "${build_directory}/${identifier}")
+    endif()
+    execute_process(
+        COMMAND "${project_executable}" --basil-validate
+        WORKING_DIRECTORY "${build_directory}"
+        RESULT_VARIABLE relocate_result OUTPUT_VARIABLE relocate_output ERROR_VARIABLE relocate_error
+    )
+    if(NOT relocate_result EQUAL 0 OR NOT relocate_output MATCHES "items=4")
+        message(FATAL_ERROR "${language_mode} relocated discovery failed:\n${relocate_output}\n${relocate_error}")
+    endif()
+
+    file(RENAME "${source_directory}/workspaces/Main.basilworkspace" "${source_directory}/workspaces/Main.missing")
+    execute_process(
+        COMMAND "${project_executable}" --basil-validate
+        WORKING_DIRECTORY "${build_directory}"
+        RESULT_VARIABLE missing_result OUTPUT_VARIABLE missing_output ERROR_VARIABLE missing_error
+    )
+    if(missing_result EQUAL 0 OR NOT missing_error MATCHES "BASIL_RUNTIME_ERROR")
+        message(FATAL_ERROR "${language_mode} missing Workspace did not fail cleanly")
+    endif()
+    file(RENAME "${source_directory}/workspaces/Main.missing" "${source_directory}/workspaces/Main.basilworkspace")
+
+    file(WRITE "${source_directory}/assets/ship.txt" "bad\tasset\n")
+    execute_process(
+        COMMAND "${project_executable}" --basil-validate
+        WORKING_DIRECTORY "${build_directory}"
+        RESULT_VARIABLE malformed_result OUTPUT_VARIABLE malformed_output ERROR_VARIABLE malformed_error
+    )
+    if(malformed_result EQUAL 0 OR NOT malformed_error MATCHES "BASIL_RUNTIME_ERROR")
+        message(FATAL_ERROR "${language_mode} malformed Text Sprite did not fail cleanly")
     endif()
 endforeach()

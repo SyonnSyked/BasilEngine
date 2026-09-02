@@ -104,6 +104,15 @@ source entity ID, and deterministic entity/cell ordering. The build is
 transactional, host-neutral, and applies the same anchor and transparent-space
 rules for future standalone and editor presentation paths.
 
+Generated applications call an engine-owned runtime host. It accepts an
+explicit `--project <manifest>` path, otherwise checks the working directory and
+then walks upward from the executable for exactly one `.basilproject`. It loads
+the startup Workspace, decodes referenced Text Sprites, builds the shared draw
+list, and presents it through raylib. Empty content receives a restrained
+`WORKSPACE ONLINE` state; load failures are written to standard error and remain
+visible in a graphical error state. `--basil-validate` performs the identical
+load/interpretation path without creating a window for tooling and tests.
+
 BasilEditor loads the startup Workspace into an explicitly owned, lifecycle-safe
 document held by the editor session. Loads and clones are transactional, so a
 failed operation cannot partially replace the last valid document. Hierarchy

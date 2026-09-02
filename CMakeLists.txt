@@ -153,6 +153,7 @@ basil_enable_warnings(BasilAssets)
 
 add_library(BasilRuntimeWorkspace STATIC
     engine/runtime/BAsciiDrawList.c
+    engine/runtime/BProjectContext.c
 )
 
 target_include_directories(BasilRuntimeWorkspace PUBLIC
@@ -175,6 +176,7 @@ add_library(BasilEngine STATIC
     engine/core/BLog.c
     engine/debug/BConsole.c 
     engine/input/BInput.c
+    engine/runtime/BGeneratedRuntime.c
 )
 
 target_include_directories(BasilEngine PUBLIC

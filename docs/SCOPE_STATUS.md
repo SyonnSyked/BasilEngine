@@ -31,13 +31,13 @@ review.
 | Intended outcome | Current evidence | Status | Remaining gap |
 | --- | --- | --- | --- |
 | BasilEngine is reusable; Where Birds Nest is its proving project | Engine and reference game are separate, and documented architecture forbids game concepts in engine code | Aligned | Move the feasibility arena onto the same Project/Workspace runtime path used by generated projects |
-| ASCII and text art are first-class | Layered glyph rendering, a strict shared Text Sprite decoder/cache, versioned Transform2D/ASCII Renderable data, and deterministic host-neutral interpretation exist | Foundation proven | Present the shared draw list in generated runtimes and introduce stable asset identities later |
+| ASCII and text art are first-class | Layered glyph rendering, a strict shared Text Sprite decoder/cache, versioned Transform2D/ASCII Renderable data, deterministic interpretation, and generated-runtime presentation exist | Shared standalone path proven | Reuse the draw list in the editor Viewport and introduce stable asset identities later |
 | Smooth real-time action-RPG play | Delta-time movement, camera, collision, input routing, a target, attack cooldown, damage, and death exist | Feasibility spike complete in breadth; feel unvalidated | Conduct play-feel validation before treating combat APIs as stable |
 | C-first runtime with narrow C++ use | Runtime and public-facing systems are C11; BasilEditor uses C++ for ImGui integration | Aligned | Preserve the C boundary when component and future game-module APIs are introduced |
 | Windows, macOS, and Linux | Cross-platform code paths and CMake structure exist | Not fully verified | Windows is the active verified platform; macOS/Linux need native configure, build, test, and process-control verification |
-| Medium-ambition, practical editor | Browser, dock shell, core panels, Workspace entity editing, build/run controls, diagnostics, and preferences exist | Strong foundation | Component controls, Viewport content rendering, runtime consumption, and later code workflow remain |
-| New empty Projects work without manual engine setup | Generator creates manifests, editable CMake, source, assets, and a starter Workspace; editor can create, open, edit, build, and launch them | Partial end-to-end | The launched program does not yet consume or render its Workspace, so “runnable Project” is not fully achieved |
-| Editor and runtime use the same data and APIs | Project and Workspace parsing/editing are shared engine-side capabilities | Partial | Standalone runtime still bypasses Workspace entity data; this is the highest-priority mismatch |
+| Medium-ambition, practical editor | Browser, dock shell, core panels, Workspace entity editing, build/run controls, diagnostics, and preferences exist | Strong foundation | Component controls, Viewport content rendering, and later code workflow remain |
+| New empty Projects work without manual engine setup | Generator creates manifests, editable CMake, source, assets, and a starter Workspace; editor can create, open, edit, build, and launch them; generated runtimes consume the saved Workspace | End-to-end runtime path proven | Add focused component authoring and explicit pre-run validation/autosave |
+| Editor and runtime use the same data and APIs | Project, Workspace, Text Sprite, and draw-list services are shared; generated runtimes consume their output | Aligned for standalone runtime | Reuse the draw list in the editor Viewport after authoring and Run-contract work |
 | Built-in coding and terminal workflow, with Neovim first-class | Build Output and Problems plumbing exist; terminal and code-editor panels are planned | Deliberately deferred | Implement only after the runtime/project boundary is stable; avoid building an IDE or terminal emulator prematurely |
 | Mature NetRunner visual identity | Central theme, electric-cyan/restrained-violet palette, bundled JetBrains Mono, scale preferences, dock layout, and application icon exist | Aligned | Apply the system consistently to future functional panels; avoid decorative expansion |
 | Hot-loadable game development | Architecture records a future versioned C module boundary and failure recovery | Deliberately deferred | Requires stable runtime ownership, handles, serialization, and module lifecycle first |
@@ -57,6 +57,9 @@ review.
   root-contained paths, structured diagnostics, and last-known-good caching.
 - Deterministic host-neutral draw lists with fractional anchor placement, layer
   ordering, colors, transparency, visibility, and stable source entity IDs.
+- Generated runtime discovery from explicit manifests, working directories, or
+  executable ancestry; startup-Workspace loading; draw-list presentation; and
+  stable empty/error states.
 - Smooth movement, camera tracking, arena collision, and corrected contact on
   all wall sides.
 - A damageable target, range-checked basic attack, cooldown, visual feedback,
@@ -100,10 +103,10 @@ review.
 | --- | --- | --- |
 | 0 — Reliable foundation | Mostly achieved on the current Windows development machine | A clean-checkout dependency story and native macOS/Linux verification are still required |
 | 1 — Gameplay feasibility spike | Mechanically implemented; still in progress | Responsiveness and ASCII combat feel need an intentional play-test decision |
-| 2 — Reusable runtime model | In progress | Explicit Workspace ownership and minimal serialized components exist; asset handles and the Project/Workspace-driven runtime path are missing |
+| 2 — Reusable runtime model | In progress | Explicit ownership, minimal components, Text Sprite caching, draw-list interpretation, and the Project/Workspace-driven standalone path exist; stable asset handles and a game-module boundary remain |
 | 3 — Project and asset system | In progress | Stable asset identifiers, file-change detection, actionable asset errors, and relocation across machines remain |
 | 4 — Editor foundation | In progress and healthy | The Viewport does not render editable content, component controls are absent, and runtime play is external |
-| 5 — Project creation | Workflow shell implemented, outcome incomplete | A generated Project builds and launches, but its runtime does not yet render editor-authored Workspace data |
+| 5 — Project creation | End-to-end runtime path proven | A generated Project builds, relocates, discovers its manifest, and renders saved Workspace data; focused editor authoring and Run validation remain in the active bridge slice |
 | 6 — Code workflow and hot reload | Supporting build/diagnostic plumbing only | Code editor, external-editor service, real terminal hosting, module boundary, and reload safety are intentionally deferred |
 | 7 — Action-RPG vertical slice | Not started as a production slice | The current arena is a feasibility proof, not a Workspace-authored vertical slice |
 

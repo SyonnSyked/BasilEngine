@@ -50,6 +50,8 @@ technical contract for that next slice is the
   grids, structured diagnostics, and last-known-good cache replacement
 - Deterministic host-neutral ASCII draw-list interpretation with shared anchor,
   layer, visibility, transparency, color, and source-entity semantics
+- Generated runtimes that discover or accept their Project manifest, load the
+  startup Workspace, render its draw list, and show stable empty/error states
 - Asynchronous CMake Build and Run controls with streamed output, extracted
   problems, and native Pause, Resume, and Stop process control
 - Geometric circuit-leaf application branding and embedded Windows icon
