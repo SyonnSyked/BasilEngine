@@ -1,6 +1,6 @@
 # Runtime Workspace Bridge Technical Design
 
-**Status:** Accepted; implementation in progress (Steps 1–7 complete)
+**Status:** Accepted; implementation in progress (Steps 1–8 complete)
 **Design date:** 2026-09-02  
 **Target slice:** BasilEditor-authored entities render in a generated standalone
 Project through shared C runtime APIs
@@ -584,8 +584,11 @@ Each step must build, pass its focused tests, and leave a reviewable commit.
    Workspace and every referenced Text Sprite, including inactive entities,
    routes structured failures to Problems, saves safely, builds, and launches
    with `--project` plus the absolute manifest path.
-8. **Viewport preview:** render the same draw list with empty-entity markers and
-   labels; do not host gameplay.
+8. **Viewport preview — Implemented:** the authoring Viewport consumes the same
+   draw list as standalone runtimes and adds selection outlines, grid/origin
+   guides, pan/zoom, manual asset refresh, and toggleable editor-only markers
+   and labels for spatial entities without active renderables. It does not host
+   gameplay.
 9. **Reference proof and audit:** author a small Where Birds Nest room through
    the same path, run the full matrix, and update the scope checkpoint.
 

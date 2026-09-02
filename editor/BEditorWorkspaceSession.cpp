@@ -24,6 +24,7 @@ void BEditorWorkspaceSession::Reset()
     selectedIndex_ = NoSelection;
     loaded_ = false;
     dirty_ = false;
+    ++revision_;
 }
 
 bool BEditorWorkspaceSession::Load(
@@ -59,6 +60,7 @@ bool BEditorWorkspaceSession::Load(
     selectedIndex_ = NoSelection;
     loaded_ = true;
     dirty_ = false;
+    ++revision_;
     return true;
 }
 
@@ -80,6 +82,7 @@ bool BEditorWorkspaceSession::Reload(std::string& error)
 
     selectedIndex_ = NoSelection;
     dirty_ = false;
+    ++revision_;
     error.clear();
     return true;
 }
@@ -141,6 +144,7 @@ bool BEditorWorkspaceSession::AddGlyphEntity(char glyph, std::string& error)
 
     selectedIndex_ = index;
     dirty_ = true;
+    ++revision_;
     error.clear();
     return true;
 }
@@ -178,6 +182,7 @@ bool BEditorWorkspaceSession::AddTextSpriteEntity(const std::string& relativePat
     }
     selectedIndex_ = index;
     dirty_ = true;
+    ++revision_;
     error.clear();
     return true;
 }
@@ -206,6 +211,7 @@ bool BEditorWorkspaceSession::AddEmptyEntity(std::string& error)
     }
     selectedIndex_ = index;
     dirty_ = true;
+    ++revision_;
     error.clear();
     return true;
 }
@@ -220,6 +226,7 @@ bool BEditorWorkspaceSession::SetSelectedName(const std::string& name, std::stri
         return false;
     }
     dirty_ = true;
+    ++revision_;
     error.clear();
     return true;
 }
@@ -234,6 +241,7 @@ bool BEditorWorkspaceSession::SetSelectedEnabled(bool enabled, std::string& erro
         return false;
     }
     dirty_ = true;
+    ++revision_;
     error.clear();
     return true;
 }
@@ -248,6 +256,7 @@ bool BEditorWorkspaceSession::SetSelectedTransform(BTransform2D transform, std::
         return false;
     }
     dirty_ = true;
+    ++revision_;
     error.clear();
     return true;
 }
@@ -262,6 +271,7 @@ bool BEditorWorkspaceSession::SetSelectedRenderable(const BAsciiRenderable& rend
         return false;
     }
     dirty_ = true;
+    ++revision_;
     error.clear();
     return true;
 }
@@ -303,6 +313,7 @@ bool BEditorWorkspaceSession::RemoveSelectedEntity(std::string& error)
 
     selectedIndex_ = NoSelection;
     dirty_ = true;
+    ++revision_;
     error.clear();
     return true;
 }
@@ -313,7 +324,8 @@ bool BEditorWorkspaceSession::RequiresMigration() const
 {
     return loaded_ && BWorkspaceDocument_RequiresMigration(&workspace_);
 }
-void BEditorWorkspaceSession::MarkDirty() { if (loaded_) dirty_ = true; }
+std::uint64_t BEditorWorkspaceSession::Revision() const { return revision_; }
+void BEditorWorkspaceSession::MarkDirty() { if (loaded_) { dirty_ = true; ++revision_; } }
 const std::filesystem::path& BEditorWorkspaceSession::Path() const { return path_; }
 const std::filesystem::path& BEditorWorkspaceSession::ProjectRoot() const { return projectRoot_; }
 const BWorkspaceDocument& BEditorWorkspaceSession::Workspace() const { return workspace_; }

@@ -56,6 +56,8 @@ technical contract for that next slice is the
   with validated Transform2D and ASCII Renderable Inspector controls
 - Run preflight with complete Text Sprite validation, safe Workspace save,
   explicit manifest launch arguments, and structured editor Problems
+- A shared-data authoring Viewport with glyph/Text Sprite previews, grid,
+  pan/zoom, selection outlines, and editor-only empty-entity markers
 - Asynchronous CMake Build and Run controls with streamed output, extracted
   problems, and native Pause, Resume, and Stop process control
 - Geometric circuit-leaf application branding and embedded Windows icon

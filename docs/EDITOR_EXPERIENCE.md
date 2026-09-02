@@ -62,9 +62,9 @@ Hierarchy, and loading an additional Workspace.
 Multiple/additive Workspaces are intended, but their exact runtime and ownership
 semantics remain **unresolved**. Workspace schema version 3 is **implemented**
 as JSON using `.basilworkspace`. It supports a flat list of entities with stable
-immutable IDs, editable names, and enabled state. Component serialization,
-parenting, and runtime ownership remain deliberately undefined until their
-reusable runtime models exist.
+immutable IDs, editable names, enabled state, and versioned Transform2D/ASCII
+Renderable components. Shared runtime ownership and interpretation are
+implemented; parenting remains deliberately deferred.
 
 ### Viewport
 
@@ -134,18 +134,19 @@ default reserves the dominant center for the Viewport, side regions for Project
 Details/Hierarchy and Inspector, and a lower tab region for operational panels.
 Workspace Hierarchy, Inspector, Assets, Console, Build Output, Problems, and
 Terminal scaffold windows are also **implemented** and independently dockable.
-Hierarchy loads the startup Workspace and owns entity creation and selection;
-Inspector edits the selected entity's name and enabled state. Assets safely
-lists the real top-level asset directory, and Console reports current editor
-status. Build Output and Problems are connected to the asynchronous build
-service. Terminal still states clearly that shell hosting is not connected.
+Hierarchy loads the startup Workspace and creates/selects glyph, Text Sprite,
+and empty entities. Inspector edits identity, enabled state, position, source,
+colors, layer, anchor, visibility, and transparent spaces through shared C
+mutation APIs. Assets safely lists the real top-level asset directory, and
+Console reports current editor status. Build Output and Problems are connected
+to the asynchronous build service. Terminal still states clearly that shell
+hosting is not connected.
 
 Save Workspace and Ctrl+S are implemented with full-model validation,
 temporary-file writing, and a recovery `.bak`. The editor reports clean/dirty
 state and guards the transition back to the Project Browser with Save, Discard,
-and Cancel choices. Additional Workspace creation/opening, undo/redo, component
-editing, parenting, and protection around every operating-system shutdown path
-remain planned.
+and Cancel choices. Additional Workspace creation/opening, undo/redo, parenting,
+and protection around every operating-system shutdown path remain planned.
 
 ## UI Configs
 
@@ -233,9 +234,10 @@ An asynchronous standalone-process bridge is **implemented** as the reliable
 precursor to that workflow. Build configures and compiles the Project through
 its editable CMake files; Run builds and launches it; Pause/Resume and Stop
 control the native process. Output and detected failures feed their dockable
-panels without blocking the editor. The current generated runtime does not yet
-consume Workspace entities, and the game window is not embedded in the
-Viewport, so this bridge must not be described as in-editor development play.
+panels without blocking the editor. The generated runtime consumes Workspace
+entities and Text Sprites through the shared draw-list path. The editor Viewport
+previews that same data, but the game process is not embedded there, so this
+must not be described as in-editor development play.
 
 ## Notifications
 
@@ -280,8 +282,8 @@ The implemented Project Browser and dockable editor shell consume this visual
 system. The browser uses a restrained system rail, terminal-style status
 language, structured Project actions, and clear full-width forms. The shell
 uses independently dockable Project Details and Workspace Viewport windows;
-the Viewport remains a deliberate placeholder that communicates the planned
-next stage without presenting Workspace editing as implemented.
+the Viewport renders the shared authoring draw list with restrained grid,
+selection, navigation, and empty-entity helper overlays.
 
 Global editor preferences are stored as versioned JSON in BasilEngine's user
 configuration directory. Missing preferences use safe defaults. Malformed or

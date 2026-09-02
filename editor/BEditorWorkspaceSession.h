@@ -5,6 +5,7 @@
 #include "BAsciiDrawList.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <string>
 
@@ -41,6 +42,7 @@ public:
     bool IsLoaded() const;
     bool IsDirty() const;
     bool RequiresMigration() const;
+    std::uint64_t Revision() const;
     void MarkDirty();
 
     const std::filesystem::path& Path() const;
@@ -60,6 +62,7 @@ private:
     std::size_t selectedIndex_ = NoSelection;
     bool loaded_ = false;
     bool dirty_ = false;
+    std::uint64_t revision_ = 1;
 };
 
 #endif

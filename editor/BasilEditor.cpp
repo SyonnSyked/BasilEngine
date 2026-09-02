@@ -14,7 +14,10 @@
 #include "raylib.h"
 #include "rlImGui.h"
 
+#include <algorithm>
+#include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <exception>
 #include <filesystem>
 #include <cstdio>
@@ -51,7 +54,25 @@ struct EditorState
     BEditorBuildState observedBuildState = BEditorBuildState::Idle;
     std::string message;
     bool messageIsError = false;
+    BTextSpriteCache viewportSpriteCache{};
+    BAsciiDrawList viewportDrawList{};
+    std::uint64_t viewportRevision = 0;
+    std::string viewportError;
+    ImVec2 viewportPan{ 0.0f, 0.0f };
+    float viewportZoom = 1.0f;
+    bool viewportShowMarkers = true;
+    bool viewportShowLabels = true;
 };
+
+static void ResetViewportPreview(EditorState& state)
+{
+    BAsciiDrawList_Destroy(&state.viewportDrawList);
+    BTextSpriteCache_Destroy(&state.viewportSpriteCache);
+    state.viewportRevision = 0;
+    state.viewportError.clear();
+    state.viewportPan = { 0.0f, 0.0f };
+    state.viewportZoom = 1.0f;
+}
 
 static fs::path UserHome()
 {
@@ -131,6 +152,7 @@ static void SaveRecentProjects(EditorState& state)
 
 static bool OpenProject(EditorState& state, const fs::path& manifestPath)
 {
+    ResetViewportPreview(state);
     BProjectError error{};
     std::error_code pathError;
     fs::path absolutePath = fs::absolute(manifestPath, pathError).lexically_normal();
@@ -463,6 +485,7 @@ static void ReturnToProjectBrowser(EditorState& state)
 
     state.projectOpen = false;
     state.workspaceSession.Reset();
+    ResetViewportPreview(state);
     SetWindowTitle("BasilEditor");
 }
 
@@ -723,7 +746,9 @@ static void DrawWorkspaceViewport(EditorState& state)
         BEditorPanel_Name(BEditorPanel::WorkspaceViewport),
         &state.uiConfig.showWorkspaceViewport
     );
-    ImGui::TextColored(palette.violet, "WORKSPACE VIEWPORT // EDIT SESSION ONLINE");
+    ImGui::TextColored(palette.violet, "WORKSPACE VIEWPORT // AUTHORING PREVIEW");
+    ImGui::SameLine();
+    ImGui::TextDisabled("NOT PLAY MODE");
     ImGui::Separator();
 
     if (!state.workspaceSession.IsLoaded())
@@ -734,15 +759,120 @@ static void DrawWorkspaceViewport(EditorState& state)
         return;
     }
 
-    ImVec2 available = ImGui::GetContentRegionAvail();
-    std::string summary = "[ " + std::to_string(state.workspaceSession.Workspace().entityCount) +
-        " ENTITIES LOADED ]";
-    float headingWidth = ImGui::CalcTextSize(summary.c_str()).x;
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + available.y * 0.38f);
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (available.x - headingWidth) * 0.5f);
-    ImGui::TextColored(palette.cyan, "%s", summary.c_str());
-    ImGui::Spacing();
-    ImGui::TextDisabled("Entity editing is active. Spatial rendering follows the component model.");
+    if (ImGui::Button("RESET VIEW"))
+    {
+        state.viewportPan = { 0.0f, 0.0f };
+        state.viewportZoom = 1.0f;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("REFRESH ASSETS"))
+        state.viewportRevision = 0;
+    ImGui::SameLine();
+    ImGui::Checkbox("Markers", &state.viewportShowMarkers);
+    ImGui::SameLine();
+    ImGui::Checkbox("Labels", &state.viewportShowLabels);
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(130.0f);
+    ImGui::SliderFloat("Zoom", &state.viewportZoom, 0.35f, 3.0f, "%.2fx");
+
+    std::uint64_t revision = state.workspaceSession.Revision();
+    if (state.viewportRevision != revision)
+    {
+        BDiagnosticList diagnostics{};
+        if (BAsciiDrawList_Build(
+                &state.workspaceSession.Workspace(),
+                state.manifestPath.parent_path().string().c_str(),
+                &state.viewportSpriteCache,
+                &state.viewportDrawList,
+                &diagnostics))
+        {
+            state.viewportError.clear();
+        }
+        else
+        {
+            const BDiagnostic* error = BDiagnosticList_FirstError(&diagnostics);
+            state.viewportError = error != nullptr ? error->message : "Viewport preview could not be built.";
+        }
+        state.viewportRevision = revision;
+    }
+
+    if (!state.viewportError.empty())
+        ImGui::TextColored(palette.error, "[ PREVIEW ERROR ] %s", state.viewportError.c_str());
+
+    ImVec2 canvasSize = ImGui::GetContentRegionAvail();
+    canvasSize.x = std::max(canvasSize.x, 64.0f);
+    canvasSize.y = std::max(canvasSize.y, 64.0f);
+    ImVec2 canvasStart = ImGui::GetCursorScreenPos();
+    ImGui::InvisibleButton("##WorkspaceViewportCanvas", canvasSize, ImGuiButtonFlags_MouseButtonMiddle);
+    bool hovered = ImGui::IsItemHovered();
+    if (hovered && ImGui::IsMouseDragging(ImGuiMouseButton_Middle))
+    {
+        ImVec2 delta = ImGui::GetIO().MouseDelta;
+        state.viewportPan.x += delta.x;
+        state.viewportPan.y += delta.y;
+    }
+    if (hovered && ImGui::GetIO().MouseWheel != 0.0f)
+        state.viewportZoom = std::clamp(state.viewportZoom + ImGui::GetIO().MouseWheel * 0.1f, 0.35f, 3.0f);
+
+    ImDrawList* draw = ImGui::GetWindowDrawList();
+    ImVec2 canvasEnd{ canvasStart.x + canvasSize.x, canvasStart.y + canvasSize.y };
+    draw->AddRectFilled(canvasStart, canvasEnd, ImGui::ColorConvertFloat4ToU32(palette.background));
+    draw->PushClipRect(canvasStart, canvasEnd, true);
+    float fontSize = ImGui::GetFontSize() * state.viewportZoom;
+    float cellWidth = ImGui::GetFontSize() * 0.68f * state.viewportZoom;
+    float cellHeight = ImGui::GetFontSize() * 1.25f * state.viewportZoom;
+    ImVec2 origin{
+        canvasStart.x + canvasSize.x * 0.5f + state.viewportPan.x,
+        canvasStart.y + canvasSize.y * 0.5f + state.viewportPan.y
+    };
+    ImU32 gridColor = ImGui::ColorConvertFloat4ToU32(ImVec4(palette.cyan.x, palette.cyan.y, palette.cyan.z, 0.08f));
+    for (float x = origin.x; x < canvasEnd.x; x += cellWidth) draw->AddLine({ x, canvasStart.y }, { x, canvasEnd.y }, gridColor);
+    for (float x = origin.x - cellWidth; x > canvasStart.x; x -= cellWidth) draw->AddLine({ x, canvasStart.y }, { x, canvasEnd.y }, gridColor);
+    for (float y = origin.y; y < canvasEnd.y; y += cellHeight) draw->AddLine({ canvasStart.x, y }, { canvasEnd.x, y }, gridColor);
+    for (float y = origin.y - cellHeight; y > canvasStart.y; y -= cellHeight) draw->AddLine({ canvasStart.x, y }, { canvasEnd.x, y }, gridColor);
+    draw->AddLine({ canvasStart.x, origin.y }, { canvasEnd.x, origin.y }, ImGui::ColorConvertFloat4ToU32(ImVec4(palette.cyan.x, palette.cyan.y, palette.cyan.z, 0.35f)), 1.5f);
+    draw->AddLine({ origin.x, canvasStart.y }, { origin.x, canvasEnd.y }, ImGui::ColorConvertFloat4ToU32(ImVec4(palette.cyan.x, palette.cyan.y, palette.cyan.z, 0.35f)), 1.5f);
+
+    const BWorkspaceEntity* selected = state.workspaceSession.SelectedEntity();
+    for (std::size_t i = 0; i < state.viewportDrawList.count; ++i)
+    {
+        const BAsciiDrawItem& item = state.viewportDrawList.items[i];
+        ImVec2 position{ origin.x + item.x * cellWidth, origin.y + item.y * cellHeight };
+        ImU32 background = IM_COL32(item.background.r, item.background.g, item.background.b, item.background.a);
+        if (item.background.a > 0)
+            draw->AddRectFilled(position, { position.x + cellWidth, position.y + cellHeight }, background);
+        char glyph[2] = { item.glyph, '\0' };
+        draw->AddText(BEditorTheme_GetRegularFont(), fontSize, position,
+            IM_COL32(item.foreground.r, item.foreground.g, item.foreground.b, item.foreground.a), glyph);
+        if (selected != nullptr && std::strcmp(selected->id, item.entityId) == 0)
+            draw->AddRect(position, { position.x + cellWidth, position.y + cellHeight }, ImGui::ColorConvertFloat4ToU32(palette.violet));
+    }
+
+    if (state.viewportShowMarkers)
+    {
+        const BWorkspaceDocument& workspace = state.workspaceSession.Workspace();
+        for (std::size_t i = 0; i < workspace.entityCount; ++i)
+        {
+            const BWorkspaceEntity& entity = workspace.entities[i];
+            const BWorkspaceComponent* transform = BWorkspaceEntity_FindComponentConst(&entity, BWORKSPACE_TRANSFORM2D_TYPE);
+            const BWorkspaceComponent* renderable = BWorkspaceEntity_FindComponentConst(&entity, BWORKSPACE_ASCII_RENDERABLE_TYPE);
+            bool activeRenderable = renderable != nullptr && renderable->data.asciiRenderable.visible;
+            if (!entity.enabled || transform == nullptr || activeRenderable)
+                continue;
+            ImVec2 marker{
+                origin.x + transform->data.transform2d.x * cellWidth,
+                origin.y + transform->data.transform2d.y * cellHeight
+            };
+            bool isSelected = selected != nullptr && std::strcmp(selected->id, entity.id) == 0;
+            ImU32 color = ImGui::ColorConvertFloat4ToU32(isSelected ? palette.violet : palette.cyan);
+            float radius = 6.0f * state.viewportZoom;
+            draw->AddLine({ marker.x - radius, marker.y }, { marker.x + radius, marker.y }, color, 2.0f);
+            draw->AddLine({ marker.x, marker.y - radius }, { marker.x, marker.y + radius }, color, 2.0f);
+            if (state.viewportShowLabels)
+                draw->AddText({ marker.x + radius + 3.0f, marker.y - fontSize * 0.5f }, color, entity.name);
+        }
+    }
+    draw->PopClipRect();
     ImGui::End();
     ImGui::PopStyleColor();
 }
@@ -839,6 +969,7 @@ static void DrawEditorShell(EditorState& state)
         {
             state.confirmProjectClose = false;
             state.workspaceSession.Reset();
+            ResetViewportPreview(state);
             state.projectOpen = false;
             SetWindowTitle("BasilEditor");
             ImGui::CloseCurrentPopup();
@@ -912,6 +1043,7 @@ static int RunEditor(int argumentCount, char** arguments)
     }
 
     rlImGuiShutdown();
+    ResetViewportPreview(state);
     CloseWindow();
     return 0;
 }

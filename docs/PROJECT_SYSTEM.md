@@ -128,6 +128,13 @@ flow into Problems where available. A successful preflight saves through the
 temporary/backup path and launches the built executable with `--project` and the
 absolute manifest path as separate process arguments.
 
+The Workspace Viewport builds the same host-neutral `BAsciiDrawList` used by the
+generated runtime. It previews glyphs, Text Sprites, colors, layers, anchors,
+visibility, and transparent spaces without running simulation. It adds only
+editor presentation: grid/origin guides, selection outlines, pan/zoom, manual
+asset refresh, and toggleable markers/name labels for enabled spatial entities
+without an active renderable. Preview failure retains the last valid draw list.
+
 BasilEditor loads the startup Workspace into an explicitly owned, lifecycle-safe
 document held by the editor session. Loads and clones are transactional, so a
 failed operation cannot partially replace the last valid document. Hierarchy
