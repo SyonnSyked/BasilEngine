@@ -361,6 +361,10 @@ if(BASIL_BUILD_EDITOR_DEPS)
     # Current MSYS2 binutils can fail silently while linking the combined
     # raylib/ImGui editor. Prefer LLVM's compatible MinGW linker when present.
     if(MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        # Avoid resolving an incompatible libstdc++/libgcc from another MinGW
+        # installation (Git for Windows commonly places one earlier on PATH).
+        target_link_options(BasilEditor PRIVATE -static -static-libgcc -static-libstdc++)
+
         find_program(BASIL_LLD_LINKER NAMES ld.lld lld)
         if(BASIL_LLD_LINKER)
             target_link_options(BasilEditor PRIVATE -fuse-ld=lld)
