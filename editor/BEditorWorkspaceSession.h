@@ -2,6 +2,7 @@
 #define BASIL_EDITOR_WORKSPACE_SESSION_H
 
 #include "BWorkspace.h"
+#include "BAsciiDrawList.h"
 
 #include <cstddef>
 #include <filesystem>
@@ -35,6 +36,7 @@ public:
     bool SetSelectedEnabled(bool enabled, std::string& error);
     bool SetSelectedTransform(BTransform2D transform, std::string& error);
     bool SetSelectedRenderable(const BAsciiRenderable& renderable, std::string& error);
+    bool ValidateForRun(BDiagnosticList& diagnostics, std::string& error) const;
 
     bool IsLoaded() const;
     bool IsDirty() const;

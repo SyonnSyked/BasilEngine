@@ -563,7 +563,7 @@ if(BASIL_BUILD_EDITOR_DEPS)
         )
 
         target_link_libraries(BEditorWorkspaceSessionTests PRIVATE
-            BasilProject
+            BasilRuntimeWorkspace
         )
 
         if(MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

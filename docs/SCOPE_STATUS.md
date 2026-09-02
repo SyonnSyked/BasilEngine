@@ -36,7 +36,7 @@ review.
 | C-first runtime with narrow C++ use | Runtime and public-facing systems are C11; BasilEditor uses C++ for ImGui integration | Aligned | Preserve the C boundary when component and future game-module APIs are introduced |
 | Windows, macOS, and Linux | Cross-platform code paths and CMake structure exist | Not fully verified | Windows is the active verified platform; macOS/Linux need native configure, build, test, and process-control verification |
 | Medium-ambition, practical editor | Browser, dock shell, core panels, glyph/Text Sprite/empty entity authoring, component Inspector controls, build/run controls, diagnostics, and preferences exist | Strong foundation | Viewport content rendering and later code workflow remain |
-| New empty Projects work without manual engine setup | Generator creates manifests, editable CMake, source, assets, and a starter Workspace; editor can author components, build, and launch; generated runtimes consume the saved Workspace | End-to-end runtime path proven | Add explicit pre-run asset validation and manifest launch arguments |
+| New empty Projects work without manual engine setup | Generator creates manifests, editable CMake, source, assets, and a starter Workspace; editor authors components and performs validated explicit-manifest Run; generated runtimes consume the saved Workspace | End-to-end runtime path proven | Reuse runtime rendering in the editor Viewport and complete the reference proof |
 | Editor and runtime use the same data and APIs | Project, Workspace, Text Sprite, and draw-list services are shared; generated runtimes consume their output | Aligned for standalone runtime | Reuse the draw list in the editor Viewport after authoring and Run-contract work |
 | Built-in coding and terminal workflow, with Neovim first-class | Build Output and Problems plumbing exist; terminal and code-editor panels are planned | Deliberately deferred | Implement only after the runtime/project boundary is stable; avoid building an IDE or terminal emulator prematurely |
 | Mature NetRunner visual identity | Central theme, electric-cyan/restrained-violet palette, bundled JetBrains Mono, scale preferences, dock layout, and application icon exist | Aligned | Apply the system consistently to future functional panels; avoid decorative expansion |
@@ -62,6 +62,8 @@ review.
   stable empty/error states.
 - Editor creation for printable glyph, Project Text Sprite, and transform-only
   empty entities, plus focused validated Transform2D/ASCII Renderable controls.
+- Run preflight across all referenced Text Sprites, structured Problems output,
+  safe autosave, and an absolute `--project` child-process launch contract.
 - Smooth movement, camera tracking, arena collision, and corrected contact on
   all wall sides.
 - A damageable target, range-checked basic attack, cooldown, visual feedback,

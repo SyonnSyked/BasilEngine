@@ -120,6 +120,14 @@ edits position, source, colors, logical layer, anchor, visibility, and
 transparent-space behavior. Editor changes use shared transactional C mutation
 APIs, so invalid typed values do not replace the last valid component state.
 
+Run is a stricter operation than Build. Before starting a build, BasilEditor
+validates the complete in-memory Workspace and every referenced Text Sprite,
+including references on disabled or invisible entities. A failure does not save,
+build, or launch; its path, line/column, entity ID, component type, and message
+flow into Problems where available. A successful preflight saves through the
+temporary/backup path and launches the built executable with `--project` and the
+absolute manifest path as separate process arguments.
+
 BasilEditor loads the startup Workspace into an explicitly owned, lifecycle-safe
 document held by the editor session. Loads and clones are transactional, so a
 failed operation cannot partially replace the last valid document. Hierarchy

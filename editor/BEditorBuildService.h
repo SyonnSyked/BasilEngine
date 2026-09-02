@@ -30,10 +30,12 @@ public:
 
     bool StartBuild(
         const std::filesystem::path& projectRoot,
+        const std::filesystem::path& manifestPath,
         const BProject& project,
         bool runAfterBuild,
         std::string& error
     );
+    void ReportPreflightFailure(const std::vector<std::string>& diagnostics);
     void Update();
     bool Pause(std::string& error);
     bool Resume(std::string& error);

@@ -51,7 +51,7 @@ int main()
 
     BEditorBuildService service;
     std::string error;
-    failures += Check(service.StartBuild(projectRoot, project, false, error), "asynchronous build starts");
+    failures += Check(service.StartBuild(projectRoot, projectRoot / (std::string(project.identifier) + ".basilproject"), project, false, error), "asynchronous build starts");
 
     auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(90);
 
@@ -74,7 +74,7 @@ int main()
 #endif
     failures += Check(fs::is_regular_file(executable), "build produces Project executable");
 
-    failures += Check(service.StartBuild(projectRoot, project, true, error), "build-and-run starts");
+    failures += Check(service.StartBuild(projectRoot, projectRoot / (std::string(project.identifier) + ".basilproject"), project, true, error), "build-and-run starts");
     deadline = std::chrono::steady_clock::now() + std::chrono::seconds(90);
 
     while (service.State() != BEditorBuildState::Running &&
@@ -85,6 +85,10 @@ int main()
     }
 
     failures += Check(service.State() == BEditorBuildState::Running, "game process reaches running state");
+    failures += Check(
+        service.Output().find("--project " + (projectRoot / (std::string(project.identifier) + ".basilproject")).string()) != std::string::npos,
+        "run command records the explicit manifest path"
+    );
     failures += Check(service.Pause(error), "running game can be paused");
     failures += Check(service.State() == BEditorBuildState::Paused, "pause state is reported");
     failures += Check(service.Resume(error), "paused game can be resumed");
@@ -97,7 +101,7 @@ int main()
         source << "int main(void) { this_will_not_compile return 0; }\n";
     }
 
-    failures += Check(service.StartBuild(projectRoot, project, false, error), "failing build starts");
+    failures += Check(service.StartBuild(projectRoot, projectRoot / (std::string(project.identifier) + ".basilproject"), project, false, error), "failing build starts");
     deadline = std::chrono::steady_clock::now() + std::chrono::seconds(90);
 
     while (service.IsBusy() && std::chrono::steady_clock::now() < deadline)
@@ -109,7 +113,13 @@ int main()
     service.Update();
     failures += Check(service.State() == BEditorBuildState::Failed, "compiler failure is reported");
     failures += Check(!service.Problems().empty(), "compiler failure populates Problems");
-    failures += Check(service.StartBuild(projectRoot, project, false, error), "cancellable build starts");
+    service.ReportPreflightFailure({ "assets/broken.txt:2:4 [entity-1] [basil.ascii-renderable]: invalid byte" });
+    failures += Check(service.State() == BEditorBuildState::Failed, "preflight failure uses failed service state");
+    failures += Check(
+        service.Problems().size() == 1 && service.Problems()[0].find("assets/broken.txt:2:4") != std::string::npos,
+        "preflight diagnostic is routed to Problems"
+    );
+    failures += Check(service.StartBuild(projectRoot, projectRoot / (std::string(project.identifier) + ".basilproject"), project, false, error), "cancellable build starts");
     failures += Check(service.Stop(error), "configuration process tree can be stopped");
     failures += Check(service.State() == BEditorBuildState::Completed, "cancelled build reports stopped state");
     fs::remove_all(parent);

@@ -54,6 +54,8 @@ technical contract for that next slice is the
   startup Workspace, render its draw list, and show stable empty/error states
 - Editor authoring for visible glyphs, Project Text Sprites, and empty entities,
   with validated Transform2D and ASCII Renderable Inspector controls
+- Run preflight with complete Text Sprite validation, safe Workspace save,
+  explicit manifest launch arguments, and structured editor Problems
 - Asynchronous CMake Build and Run controls with streamed output, extracted
   problems, and native Pause, Resume, and Stop process control
 - Geometric circuit-leaf application branding and embedded Windows icon

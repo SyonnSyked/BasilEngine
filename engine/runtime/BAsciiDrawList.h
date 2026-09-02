@@ -37,6 +37,13 @@ void BAsciiDrawList_Init(BAsciiDrawList* list);
 void BAsciiDrawList_Destroy(BAsciiDrawList* list);
 void BAsciiDrawList_Swap(BAsciiDrawList* left, BAsciiDrawList* right);
 
+bool BWorkspaceDocument_ValidateTextSprites(
+    const BWorkspaceDocument* document,
+    const char* projectRoot,
+    BTextSpriteCache* spriteCache,
+    BDiagnosticList* diagnostics
+);
+
 /*
  * Builds a complete host-neutral snapshot. On failure, destination is unchanged.
  * The cache may retain successfully decoded assets for later build attempts.

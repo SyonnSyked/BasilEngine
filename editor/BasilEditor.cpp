@@ -19,6 +19,8 @@
 #include <filesystem>
 #include <cstdio>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace fs = std::filesystem;
 
@@ -474,12 +476,41 @@ static bool SaveWorkspace(EditorState& state)
 
 static void StartProjectBuild(EditorState& state, bool runAfterBuild)
 {
+    if (runAfterBuild)
+    {
+        BDiagnosticList diagnostics{};
+        std::string validationError;
+        if (!state.workspaceSession.ValidateForRun(diagnostics, validationError))
+        {
+            std::vector<std::string> problems;
+            for (std::size_t i = 0; i < diagnostics.count; ++i)
+            {
+                const BDiagnostic& diagnostic = diagnostics.items[i];
+                if (diagnostic.severity != BDIAGNOSTIC_ERROR)
+                    continue;
+                std::string problem = diagnostic.path[0] ? std::string(diagnostic.path) : "Workspace";
+                if (diagnostic.line > 0)
+                    problem += ":" + std::to_string(diagnostic.line) + ":" + std::to_string(diagnostic.column);
+                if (diagnostic.entityId[0])
+                    problem += " [" + std::string(diagnostic.entityId) + "]";
+                if (diagnostic.componentType[0])
+                    problem += " [" + std::string(diagnostic.componentType) + "]";
+                problem += ": " + std::string(diagnostic.message);
+                problems.push_back(std::move(problem));
+            }
+            state.buildService.ReportPreflightFailure(problems);
+            SetMessage(state, validationError.c_str(), true);
+            return;
+        }
+    }
+
     if (state.workspaceSession.IsDirty() && !SaveWorkspace(state))
         return;
 
     std::string error;
     bool started = state.buildService.StartBuild(
         state.manifestPath.parent_path(),
+        state.manifestPath,
         state.project,
         runAfterBuild,
         error

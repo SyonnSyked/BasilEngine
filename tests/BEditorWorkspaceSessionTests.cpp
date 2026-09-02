@@ -113,6 +113,32 @@ int main()
             std::string(textRenderable->data.asciiRenderable.textSpritePath) == "assets/sprites/ship.txt",
         "Text Sprite entity stores a portable Project-relative asset path"
     );
+    failures += Check(session.SetSelectedEnabled(false, error), "disabled Text Sprite fixture is configured");
+    {
+        std::FILE* sprite = std::fopen((root / "assets" / "sprites" / "ship.txt").string().c_str(), "wb");
+        if (sprite != nullptr)
+        {
+            std::fputs("bad\tasset\n", sprite);
+            std::fclose(sprite);
+        }
+    }
+    BDiagnosticList runDiagnostics{};
+    failures += Check(!session.ValidateForRun(runDiagnostics, error), "Run preflight validates disabled Text Sprite references");
+    const BDiagnostic* runError = BDiagnosticList_FirstError(&runDiagnostics);
+    failures += Check(
+        runError != nullptr && std::string(runError->path) == "assets/sprites/ship.txt" &&
+            std::string(runError->entityId) == session.SelectedEntity()->id,
+        "Run preflight reports structured asset and entity context"
+    );
+    {
+        std::FILE* sprite = std::fopen((root / "assets" / "sprites" / "ship.txt").string().c_str(), "wb");
+        if (sprite != nullptr)
+        {
+            std::fputs("/\\\n<@>\n", sprite);
+            std::fclose(sprite);
+        }
+    }
+    failures += Check(session.ValidateForRun(runDiagnostics, error), "Run preflight accepts restored Text Sprite");
     failures += Check(!session.AddTextSpriteEntity("../escape.txt", error), "escaping Text Sprite path is rejected");
     failures += Check(session.Workspace().entityCount == 1, "failed Text Sprite creation rolls back completely");
     failures += Check(session.AddEmptyEntity(error), "session adds explicit empty entity");

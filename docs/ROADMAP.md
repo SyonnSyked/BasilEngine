@@ -91,8 +91,8 @@ engine source or machine-specific paths.
   schema and the shared Text Sprite loading/cache service are implemented.
   Shared host-neutral draw-list interpretation and generated-runtime Project/
   Workspace discovery, loading, and presentation are also implemented. Focused
-  editor component authoring is active; in-Viewport play, source navigation,
-  and terminal services remain.
+  editor component authoring and validated explicit-manifest Run are active;
+  in-Viewport play, source navigation, and terminal services remain.
 - Create a dockable editor application. **Implemented.**
 - Add an ASCII viewport, hierarchy, inspector, asset browser, and log console.
   **Panel scaffolds implemented; editing and rendering behavior remains.**

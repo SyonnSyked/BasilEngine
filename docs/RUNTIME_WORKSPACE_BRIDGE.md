@@ -1,6 +1,6 @@
 # Runtime Workspace Bridge Technical Design
 
-**Status:** Accepted; implementation in progress (Steps 1–6 complete)
+**Status:** Accepted; implementation in progress (Steps 1–7 complete)
 **Design date:** 2026-09-02  
 **Target slice:** BasilEditor-authored entities render in a generated standalone
 Project through shared C runtime APIs
@@ -580,8 +580,10 @@ Each step must build, pass its focused tests, and leave a reviewable commit.
    Inspector edits identity, enabled state, position, source, colors, layer,
    anchor, visibility, and transparent spaces through transactional shared C
    mutation APIs.
-7. **Run contract:** validate Text Sprites, autosave, launch with `--project`, and
-   route structured diagnostics.
+7. **Run contract — Implemented:** Run validates the complete in-memory
+   Workspace and every referenced Text Sprite, including inactive entities,
+   routes structured failures to Problems, saves safely, builds, and launches
+   with `--project` plus the absolute manifest path.
 8. **Viewport preview:** render the same draw list with empty-entity markers and
    labels; do not host gameplay.
 9. **Reference proof and audit:** author a small Where Birds Nest room through

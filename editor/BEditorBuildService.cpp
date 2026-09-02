@@ -428,7 +428,7 @@ public:
         }
     }
 
-    bool StartBuild(const fs::path& root, const BProject& value, bool run, std::string& error)
+    bool StartBuild(const fs::path& root, const fs::path& manifest, const BProject& value, bool run, std::string& error)
     {
         if (IsBusy())
         {
@@ -437,6 +437,7 @@ public:
         }
 
         projectRoot = root;
+        manifestPath = fs::absolute(manifest).lexically_normal();
         project = value;
         runAfterBuild = run;
         output.clear();
@@ -464,6 +465,25 @@ public:
 
         state = BEditorBuildState::Configuring;
         return true;
+    }
+
+    void ReportPreflightFailure(const std::vector<std::string>& diagnostics)
+    {
+        if (IsBusy())
+            return;
+        output = "> RUN PREFLIGHT\n";
+        problems.clear();
+        for (const std::string& diagnostic : diagnostics)
+        {
+            output += "[ERROR] " + diagnostic + "\n";
+            problems.push_back(diagnostic);
+        }
+        if (problems.empty())
+        {
+            problems.push_back("Run preflight failed without a diagnostic.");
+            output += "[ERROR] Run preflight failed without a diagnostic.\n";
+        }
+        state = BEditorBuildState::Failed;
     }
 
     void Update()
@@ -612,10 +632,10 @@ public:
             return;
         }
 
-        output += "\n> RUN " + executable->string() + "\n";
+        output += "\n> RUN " + executable->string() + " --project " + manifestPath.string() + "\n";
         std::string error;
 
-        if (!process.Start({ executable->string() }, projectRoot, error))
+        if (!process.Start({ executable->string(), "--project", manifestPath.string() }, projectRoot, error))
         {
             Fail(error);
             return;
@@ -660,6 +680,7 @@ public:
     ChildProcess process;
     BEditorBuildState state = BEditorBuildState::Idle;
     fs::path projectRoot;
+    fs::path manifestPath;
     BProject project{};
     bool runAfterBuild = false;
     std::string output;
@@ -669,9 +690,14 @@ public:
 BEditorBuildService::BEditorBuildService() : implementation_(std::make_unique<Implementation>()) {}
 BEditorBuildService::~BEditorBuildService() = default;
 
-bool BEditorBuildService::StartBuild(const fs::path& root, const BProject& project, bool run, std::string& error)
+bool BEditorBuildService::StartBuild(const fs::path& root, const fs::path& manifest, const BProject& project, bool run, std::string& error)
 {
-    return implementation_->StartBuild(root, project, run, error);
+    return implementation_->StartBuild(root, manifest, project, run, error);
+}
+
+void BEditorBuildService::ReportPreflightFailure(const std::vector<std::string>& diagnostics)
+{
+    implementation_->ReportPreflightFailure(diagnostics);
 }
 
 void BEditorBuildService::Update() { implementation_->Update(); }

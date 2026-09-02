@@ -152,6 +152,35 @@ void BAsciiDrawList_Swap(BAsciiDrawList* left, BAsciiDrawList* right)
     *right = temporary;
 }
 
+bool BWorkspaceDocument_ValidateTextSprites(
+    const BWorkspaceDocument* document,
+    const char* projectRoot,
+    BTextSpriteCache* spriteCache,
+    BDiagnosticList* diagnostics
+)
+{
+    BDiagnosticList_Clear(diagnostics);
+    if (document == NULL || projectRoot == NULL || projectRoot[0] == '\0' || spriteCache == NULL)
+        return BAsciiDrawList_Fail(diagnostics, BDIAGNOSTIC_INVALID_ARGUMENT, "Workspace, Project root, and Text Sprite cache are required.", NULL);
+    if (!BWorkspaceDocument_Validate(document, diagnostics))
+        return false;
+
+    for (size_t entityIndex = 0; entityIndex < document->entityCount; ++entityIndex)
+    {
+        const BWorkspaceEntity* entity = &document->entities[entityIndex];
+        const BWorkspaceComponent* component = BWorkspaceEntity_FindComponentConst(entity, BWORKSPACE_ASCII_RENDERABLE_TYPE);
+        if (component == NULL || component->data.asciiRenderable.sourceKind != BASCII_SOURCE_TEXT_SPRITE)
+            continue;
+        const BTextSprite* sprite = NULL;
+        if (!BTextSpriteCache_Load(spriteCache, projectRoot, component->data.asciiRenderable.textSpritePath, &sprite, diagnostics))
+        {
+            BAsciiDrawList_AttachContext(diagnostics, entity);
+            return false;
+        }
+    }
+    return true;
+}
+
 bool BAsciiDrawList_Build(
     const BWorkspaceDocument* document,
     const char* projectRoot,
@@ -164,7 +193,7 @@ bool BAsciiDrawList_Build(
     if (document == NULL || projectRoot == NULL || projectRoot[0] == '\0' || spriteCache == NULL || destination == NULL)
         return BAsciiDrawList_Fail(diagnostics, BDIAGNOSTIC_INVALID_ARGUMENT, "Workspace, Project root, Text Sprite cache, and destination draw list are required.", NULL);
 
-    if (!BWorkspaceDocument_Validate(document, diagnostics))
+    if (!BWorkspaceDocument_ValidateTextSprites(document, projectRoot, spriteCache, diagnostics))
         return false;
 
     BAsciiDrawList built;
@@ -192,11 +221,11 @@ bool BAsciiDrawList_Build(
 
         if (renderable->sourceKind == BASCII_SOURCE_TEXT_SPRITE)
         {
-            if (!BTextSpriteCache_Load(spriteCache, projectRoot, renderable->textSpritePath, &sprite, diagnostics))
+            sprite = BTextSpriteCache_Find(spriteCache, renderable->textSpritePath);
+            if (sprite == NULL)
             {
-                BAsciiDrawList_AttachContext(diagnostics, entity);
                 BAsciiDrawList_Destroy(&built);
-                return false;
+                return BAsciiDrawList_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA, "Validated Text Sprite is missing from the cache.", entity);
             }
             width = sprite->width;
             height = sprite->height;

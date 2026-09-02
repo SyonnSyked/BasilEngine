@@ -266,6 +266,25 @@ bool BEditorWorkspaceSession::SetSelectedRenderable(const BAsciiRenderable& rend
     return true;
 }
 
+bool BEditorWorkspaceSession::ValidateForRun(BDiagnosticList& diagnostics, std::string& error) const
+{
+    if (!loaded_)
+    {
+        BDiagnosticList_Clear(&diagnostics);
+        BDiagnosticList_Add(&diagnostics, BDIAGNOSTIC_ERROR, BDIAGNOSTIC_INVALID_ARGUMENT, "No Workspace is loaded.", nullptr);
+        error = "No Workspace is loaded.";
+        return false;
+    }
+    BTextSpriteCache cache;
+    BTextSpriteCache_Init(&cache);
+    bool succeeded = BWorkspaceDocument_ValidateTextSprites(
+        &workspace_, projectRoot_.string().c_str(), &cache, &diagnostics
+    );
+    BTextSpriteCache_Destroy(&cache);
+    error = succeeded ? std::string{} : FirstDiagnosticMessage(diagnostics);
+    return succeeded;
+}
+
 bool BEditorWorkspaceSession::RemoveSelectedEntity(std::string& error)
 {
     if (!loaded_ || selectedIndex_ >= workspace_.entityCount)
