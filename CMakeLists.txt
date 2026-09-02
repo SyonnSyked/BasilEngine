@@ -468,6 +468,7 @@ if(BASIL_BUILD_EDITOR_DEPS)
         editor/BEditorBuildService.cpp
         editor/BEditorAssetService.cpp
         editor/BEditorComponentRegistry.cpp
+        editor/BEditorCodeWorkspace.cpp
         editor/BEditorGit.cpp
         editor/BEditorPanels.cpp
         editor/BEditorPlatformDialogs.cpp

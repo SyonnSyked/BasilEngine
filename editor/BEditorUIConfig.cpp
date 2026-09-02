@@ -72,6 +72,8 @@ bool BEditorUIConfig_Load(const std::string& path, BEditorUIConfig& output, std:
     bool supportedSchema = validTypes && (schema->valueint == 1 || schema->valueint == BEDITOR_UI_CONFIG_SCHEMA_VERSION);
     if (supportedSchema && schema->valueint == BEDITOR_UI_CONFIG_SCHEMA_VERSION)
         validTypes = ReadBool(root, "showTextSpriteEditor", parsed.showTextSpriteEditor);
+    cJSON* showCodeEditor = cJSON_GetObjectItemCaseSensitive(root, "showCodeEditor");
+    if (showCodeEditor) validTypes = validTypes && cJSON_IsBool(showCodeEditor), parsed.showCodeEditor = cJSON_IsTrue(showCodeEditor);
     if (!validTypes || !supportedSchema) { cJSON_Delete(root); error = "UI Config is missing required fields or uses an unsupported schema."; return false; }
     parsed.schemaVersion = BEDITOR_UI_CONFIG_SCHEMA_VERSION;
     parsed.leftRatio = static_cast<float>(left->valuedouble);
@@ -102,6 +104,7 @@ bool BEditorUIConfig_Save(const std::string& path, const BEditorUIConfig& config
     BASIL_ADD_BOOL(showAssets); BASIL_ADD_BOOL(showConsole);
     BASIL_ADD_BOOL(showBuildOutput); BASIL_ADD_BOOL(showProblems); BASIL_ADD_BOOL(showTerminal);
     BASIL_ADD_BOOL(showTextSpriteEditor);
+    BASIL_ADD_BOOL(showCodeEditor);
 #undef BASIL_ADD_BOOL
     char* json = cJSON_Print(root); cJSON_Delete(root);
     if (!json) { error = "Could not serialize UI Config."; return false; }
@@ -136,6 +139,7 @@ const char* BEditorPanel_Name(BEditorPanel panel)
         case BEditorPanel::Problems: return "PROBLEMS";
         case BEditorPanel::Terminal: return "TERMINAL";
         case BEditorPanel::TextSpriteEditor: return "TEXT SPRITE EDITOR";
+        case BEditorPanel::CodeEditor: return "CODE EDITOR";
     }
 
     return "UNKNOWN PANEL";

@@ -3,6 +3,7 @@
 #include "BRecentProjects.h"
 #include "BEditorGit.h"
 #include "BEditorBuildService.h"
+#include "BEditorCodeWorkspace.h"
 #include "BEditorComponentRegistry.h"
 #include "BEditorPanels.h"
 #include "BEditorPlatformDialogs.h"
@@ -54,6 +55,9 @@ struct EditorState
     BEditorWorkspaceSession workspaceSession;
     BEditorAssetService assetService;
     BEditorComponentRegistry componentRegistry;
+    BEditorCodeWorkspace codeWorkspace;
+    std::size_t activeCodeTab = 0;
+    double nextCodeRefreshTime = 0.0;
     BEditorTextSpriteDocument textSpriteDocument;
     double nextAssetRefreshTime = 0.0;
     bool confirmProjectClose = false;
@@ -214,9 +218,11 @@ static bool OpenProject(EditorState& state, const fs::path& manifestPath)
     bool assetsOpened = state.assetService.Open(absolutePath.parent_path(), assetError);
     std::string componentError;
     bool componentsOpened = state.componentRegistry.Open(absolutePath.parent_path(), componentError);
+    std::string codeError;
+    bool codeOpened = state.codeWorkspace.OpenProject(absolutePath.parent_path(), codeError);
     state.nextAssetRefreshTime = GetTime() + 1.0;
 
-    if (!workspaceLoaded || !componentsOpened)
+    if (!workspaceLoaded || !componentsOpened || !codeOpened)
         state.uiConfig.showProblems = true;
     else
         state.confirmRecovery = state.workspaceSession.HasNewerRecovery();
@@ -228,12 +234,12 @@ static bool OpenProject(EditorState& state, const fs::path& manifestPath)
     SetWindowTitle(TextFormat("BasilEditor - %s", state.project.name));
     SetMessage(
         state,
-        !uiConfigError.empty() ? uiConfigError.c_str() : !assetsOpened ? assetError.c_str() : !componentsOpened ? componentError.c_str() : workspaceLoaded ?
+        !uiConfigError.empty() ? uiConfigError.c_str() : !assetsOpened ? assetError.c_str() : !componentsOpened ? componentError.c_str() : !codeOpened ? codeError.c_str() : workspaceLoaded ?
             (state.workspaceSession.RequiresMigration() ?
                 "Project opened. Startup Workspace will migrate safely on first save." :
                 "Project and startup Workspace opened successfully.") :
             workspaceError.c_str(),
-        !uiConfigError.empty() || !assetsOpened || !componentsOpened || !workspaceLoaded
+        !uiConfigError.empty() || !assetsOpened || !componentsOpened || !codeOpened || !workspaceLoaded
     );
     return true;
 }
@@ -536,7 +542,7 @@ static void ReturnToProjectBrowser(EditorState& state)
         return;
     }
 
-    if (state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty())
+    if (state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty() || state.codeWorkspace.HasDirtyDocuments())
     {
         state.confirmProjectClose = true;
         return;
@@ -546,6 +552,7 @@ static void ReturnToProjectBrowser(EditorState& state)
     state.workspaceSession.Reset();
     state.assetService.Reset();
     state.textSpriteDocument.Reset();
+    state.codeWorkspace = BEditorCodeWorkspace{};
     ResetViewportPreview(state);
     SetWindowTitle("BasilEditor");
 }
@@ -553,6 +560,11 @@ static void ReturnToProjectBrowser(EditorState& state)
 static bool SaveWorkspace(EditorState& state)
 {
     std::string error;
+    if (!state.codeWorkspace.SaveAll(error))
+    {
+        SetMessage(state, error.c_str(), true);
+        return false;
+    }
     if (state.textSpriteDocument.IsDirty() && !state.textSpriteDocument.Save(error))
     {
         SetMessage(state, error.c_str(), true);
@@ -593,7 +605,7 @@ static void StartProjectBuild(EditorState& state, bool runAfterBuild)
         }
     }
 
-    if ((state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty()) && !SaveWorkspace(state))
+    if ((state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty() || state.codeWorkspace.HasDirtyDocuments()) && !SaveWorkspace(state))
         return;
 
     std::string error;
@@ -649,7 +661,7 @@ static void DrawEditorMenuBar(EditorState& state)
         ImGui::Separator();
         if (ImGui::MenuItem("Exit BasilEditor"))
         {
-            state.confirmApplicationClose = state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty();
+            state.confirmApplicationClose = state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty() || state.codeWorkspace.HasDirtyDocuments();
             state.exitApproved = !state.confirmApplicationClose;
         }
 
@@ -695,6 +707,7 @@ static void DrawEditorMenuBar(EditorState& state)
         ImGui::MenuItem("Problems", nullptr, &state.uiConfig.showProblems);
         ImGui::MenuItem("Terminal", nullptr, &state.uiConfig.showTerminal);
         ImGui::MenuItem("Text Sprite Editor", nullptr, &state.uiConfig.showTextSpriteEditor);
+        ImGui::MenuItem("Code Editor", nullptr, &state.uiConfig.showCodeEditor);
         ImGui::Separator();
 
         ImGui::MenuItem("UI Config Manager", nullptr, &state.showUIConfigManager);
@@ -789,12 +802,12 @@ static void DrawEditorMenuBar(EditorState& state)
     if (ImGui::MenuItem("Terminal"))
         state.uiConfig.showTerminal = true;
 
-    const char* statusText = (state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty()) ?
+    const char* statusText = (state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty() || state.codeWorkspace.HasDirtyDocuments()) ?
         "WORKSPACE // MODIFIED" : "PROJECT LINK // STABLE";
     float statusWidth = ImGui::CalcTextSize(statusText).x;
     ImGui::SameLine(ImGui::GetWindowWidth() - statusWidth - ImGui::GetStyle().ItemSpacing.x);
     ImGui::TextColored(
-        (state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty()) ? palette.warning : palette.success,
+        (state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty() || state.codeWorkspace.HasDirtyDocuments()) ? palette.warning : palette.success,
         statusText
     );
     ImGui::EndMainMenuBar();
@@ -815,6 +828,7 @@ static void BuildDefaultDockLayout(ImGuiID dockspaceId, const BEditorUIConfig& c
     ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::ProjectDetails), left);
     ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::WorkspaceHierarchy), left);
     ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::Inspector), right);
+    ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::CodeEditor), center);
     ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::WorkspaceViewport), center);
     ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::Assets), bottom);
     ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::Console), bottom);
@@ -1013,6 +1027,60 @@ static void DrawWorkspaceViewport(EditorState& state)
     ImGui::PopStyleColor();
 }
 
+static void DrawCodeEditor(EditorState& state)
+{
+    if (!state.uiConfig.showCodeEditor) return;
+    if (!ImGui::Begin(BEditorPanel_Name(BEditorPanel::CodeEditor), &state.uiConfig.showCodeEditor)) { ImGui::End(); return; }
+    ImGui::BeginChild("##ProjectFiles", ImVec2(240.0f, 0.0f), true);
+    ImGui::TextDisabled("PROJECT FILES");
+    ImGui::Separator();
+    for (const std::string& path : state.codeWorkspace.Files())
+    {
+        if (ImGui::Selectable(path.c_str(), false))
+        {
+            std::string error;
+            if (!state.codeWorkspace.OpenFile(path, error)) SetMessage(state, error.c_str(), true);
+            else
+            {
+                const auto& documents = state.codeWorkspace.Documents();
+                for (std::size_t i = 0; i < documents.size(); ++i) if (documents[i].relativePath == path) state.activeCodeTab = i;
+            }
+        }
+    }
+    ImGui::EndChild();
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    auto& documents = state.codeWorkspace.Documents();
+    if (documents.empty())
+        ImGui::TextDisabled("Select a C, C++, CMake, JSON, or text file from the Project tree.");
+    else
+    {
+        if (state.activeCodeTab >= documents.size()) state.activeCodeTab = documents.size() - 1;
+        if (ImGui::BeginTabBar("##CodeTabs"))
+        {
+            for (std::size_t i = 0; i < documents.size(); ++i)
+            {
+                std::string label = documents[i].relativePath + (documents[i].dirty ? " *" : "");
+                if (ImGui::BeginTabItem(label.c_str(), nullptr, i == state.activeCodeTab ? ImGuiTabItemFlags_SetSelected : 0))
+                { state.activeCodeTab = i; ImGui::EndTabItem(); }
+            }
+            ImGui::EndTabBar();
+        }
+        BEditorCodeDocument& document = documents[state.activeCodeTab];
+        if (document.externalConflict) ImGui::TextColored(BEditorTheme_GetPalette().error, "EXTERNAL CONFLICT // Save is blocked");
+        std::vector<char> buffer(1024 * 1024 + 1, 0);
+        std::memcpy(buffer.data(), document.text.data(), std::min(document.text.size(), buffer.size() - 1));
+        ImVec2 available = ImGui::GetContentRegionAvail();
+        if (ImGui::InputTextMultiline("##CodeText", buffer.data(), buffer.size(), available, ImGuiInputTextFlags_AllowTabInput))
+        {
+            std::string error;
+            if (!state.codeWorkspace.SetText(state.activeCodeTab, buffer.data(), error)) SetMessage(state, error.c_str(), true);
+        }
+    }
+    ImGui::EndGroup();
+    ImGui::End();
+}
+
 static void DrawEditorShell(EditorState& state)
 {
     double currentTime = GetTime();
@@ -1036,6 +1104,12 @@ static void DrawEditorShell(EditorState& state)
             state.viewportRevision = 0;
         }
         state.nextAssetRefreshTime = currentTime + 1.0;
+    }
+    if (currentTime >= state.nextCodeRefreshTime)
+    {
+        std::string error;
+        if (!state.codeWorkspace.PollExternalChanges(error) && !error.empty()) SetMessage(state, error.c_str(), true);
+        state.nextCodeRefreshTime = currentTime + 1.0;
     }
 
     state.buildService.Update();
@@ -1097,6 +1171,7 @@ static void DrawEditorShell(EditorState& state)
 
     DrawProjectDetails(state);
     DrawWorkspaceViewport(state);
+    DrawCodeEditor(state);
     BEditorPanelFeedback feedback = BEditorPanels_DrawScaffolds(
         state.uiConfig,
         state.project,
@@ -1173,6 +1248,7 @@ static void DrawEditorShell(EditorState& state)
             state.workspaceSession.Reset();
             state.assetService.Reset();
             state.textSpriteDocument.Reset();
+            state.codeWorkspace = BEditorCodeWorkspace{};
             ResetViewportPreview(state);
             state.projectOpen = false;
             SetWindowTitle("BasilEditor");
@@ -1316,7 +1392,7 @@ static int RunEditor(int argumentCount, char** arguments)
         {
             if (state.buildService.IsBusy())
                 SetMessage(state, "Stop the active build or game before exiting BasilEditor.", true);
-            else if (state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty())
+            else if (state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty() || state.codeWorkspace.HasDirtyDocuments())
                 state.confirmApplicationClose = true;
             else
                 state.exitApproved = true;

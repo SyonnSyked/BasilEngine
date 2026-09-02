@@ -191,8 +191,12 @@ The following direction is **confirmed**:
 - External edits must not break file watching, diagnostics, builds, running, or
   future hot reload.
 
-The first practical internal editor is **planned** to support multiple tabs,
-line numbers, C/C++/CMake/JSON/text syntax highlighting, find/replace, go to
+The first practical internal editor is **in implementation**. Its shared,
+Project-contained document service and initial dockable Project tree/multi-tab
+editing surface are implemented with dirty-state, Save All, close/build
+protection, transactional writes, and external-change conflict detection. It
+will additionally support line numbers, C/C++/CMake/JSON/text syntax
+highlighting, find/replace, go to
 line, unsaved-change handling, compiler diagnostics, file-and-line navigation,
 indent/format commands, Open in External Editor, and Reveal in Terminal/File
 Browser.

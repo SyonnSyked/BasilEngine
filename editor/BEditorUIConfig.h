@@ -16,7 +16,8 @@ enum class BEditorPanel
     BuildOutput,
     Problems,
     Terminal,
-    TextSpriteEditor
+    TextSpriteEditor,
+    CodeEditor
 };
 
 struct BEditorUIConfig
@@ -35,6 +36,7 @@ struct BEditorUIConfig
     bool showProblems = false;
     bool showTerminal = false;
     bool showTextSpriteEditor = false;
+    bool showCodeEditor = true;
 };
 
 BEditorUIConfig BEditorUIConfig_Default();
