@@ -107,8 +107,10 @@ add_library(cjson STATIC thirdparty/cjson/cJSON.c)
 
 target_include_directories(cjson PUBLIC thirdparty/cjson)
 
-add_library(BasilProject STATIC engine/project/BProject.c engine/project/BProjectGenerator.c
-                                engine/project/BRecentProjects.c engine/project/BWorkspace.c)
+add_library(
+    BasilProject STATIC
+    engine/project/BProject.c engine/project/BProjectGenerator.c engine/project/BRecentProjects.c
+    engine/project/BWorkspace.c engine/project/BAssetRegistry.c)
 
 target_include_directories(BasilProject PUBLIC engine/project engine/core)
 
@@ -232,6 +234,20 @@ if(BUILD_TESTING)
     endforeach()
 
     add_test(NAME BWorkspaceTests COMMAND BWorkspaceTests)
+
+    add_executable(BAssetRegistryTests tests/BAssetRegistryTests.c)
+
+    target_link_libraries(BAssetRegistryTests PRIVATE BasilProject)
+
+    foreach(asset_registry_fixture IN
+            ITEMS asset-registry-valid.json asset-registry-duplicate-id.json
+                  asset-registry-duplicate-path.json)
+        configure_file(
+            "tests/fixtures/${asset_registry_fixture}"
+            "${CMAKE_CURRENT_BINARY_DIR}/test-fixtures/${asset_registry_fixture}" COPYONLY)
+    endforeach()
+
+    add_test(NAME BAssetRegistryTests COMMAND BAssetRegistryTests)
 
     add_executable(BTextSpriteTests tests/BTextSpriteTests.c)
 
@@ -466,7 +482,7 @@ if(BASIL_BUILD_EDITOR_DEPS)
         add_executable(BEditorAssetServiceTests tests/BEditorAssetServiceTests.cpp
                                                 editor/BEditorAssetService.cpp)
         target_include_directories(BEditorAssetServiceTests PRIVATE editor)
-        target_link_libraries(BEditorAssetServiceTests PRIVATE cjson)
+        target_link_libraries(BEditorAssetServiceTests PRIVATE BasilProject)
         if(MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
             target_link_options(BEditorAssetServiceTests PRIVATE -static -static-libgcc
                                 -static-libstdc++)
