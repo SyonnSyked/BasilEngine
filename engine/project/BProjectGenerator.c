@@ -1,5 +1,6 @@
 #include "BProjectGenerator.h"
 #include "BWorkspace.h"
+#include "BAssetRegistry.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -24,23 +25,25 @@ static bool BProjectGenerator_Fail(BProjectError *error, BProjectErrorCode code,
     return false;
 }
 
-static bool BProjectGenerator_WorkspaceFailure(BProjectError *error,
-                                               const BDiagnosticList *diagnostics)
+static bool BProjectGenerator_DiagnosticFailure(BProjectError *error,
+                                                const BDiagnosticList *diagnostics,
+                                                const char *fallback)
 {
     const BDiagnostic *diagnostic = BDiagnosticList_FirstError(diagnostics);
+
     BProjectErrorCode code = BPROJECT_ERROR_INVALID_MANIFEST;
 
     if (diagnostic != 0) {
-        if (diagnostic->code == BDIAGNOSTIC_IO || diagnostic->code == BDIAGNOSTIC_OUT_OF_MEMORY)
+        if (diagnostic->code == BDIAGNOSTIC_IO || diagnostic->code == BDIAGNOSTIC_OUT_OF_MEMORY) {
             code = BPROJECT_ERROR_IO;
-        else if (diagnostic->code == BDIAGNOSTIC_INVALID_ARGUMENT)
+        } else if (diagnostic->code == BDIAGNOSTIC_INVALID_ARGUMENT) {
             code = BPROJECT_ERROR_INVALID_ARGUMENT;
-        else if (diagnostic->code == BDIAGNOSTIC_UNSUPPORTED_VERSION)
+        } else if (diagnostic->code == BDIAGNOSTIC_UNSUPPORTED_VERSION) {
             code = BPROJECT_ERROR_UNSUPPORTED_VERSION;
+        }
     }
 
-    return BProjectGenerator_Fail(
-        error, code, diagnostic != 0 ? diagnostic->message : "Workspace generation failed.");
+    return BProjectGenerator_Fail(error, code, diagnostic != 0 ? diagnostic->message : fallback);
 }
 
 static bool BProjectGenerator_Path(char *output, size_t outputSize, const char *left,
@@ -314,10 +317,27 @@ bool BProjectGenerator_Create(const BProject *project, const char *parentDirecto
     if (!BWorkspaceDocument_CreateDefault(&workspace, "Main Workspace", "Main", &diagnostics) ||
         !BWorkspaceDocument_Save(&workspace, path, &diagnostics)) {
         BWorkspaceDocument_Destroy(&workspace);
-        return BProjectGenerator_WorkspaceFailure(error, &diagnostics);
+        return BProjectGenerator_DiagnosticFailure(error, &diagnostics,
+                                                   "Main Workspace generation failed.");
     }
 
     BWorkspaceDocument_Destroy(&workspace);
+
+    if (!BProjectGenerator_Path(path, sizeof(path), root, ".basil/assets.json", error)) {
+        return false;
+    }
+
+    BAssetRegistry assetRegistry;
+    BAssetRegistry_Init(&assetRegistry);
+
+    if (!BAssetRegistry_Save(&assetRegistry, path, &diagnostics)) {
+        BAssetRegistry_Destroy(&assetRegistry);
+
+        return BProjectGenerator_DiagnosticFailure(error, &diagnostics,
+                                                   "Asset registry generation failed.");
+    }
+
+    BAssetRegistry_Destroy(&assetRegistry);
 
     if (!BProjectGenerator_Path(path, sizeof(path), root, ".basil/components.json", error) ||
         !BProjectGenerator_WriteText(path,
@@ -394,7 +414,14 @@ bool BProjectGenerator_Create(const BProject *project, const char *parentDirecto
                                      "build/\n"
                                      "build-*/\n"
                                      "CMakeUserPresets.json\n"
-                                     "*.exe\n*.dll\n*.so\n*.dylib\n*.pdb\n",
+                                     "*.exe\n"
+                                     "*.dll\n"
+                                     "*.so\n"
+                                     "*.dylib\n"
+                                     "*.pdb\n"
+                                     "*.tmp\n"
+                                     "*.bak\n"
+                                     "*.recovery\n",
                                      error)) {
         return false;
     }

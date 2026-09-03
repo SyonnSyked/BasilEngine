@@ -319,3 +319,13 @@ Alpha is complete only when Stage 9 passes. Panels and APIs alone are not
 sufficient. The deciding artifact is an independently runnable Where Birds Nest
 Release package produced through the normal BasilEditor workflow, accompanied
 by passing automated evidence and a recorded manual verification checklist.
+
+## Note 9/3/2026
+
+> **AlphaSprintWork update:** This document records the Stage 3 asset
+> foundation as originally closed. The current alpha integrity work promotes
+> the asset registry into shared Project infrastructure and makes stable asset
+> IDs the canonical identity model. Workspace schema 3 remains supported as
+> the legacy path-reference format while the planned schema 4 AssetRef work
+> replaces the path-only persistence model. The historical behavior below is
+> retained to document the Stage 3 implementation.
