@@ -17,6 +17,9 @@
 typedef struct BGeneratedRuntimeState {
     BProjectContext context;
     BWorkspaceDocument document;
+    uint32_t workspaceGeneration;
+    bool workspaceRequestPending;
+    char requestedWorkspace[BPROJECT_PATH_MAX];
     BTextSpriteCache cache;
     BAsciiDrawList drawList;
     BDiagnosticList diagnostics;
@@ -30,10 +33,36 @@ typedef struct BGeneratedRuntimeState {
     char errorMessage[BDIAGNOSTIC_MESSAGE_MAX];
 } BGeneratedRuntimeState;
 
+static BGameEntity Runtime_MakeEntityHandle(const BGeneratedRuntimeState *state, size_t index)
+{
+    if (state == NULL || index >= state->document.entityCount || index >= UINT32_MAX) {
+        return (BGameEntity){0};
+    }
+
+    uint64_t value = ((uint64_t)state->workspaceGeneration << 32) | (uint64_t)(index + 1);
+
+    return (BGameEntity){value};
+}
+
 static BWorkspaceEntity *Runtime_Entity(BGeneratedRuntimeState *state, BGameEntity handle)
 {
-    size_t index = handle.value == 0 ? SIZE_MAX : (size_t)(handle.value - 1);
-    return index < state->document.entityCount ? &state->document.entities[index] : NULL;
+    if (state == NULL || handle.value == 0)
+        return NULL;
+
+    uint32_t generation = (uint32_t)(handle.value >> 32);
+
+    uint32_t encodedIndex = (uint32_t)(handle.value & UINT32_MAX);
+
+    if (generation != state->workspaceGeneration || encodedIndex == 0) {
+        return NULL;
+    }
+
+    size_t index = (size_t)(encodedIndex - 1);
+
+    if (index >= state->document.entityCount)
+        return NULL;
+
+    return &state->document.entities[index];
 }
 
 static void Host_Log(void *context, const char *message)
@@ -50,11 +79,14 @@ static size_t Host_EntityCount(void *context)
 {
     return ((BGeneratedRuntimeState *)context)->document.entityCount;
 }
+
 static BGameEntity Host_EntityAt(void *context, size_t index)
 {
     BGeneratedRuntimeState *state = context;
-    return (BGameEntity){index < state->document.entityCount ? index + 1 : 0};
+
+    return Runtime_MakeEntityHandle(state, index);
 }
+
 static const char *Host_EntityId(void *context, BGameEntity entity)
 {
     BWorkspaceEntity *value = Runtime_Entity(context, entity);
@@ -147,6 +179,95 @@ static int Host_InputBindingDevice(void *context, const char *action)
     return (int)BInput_GetActionDevice(action);
 }
 
+static bool Runtime_ProcessWorkspaceRequest(BGeneratedRuntimeState *state)
+{
+    if (state == NULL || !state->workspaceRequestPending) {
+        return true;
+    }
+
+    char requestedWorkspace[BPROJECT_PATH_MAX];
+
+    snprintf(requestedWorkspace, sizeof(requestedWorkspace), "%s", state->requestedWorkspace);
+
+    state->workspaceRequestPending = false;
+    state->requestedWorkspace[0] = '\0';
+
+    if (state->workspaceGeneration == UINT32_MAX) {
+        BLog_Error("Workspace generation limit reached; "
+                   "Workspace replacement was rejected.");
+
+        return false;
+    }
+
+    char resolvedPath[BPROJECT_PATH_MAX];
+    BDiagnosticList diagnostics = {0};
+
+    if (!BProjectContext_ResolvePath(&state->context, requestedWorkspace, resolvedPath,
+                                     sizeof(resolvedPath), &diagnostics)) {
+
+        const BDiagnostic *error = BDiagnosticList_FirstError(&diagnostics);
+
+        BLog_Error(error != NULL && error->message[0] != '\0'
+                       ? error->message
+                       : "Workspace path resolution failed.");
+
+        return false;
+    }
+
+    BWorkspaceDocument replacementDocument;
+    BWorkspaceDocument_Init(&replacementDocument);
+
+    BAsciiDrawList replacementDrawList;
+    BAsciiDrawList_Init(&replacementDrawList);
+
+    bool succeeded = false;
+
+    if (!BWorkspaceDocument_Load(resolvedPath, &replacementDocument, &diagnostics)) {
+
+        const BDiagnostic *error = BDiagnosticList_FirstError(&diagnostics);
+
+        BLog_Error(error != NULL && error->message[0] != '\0' ? error->message
+                                                              : "Workspace loading failed.");
+
+        goto cleanup;
+    }
+
+    if (!BAsciiDrawList_Build(&replacementDocument, state->context.projectRoot, &state->cache,
+                              &replacementDrawList, &diagnostics)) {
+
+        const BDiagnostic *error = BDiagnosticList_FirstError(&diagnostics);
+
+        BLog_Error(error != NULL && error->message[0] != '\0'
+                       ? error->message
+                       : "Workspace draw-list construction failed.");
+
+        goto cleanup;
+    }
+
+    BWorkspaceDocument_Swap(&state->document, &replacementDocument);
+
+    BAsciiDrawList_Swap(&state->drawList, &replacementDrawList);
+
+    snprintf(state->context.workspacePath, sizeof(state->context.workspacePath), "%s",
+             resolvedPath);
+
+    ++state->workspaceGeneration;
+
+    state->drawDirty = false;
+
+    BLog_Info("Workspace replacement completed.");
+
+    succeeded = true;
+
+cleanup:
+
+    BAsciiDrawList_Destroy(&replacementDrawList);
+
+    BWorkspaceDocument_Destroy(&replacementDocument);
+
+    return succeeded;
+}
+
 static bool Runtime_ModulePath(int argumentCount, char **arguments, const char *identifier,
                                char *output, size_t outputSize)
 {
@@ -175,6 +296,36 @@ static bool Runtime_ModulePath(int argumentCount, char **arguments, const char *
     *slash = '\0';
     int written = snprintf(output, outputSize, "%s/%s%s", executable, identifier, extension);
     return written > 0 && (size_t)written < outputSize;
+}
+
+static bool Host_RequestWorkspace(void *context, const char *workspacePath)
+{
+    BGeneratedRuntimeState *state = (BGeneratedRuntimeState *)context;
+
+    if (state == NULL || workspacePath == NULL || workspacePath[0] == '\0') {
+        return false;
+    }
+
+    if (state->workspaceRequestPending)
+        return false;
+
+    size_t length = strlen(workspacePath);
+
+    if (length >= sizeof(state->requestedWorkspace))
+        return false;
+
+    memcpy(state->requestedWorkspace, workspacePath, length + 1);
+
+    state->workspaceRequestPending = true;
+
+    return true;
+}
+
+static uint32_t Host_WorkspaceGeneration(void *context)
+{
+    BGeneratedRuntimeState *state = (BGeneratedRuntimeState *)context;
+
+    return state != NULL ? state->workspaceGeneration : 0;
 }
 
 static bool Runtime_LoadModule(BGeneratedRuntimeState *state, int argc, char **argv)
@@ -232,7 +383,9 @@ static bool Runtime_LoadModule(BGeneratedRuntimeState *state, int argc, char **a
 
                                     .inputHasAction = Host_InputHasAction,
                                     .inputBindingCode = Host_InputBindingCode,
-                                    .inputBindingDevice = Host_InputBindingDevice};
+                                    .inputBindingDevice = Host_InputBindingDevice,
+                                    .requestWorkspace = Host_RequestWorkspace,
+                                    .workspaceGeneration = Host_WorkspaceGeneration};
 
     return true;
 }
@@ -299,6 +452,10 @@ static void Runtime_OnUpdate(void *userData, BEngine *engine, float deltaTime)
     BInput_SetFocusSuppressed(!IsWindowFocused());
     if (state->moduleInitialized && state->gameModule.onUpdate)
         state->gameModule.onUpdate(state->gameState, deltaTime);
+
+    if (state->workspaceRequestPending)
+        Runtime_ProcessWorkspaceRequest(state);
+
     if (state->drawDirty) {
         BAsciiDrawList replacement;
         BAsciiDrawList_Init(&replacement);
@@ -376,6 +533,7 @@ int BGeneratedRuntime_Run(int argumentCount, char **arguments, const char *fallb
     memset(&state, 0, sizeof(state));
     BProjectContext_Init(&state.context);
     BWorkspaceDocument_Init(&state.document);
+    state.workspaceGeneration = 1;
     BTextSpriteCache_Init(&state.cache);
     BAsciiDrawList_Init(&state.drawList);
 

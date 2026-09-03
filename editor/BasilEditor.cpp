@@ -724,7 +724,7 @@ static void DrawEditorMenuBar(EditorState &state)
         ImGui::MenuItem("Inspector", nullptr, &state.uiConfig.showInspector);
         ImGui::MenuItem("Workspace Viewport", nullptr, &state.uiConfig.showWorkspaceViewport);
         ImGui::MenuItem("Assets", nullptr, &state.uiConfig.showAssets);
-        ImGui::MenuItem("Console", nullptr, &state.uiConfig.showConsole);
+        ImGui::MenuItem("Status", nullptr, &state.uiConfig.showConsole);
         ImGui::MenuItem("Build Output", nullptr, &state.uiConfig.showBuildOutput);
         ImGui::MenuItem("Problems", nullptr, &state.uiConfig.showProblems);
         ImGui::MenuItem("Terminal", nullptr, &state.uiConfig.showTerminal);

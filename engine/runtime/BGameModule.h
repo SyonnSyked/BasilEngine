@@ -43,6 +43,8 @@ typedef struct BGameHostAPI {
     bool (*inputHasAction)(void *context, const char *action);
     int (*inputBindingCode)(void *context, const char *action);
     int (*inputBindingDevice)(void *context, const char *action);
+    bool (*requestWorkspace)(void *context, const char *workspacePath);
+    uint32_t (*workspaceGeneration)(void *context);
 } BGameHostAPI;
 
 typedef struct BGameModule {

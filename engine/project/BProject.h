@@ -15,15 +15,13 @@ extern "C" {
 #define BPROJECT_PATH_MAX 1024
 #define BPROJECT_ERROR_MESSAGE_MAX 256
 
-typedef enum BProjectLanguageMode
-{
+typedef enum BProjectLanguageMode {
     BPROJECT_LANGUAGE_C,
     BPROJECT_LANGUAGE_CPP,
     BPROJECT_LANGUAGE_MIXED
 } BProjectLanguageMode;
 
-typedef enum BProjectErrorCode
-{
+typedef enum BProjectErrorCode {
     BPROJECT_ERROR_NONE,
     BPROJECT_ERROR_INVALID_ARGUMENT,
     BPROJECT_ERROR_INVALID_MANIFEST,
@@ -32,14 +30,12 @@ typedef enum BProjectErrorCode
     BPROJECT_ERROR_ALREADY_EXISTS
 } BProjectErrorCode;
 
-typedef struct BProjectError
-{
+typedef struct BProjectError {
     BProjectErrorCode code;
     char message[BPROJECT_ERROR_MESSAGE_MAX];
 } BProjectError;
 
-typedef struct BProject
-{
+typedef struct BProject {
     int schemaVersion;
     char name[BPROJECT_NAME_MAX];
     char identifier[BPROJECT_IDENTIFIER_MAX];
@@ -49,14 +45,16 @@ typedef struct BProject
     char startupWorkspace[BPROJECT_PATH_MAX];
 } BProject;
 
-BProject BProject_Default(const char* name, const char* identifier);
+BProject BProject_Default(const char *name, const char *identifier);
 
-bool BProject_Validate(const BProject* project, BProjectError* error);
-bool BProject_Load(const char* manifestPath, BProject* outProject, BProjectError* error);
-bool BProject_Save(const BProject* project, const char* manifestPath, BProjectError* error);
+bool BProject_Validate(const BProject *project, BProjectError *error);
+bool BProject_Load(const char *manifestPath, BProject *outProject, BProjectError *error);
+bool BProject_Save(const BProject *project, const char *manifestPath, BProjectError *error);
 
-const char* BProject_LanguageModeToString(BProjectLanguageMode mode);
-bool BProject_LanguageModeFromString(const char* value, BProjectLanguageMode* outMode);
+bool BProject_IsPortableRelativePath(const char *path);
+
+const char *BProject_LanguageModeToString(BProjectLanguageMode mode);
+bool BProject_LanguageModeFromString(const char *value, BProjectLanguageMode *outMode);
 
 #ifdef __cplusplus
 }

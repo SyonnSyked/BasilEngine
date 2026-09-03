@@ -45,6 +45,11 @@ foreach(language_mode IN ITEMS mixed c cpp)
     int (*inputBindingCodeFn)(void*, const char*) = host->inputBindingCode;
     int (*inputBindingDeviceFn)(void*, const char*) = host->inputBindingDevice;
 
+    bool (*requestWorkspaceFn)(void*, const char*) =
+    host->requestedWorkspace;
+    uint32_t (*workspaceGenerationFn)(void*) =
+    host->workspaceGeneration;
+
     (void)inputPressedFn;
     (void)inputDownFn;
     (void)inputReleasedFn;
@@ -53,6 +58,8 @@ foreach(language_mode IN ITEMS mixed c cpp)
     (void)inputHasActionFn;
     (void)inputBindingCodeFn;
     (void)inputBindingDeviceFn;
+    (void)requestWorkspaceFn;
+    (void)workspaceGenerationFn;
 ]=])
 
     set(initialize_marker "    *gameState = &state;\n")
