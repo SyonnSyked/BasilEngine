@@ -273,6 +273,11 @@ bool BEditorAssetService::SaveRegistry(std::string &error) const
     BAssetRegistry registry;
     BAssetRegistry_Init(&registry);
 
+    if (!BuildSharedRegistry(records_, registry, error)) {
+        BAssetRegistry_Destroy(&registry);
+        return false;
+    }
+
     BDiagnosticList diagnostics;
 
     if (!BAssetRegistry_Save(&registry, destination.string().c_str(), &diagnostics)) {
