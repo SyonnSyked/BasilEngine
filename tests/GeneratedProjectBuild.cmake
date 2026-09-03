@@ -46,7 +46,7 @@ foreach(language_mode IN ITEMS mixed c cpp)
     int (*inputBindingDeviceFn)(void*, const char*) = host->inputBindingDevice;
 
     bool (*requestWorkspaceFn)(void*, const char*) =
-    host->requestedWorkspace;
+    host->requestWorkspace;
     uint32_t (*workspaceGenerationFn)(void*) =
     host->workspaceGeneration;
 

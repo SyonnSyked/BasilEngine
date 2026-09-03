@@ -1,0 +1,19 @@
+{
+    "schemaVersion": 1,
+    "assets": [
+        {
+            "id": "asset-1111111111111111",
+            "path": "assets/first.txt",
+            "type": "text-sprite",
+            "size": 8,
+            "hash": "1111111111111111"
+        },
+        {
+            "id": "asset-1111111111111111",
+            "path": "assets/second.txt",
+            "type": "text-sprite",
+            "size": 8,
+            "hash": "2222222222222222"
+        }
+    ]
+}
