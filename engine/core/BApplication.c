@@ -1,15 +1,10 @@
 #include "BApplication.h"
 #include "BLog.h"
 #include "BTime.h"
-#include "../debug/BConsole.h"
 
 #include <raylib.h>
 
-bool BApplication_Init(
-    BApplication* app,
-    BEngineConfig config,
-    BApplicationCallbacks callbacks
-)
+bool BApplication_Init(BApplication *app, BEngineConfig config, BApplicationCallbacks callbacks)
 {
     if (app == 0)
         return false;
@@ -19,10 +14,8 @@ bool BApplication_Init(
     if (!BEngine_Init(&app->engine, config))
         return false;
 
-    if (app->callbacks.onStart != 0)
-    {
-        if (!app->callbacks.onStart(app->callbacks.userData, &app->engine))
-        {
+    if (app->callbacks.onStart != 0) {
+        if (!app->callbacks.onStart(app->callbacks.userData, &app->engine)) {
             if (app->callbacks.onShutdown != 0)
                 app->callbacks.onShutdown(app->callbacks.userData, &app->engine);
 
@@ -34,18 +27,15 @@ bool BApplication_Init(
     return true;
 }
 
-int BApplication_Run(BApplication* app)
+int BApplication_Run(BApplication *app)
 {
     if (app == 0 || !app->engine.isInitialized)
         return 1;
 
-    while (!BEngine_ShouldClose(&app->engine) && !BEngine_IsQuitRequested())
-    {
+    while (!BEngine_ShouldClose(&app->engine) && !BEngine_IsQuitRequested()) {
         float deltaTime = BTime_GetDeltaTime();
         BTime_Update();
-        BConsole_Update();
-        if (BTime_GetFrameCount() == 60)
-        {
+        if (BTime_GetFrameCount() == 60) {
             BLog_InfoF("Frame test reached. Current FPS: %d", BTime_GetFPS());
         }
 
@@ -57,8 +47,6 @@ int BApplication_Run(BApplication* app)
         if (app->callbacks.onRender != 0)
             app->callbacks.onRender(app->callbacks.userData, &app->engine);
 
-        BConsole_Draw();
-
         BEngine_EndFrame(&app->engine);
     }
 
@@ -67,7 +55,7 @@ int BApplication_Run(BApplication* app)
     return 0;
 }
 
-void BApplication_Shutdown(BApplication* app)
+void BApplication_Shutdown(BApplication *app)
 {
     if (app == 0)
         return;
