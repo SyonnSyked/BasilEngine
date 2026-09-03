@@ -7,11 +7,10 @@
 #include <cstdio>
 #include <fstream>
 #include <iterator>
-#include <unordered_set>
+#include <unordered_map>
 
 namespace fs = std::filesystem;
 namespace {
-constexpr std::uintmax_t MaximumAssetSize = 256u * 1024u * 1024u;
 
 std::string RegistryError(const BDiagnosticList &diagnostics, const char *fallback)
 {
@@ -62,6 +61,45 @@ BAssetKind ToSharedKind(BEditorAssetKind kind)
     return BASSET_KIND_DATA;
 }
 
+bool BuildSharedRegistry(const std::vector<BEditorAssetRecord> &records, BAssetRegistry &registry,
+                         std::string &error)
+{
+    std::vector<BAssetRecord> shared(records.size());
+
+    for (size_t i = 0; i < records.size(); ++i) {
+        const BEditorAssetRecord &editor = records[i];
+
+        BAssetRecord &record = shared[i];
+
+        if (editor.id.size() >= sizeof(record.id) ||
+            editor.relativePath.size() >= sizeof(record.path)) {
+            error = "Asset registry record exceeds shared Project limits.";
+
+            return false;
+        }
+
+        std::snprintf(record.id, sizeof(record.id), "%s", editor.id.c_str());
+
+        std::snprintf(record.path, sizeof(record.path), "%s", editor.relativePath.c_str());
+
+        record.kind = ToSharedKind(editor.kind);
+
+        record.size = editor.size;
+
+        record.contentHash = editor.contentHash;
+    }
+
+    BDiagnosticList diagnostics;
+
+    if (!BAssetRegistry_Assign(&registry, shared.data(), shared.size(), &diagnostics)) {
+        error = RegistryError(diagnostics, "Could not prepare shared asset registry.");
+
+        return false;
+    }
+
+    return true;
+}
+
 std::string Lower(std::string value)
 {
     std::transform(value.begin(), value.end(), value.begin(),
@@ -103,7 +141,7 @@ bool Inspect(const fs::path &absolute, BEditorAssetRecord &record, std::string &
 {
     std::error_code fileError;
     record.size = fs::file_size(absolute, fileError);
-    if (fileError || record.size > MaximumAssetSize) {
+    if (fileError || record.size > BASSET_FILE_MAX) {
         error = fileError ? "Could not measure asset: " + fileError.message()
                           : "Asset exceeds the 256 MiB alpha limit.";
         return false;
@@ -133,23 +171,6 @@ bool IsContained(const fs::path &root, const fs::path &candidate)
         return false;
     fs::path relative = canonicalCandidate.lexically_relative(canonicalRoot);
     return !relative.empty() && *relative.begin() != "..";
-}
-
-std::string MakeId(const std::string &path, const std::unordered_set<std::string> &used)
-{
-    std::uint64_t hash = 1469598103934665603ull;
-    for (unsigned char value : path) {
-        hash ^= value;
-        hash *= 1099511628211ull;
-    }
-    char candidate[48];
-    for (unsigned int suffix = 0;; ++suffix) {
-        std::snprintf(candidate, sizeof(candidate),
-                      suffix == 0 ? "asset-%016llx" : "asset-%016llx-%u",
-                      static_cast<unsigned long long>(hash), suffix);
-        if (used.find(candidate) == used.end())
-            return candidate;
-    }
 }
 
 } // namespace
@@ -249,37 +270,10 @@ bool BEditorAssetService::SaveRegistry(std::string &error) const
         return false;
     }
 
-    std::vector<BAssetRecord> sharedRecords(records_.size());
-
-    for (size_t i = 0; i < records_.size(); ++i) {
-        const BEditorAssetRecord &editor = records_[i];
-
-        BAssetRecord &shared = sharedRecords[i];
-
-        std::snprintf(shared.id, sizeof(shared.id), "%s", editor.id.c_str());
-
-        std::snprintf(shared.path, sizeof(shared.path), "%s", editor.relativePath.c_str());
-
-        shared.kind = ToSharedKind(editor.kind);
-
-        shared.size = editor.size;
-
-        shared.contentHash = editor.contentHash;
-    }
-
     BAssetRegistry registry;
     BAssetRegistry_Init(&registry);
 
     BDiagnosticList diagnostics;
-
-    if (!BAssetRegistry_Assign(&registry, sharedRecords.data(), sharedRecords.size(),
-                               &diagnostics)) {
-        error = RegistryError(diagnostics, "Could not prepare asset registry.");
-
-        BAssetRegistry_Destroy(&registry);
-
-        return false;
-    }
 
     if (!BAssetRegistry_Save(&registry, destination.string().c_str(), &diagnostics)) {
         error = RegistryError(diagnostics, "Could not save asset registry.");
@@ -324,39 +318,96 @@ bool BEditorAssetService::Refresh(std::vector<BEditorAssetMove> &moves, std::str
         error = "Could not scan Project assets: " + scanError.message();
         return false;
     }
-    std::unordered_set<std::string> usedIds;
-    for (const auto &record : records_)
-        usedIds.insert(record.id);
-    std::vector<bool> oldUsed(records_.size(), false);
-    for (auto &fresh : discovered) {
-        auto pathMatch = std::find_if(records_.begin(), records_.end(), [&](const auto &old) {
-            return old.relativePath == fresh.relativePath;
-        });
-        if (pathMatch != records_.end()) {
-            size_t index = static_cast<size_t>(pathMatch - records_.begin());
-            oldUsed[index] = true;
-            fresh.id = pathMatch->id;
-            continue;
+
+    BAssetRegistry previousRegistry;
+    BAssetRegistry_Init(&previousRegistry);
+
+    if (!BuildSharedRegistry(records_, previousRegistry, error)) {
+        BAssetRegistry_Destroy(&previousRegistry);
+
+        return false;
+    }
+
+    std::vector<BAssetObservation> observations(discovered.size());
+
+    for (size_t i = 0; i < discovered.size(); ++i) {
+        const BEditorAssetRecord &fresh = discovered[i];
+
+        BAssetObservation &observation = observations[i];
+
+        if (fresh.relativePath.size() >= sizeof(observation.path)) {
+            BAssetRegistry_Destroy(&previousRegistry);
+
+            error = "Observed asset path exceeds shared Project limits.";
+
+            return false;
         }
-        size_t match = records_.size();
-        for (size_t i = 0; i < records_.size(); ++i)
-            if (!oldUsed[i] && records_[i].size == fresh.size &&
-                records_[i].contentHash == fresh.contentHash) {
-                if (match != records_.size()) {
-                    match = records_.size();
-                    break;
-                }
-                match = i;
-            }
-        if (match != records_.size()) {
-            oldUsed[match] = true;
-            fresh.id = records_[match].id;
-            moves.push_back({records_[match].relativePath, fresh.relativePath});
-        } else {
-            fresh.id = MakeId(fresh.relativePath, usedIds);
-            usedIds.insert(fresh.id);
+
+        std::snprintf(observation.path, sizeof(observation.path), "%s", fresh.relativePath.c_str());
+
+        observation.kind = ToSharedKind(fresh.kind);
+
+        observation.size = fresh.size;
+
+        observation.contentHash = fresh.contentHash;
+    }
+
+    BAssetRegistry reconciled;
+    BAssetRegistry_Init(&reconciled);
+
+    BDiagnosticList diagnostics;
+
+    if (!BAssetRegistry_Reconcile(&previousRegistry, observations.data(), observations.size(),
+                                  &reconciled, &diagnostics)) {
+        error = RegistryError(diagnostics, "Could not reconcile asset identities.");
+
+        BAssetRegistry_Destroy(&reconciled);
+
+        BAssetRegistry_Destroy(&previousRegistry);
+
+        return false;
+    }
+
+    std::unordered_map<std::string, std::string> oldPathById;
+
+    for (const BEditorAssetRecord &old : records_) {
+        oldPathById[old.id] = old.relativePath;
+    }
+
+    std::unordered_map<std::string, std::string> idByPath;
+
+    for (size_t i = 0; i < reconciled.count; ++i) {
+        const BAssetRecord &record = reconciled.records[i];
+
+        idByPath[record.path] = record.id;
+
+        auto old = oldPathById.find(record.id);
+
+        if (old != oldPathById.end() && old->second != record.path) {
+            moves.push_back({old->second, record.path});
         }
     }
+
+    for (BEditorAssetRecord &fresh : discovered) {
+        auto identity = idByPath.find(fresh.relativePath);
+
+        if (identity == idByPath.end()) {
+            BAssetRegistry_Destroy(&reconciled);
+
+            BAssetRegistry_Destroy(&previousRegistry);
+
+            error = "Shared asset registry did not return an identity for an observed asset.";
+
+            return false;
+        }
+
+        fresh.id = identity->second;
+    }
+
+    BAssetRegistry_Destroy(&reconciled);
+
+    BAssetRegistry_Destroy(&previousRegistry);
+
     std::sort(discovered.begin(), discovered.end(),
               [](const auto &a, const auto &b) { return a.relativePath < b.relativePath; });
     bool changed = discovered.size() != records_.size() ||

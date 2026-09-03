@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 static bool BAssetRegistry_Fail(BDiagnosticList *diagnostics, BDiagnosticCode code,
                                 const char *message, const char *path)
@@ -131,6 +132,64 @@ static bool BAssetRegistry_ParseHash(const char *value, uint64_t *output)
     return true;
 }
 
+static bool BAssetRegistry_IdInUse(const BAssetRegistry *previous, const BAssetRegistry *assigned,
+                                   const char *id)
+{
+    return BAssetRegistry_FindById(previous, id) != NULL ||
+           BAssetRegistry_FindById(assigned, id) != NULL;
+}
+
+static bool BAssetRegistry_MakeId(const BAssetRegistry *previous, const BAssetRegistry *assigned,
+                                  const char *path, char *output, size_t outputSize,
+                                  BDiagnosticList *diagnostics)
+{
+    uint64_t hash = UINT64_C(1469598103934665603);
+
+    for (const unsigned char *cursor = (const unsigned char *)path; *cursor != '\0'; ++cursor) {
+        hash ^= *cursor;
+        hash *= UINT64_C(1099511628211);
+    }
+
+    char candidate[BASSET_ID_MAX];
+
+    for (unsigned int suffix = 0;; ++suffix) {
+        int written;
+
+        if (suffix == 0) {
+            written =
+                snprintf(candidate, sizeof(candidate), "asset-%016llx", (unsigned long long)hash);
+        } else {
+            written = snprintf(candidate, sizeof(candidate), "asset-%016llx-%u",
+                               (unsigned long long)hash, suffix);
+        }
+
+        if (written < 0 || (size_t)written >= sizeof(candidate)) {
+            return BAssetRegistry_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
+                                       "Could not generate a stable asset ID.", path);
+        }
+
+        if (!BAssetRegistry_IdInUse(previous, assigned, candidate)) {
+            snprintf(output, outputSize, "%s", candidate);
+
+            return true;
+        }
+
+        if (suffix == UINT_MAX) {
+            return BAssetRegistry_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
+                                       "Could not find an unused stable asset ID.", path);
+        }
+    }
+}
+
+static int BAssetRegistry_ComparePath(const void *left, const void *right)
+{
+    const BAssetRecord *a = (const BAssetRecord *)left;
+
+    const BAssetRecord *b = (const BAssetRecord *)right;
+
+    return strcmp(a->path, b->path);
+}
+
 void BAssetRegistry_Init(BAssetRegistry *registry)
 {
     if (registry == NULL)
@@ -197,6 +256,160 @@ bool BAssetRegistry_Assign(BAssetRegistry *destination, const BAssetRecord *reco
     BAssetRegistry_Swap(destination, &assigned);
 
     BAssetRegistry_Destroy(&assigned);
+
+    return true;
+}
+
+bool BAssetRegistry_Reconcile(const BAssetRegistry *previous, const BAssetObservation *observations,
+                              size_t observationCount, BAssetRegistry *destination,
+                              BDiagnosticList *diagnostics)
+{
+    BDiagnosticList_Clear(diagnostics);
+
+    if (previous == NULL || destination == NULL || (observationCount > 0 && observations == NULL)) {
+        return BAssetRegistry_Fail(diagnostics, BDIAGNOSTIC_INVALID_ARGUMENT,
+                                   "Previous registry, observations, and destination are required.",
+                                   NULL);
+    }
+
+    if (observationCount > BASSET_RECORD_MAX) {
+        return BAssetRegistry_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
+                                   "Too many assets were observed.", NULL);
+    }
+
+    if (!BAssetRegistry_Validate(previous, diagnostics)) {
+        return false;
+    }
+
+    bool *previousUsed = NULL;
+
+    if (previous->count > 0) {
+        previousUsed = (bool *)calloc(previous->count, sizeof(bool));
+
+        if (previousUsed == NULL) {
+            return BAssetRegistry_Fail(diagnostics, BDIAGNOSTIC_OUT_OF_MEMORY,
+                                       "Out of memory while reconciling asset identities.", NULL);
+        }
+    }
+
+    BAssetRegistry reconciled;
+    BAssetRegistry_Init(&reconciled);
+
+    if (!BAssetRegistry_Reserve(&reconciled, observationCount, diagnostics)) {
+        free(previousUsed);
+        BAssetRegistry_Destroy(&reconciled);
+        return false;
+    }
+
+    for (size_t i = 0; i < observationCount; ++i) {
+        const BAssetObservation *observation = &observations[i];
+
+        if (observation->path[0] == '\0' || strlen(observation->path) >= BPROJECT_PATH_MAX) {
+            free(previousUsed);
+            BAssetRegistry_Destroy(&reconciled);
+
+            return BAssetRegistry_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
+                                       "Observed asset has an invalid path.", observation->path);
+        }
+
+        BAssetRecord record;
+        memset(&record, 0, sizeof(record));
+
+        snprintf(record.path, sizeof(record.path), "%s", observation->path);
+
+        record.kind = observation->kind;
+
+        record.size = observation->size;
+
+        record.contentHash = observation->contentHash;
+
+        /*
+         * First priority:
+         * same Project-relative path.
+         *
+         * Content may have changed, but identity
+         * remains the same asset.
+         */
+        size_t pathMatch = previous->count;
+
+        for (size_t oldIndex = 0; oldIndex < previous->count; ++oldIndex) {
+            if (strcmp(previous->records[oldIndex].path, observation->path) == 0) {
+                pathMatch = oldIndex;
+                break;
+            }
+        }
+
+        if (pathMatch != previous->count) {
+            snprintf(record.id, sizeof(record.id), "%s", previous->records[pathMatch].id);
+
+            previousUsed[pathMatch] = true;
+        } else {
+            /*
+             * Second priority:
+             * exactly one unmatched prior asset has
+             * the same size and content hash.
+             *
+             * That is our conservative move detector.
+             */
+            size_t contentMatch = previous->count;
+
+            bool ambiguous = false;
+
+            for (size_t oldIndex = 0; oldIndex < previous->count; ++oldIndex) {
+                if (previousUsed[oldIndex])
+                    continue;
+
+                const BAssetRecord *old = &previous->records[oldIndex];
+
+                if (old->size == observation->size &&
+                    old->contentHash == observation->contentHash) {
+                    if (contentMatch != previous->count) {
+                        ambiguous = true;
+                        break;
+                    }
+
+                    contentMatch = oldIndex;
+                }
+            }
+
+            if (!ambiguous && contentMatch != previous->count) {
+                snprintf(record.id, sizeof(record.id), "%s", previous->records[contentMatch].id);
+
+                previousUsed[contentMatch] = true;
+            } else {
+                /*
+                 * New or ambiguous asset:
+                 * never guess.
+                 */
+                if (!BAssetRegistry_MakeId(previous, &reconciled, observation->path, record.id,
+                                           sizeof(record.id), diagnostics)) {
+                    free(previousUsed);
+                    BAssetRegistry_Destroy(&reconciled);
+
+                    return false;
+                }
+            }
+        }
+
+        reconciled.records[reconciled.count++] = record;
+    }
+
+    free(previousUsed);
+
+    if (reconciled.count > 1) {
+        qsort(reconciled.records, reconciled.count, sizeof(BAssetRecord),
+              BAssetRegistry_ComparePath);
+    }
+
+    if (!BAssetRegistry_Validate(&reconciled, diagnostics)) {
+        BAssetRegistry_Destroy(&reconciled);
+
+        return false;
+    }
+
+    BAssetRegistry_Swap(destination, &reconciled);
+
+    BAssetRegistry_Destroy(&reconciled);
 
     return true;
 }

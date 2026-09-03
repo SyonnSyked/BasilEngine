@@ -33,6 +33,13 @@ typedef struct BAssetRecord {
     uint64_t contentHash;
 } BAssetRecord;
 
+typedef struct BAssetObservation {
+    char path[BPROJECT_PATH_MAX];
+    BAssetKind kind;
+    uintmax_t size;
+    uint64_t contentHash;
+} BAssetObservation;
+
 typedef struct BAssetRegistry {
     int schemaVersion;
     size_t count;
@@ -51,6 +58,10 @@ void BAssetRegistry_Swap(BAssetRegistry *left, BAssetRegistry *right);
 
 bool BAssetRegistry_Assign(BAssetRegistry *destination, const BAssetRecord *records, size_t count,
                            BDiagnosticList *diagnostics);
+
+bool BAssetRegistry_Reconcile(const BAssetRegistry *previous, const BAssetObservation *observations,
+                              size_t observationCount, BAssetRegistry *destination,
+                              BDiagnosticList *diagnostics);
 
 bool BAssetRegistry_Validate(const BAssetRegistry *registry, BDiagnosticList *diagnostics);
 

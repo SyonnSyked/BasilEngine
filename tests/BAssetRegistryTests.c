@@ -155,6 +155,135 @@ int main(void)
     failures += Check(BAssetRegistry_FindById(&roundTrip, "asset-bbbbbbbbbbbbbbbb") != NULL,
                       "assigned registry contains new records");
 
+    BAssetRecord identityRecords[2] = {0};
+
+    snprintf(identityRecords[0].id, sizeof(identityRecords[0].id), "%s", "asset-aaaaaaaaaaaaaaaa");
+
+    snprintf(identityRecords[0].path, sizeof(identityRecords[0].path), "%s", "assets/hero.txt");
+
+    identityRecords[0].kind = BASSET_KIND_TEXT_SPRITE;
+
+    identityRecords[0].size = 4;
+
+    identityRecords[0].contentHash = UINT64_C(0x1111111111111111);
+
+    snprintf(identityRecords[1].id, sizeof(identityRecords[1].id), "%s", "asset-bbbbbbbbbbbbbbbb");
+
+    snprintf(identityRecords[1].path, sizeof(identityRecords[1].path), "%s", "assets/data.json");
+
+    identityRecords[1].kind = BASSET_KIND_DATA;
+
+    identityRecords[1].size = 2;
+
+    identityRecords[1].contentHash = UINT64_C(0x2222222222222222);
+
+    BAssetRegistry identityPrevious;
+    BAssetRegistry_Init(&identityPrevious);
+
+    failures += Check(BAssetRegistry_Assign(&identityPrevious, identityRecords, 2, &diagnostics),
+                      "identity test registry is assigned");
+
+    BAssetObservation observations[3] = {0};
+
+    snprintf(observations[0].path, sizeof(observations[0].path), "%s", "assets/player.txt");
+
+    observations[0].kind = BASSET_KIND_TEXT_SPRITE;
+
+    observations[0].size = 4;
+
+    observations[0].contentHash = UINT64_C(0x1111111111111111);
+
+    snprintf(observations[1].path, sizeof(observations[1].path), "%s", "assets/data.json");
+
+    observations[1].kind = BASSET_KIND_DATA;
+
+    observations[1].size = 3;
+
+    observations[1].contentHash = UINT64_C(0x3333333333333333);
+
+    snprintf(observations[2].path, sizeof(observations[2].path), "%s", "assets/sound.ogg");
+
+    observations[2].kind = BASSET_KIND_AUDIO;
+
+    observations[2].size = 8;
+
+    observations[2].contentHash = UINT64_C(0x4444444444444444);
+
+    BAssetRegistry reconciled;
+    BAssetRegistry_Init(&reconciled);
+
+    failures += Check(
+        BAssetRegistry_Reconcile(&identityPrevious, observations, 3, &reconciled, &diagnostics),
+        "asset observations reconcile");
+
+    const BAssetRecord *movedHero = BAssetRegistry_FindByPath(&reconciled, "assets/player.txt");
+
+    failures += Check(movedHero != NULL && strcmp(movedHero->id, "asset-aaaaaaaaaaaaaaaa") == 0,
+                      "unique content move preserves stable ID");
+
+    const BAssetRecord *changedData = BAssetRegistry_FindByPath(&reconciled, "assets/data.json");
+
+    failures += Check(changedData != NULL && strcmp(changedData->id, "asset-bbbbbbbbbbbbbbbb") == 0,
+                      "same path preserves identity after content changes");
+
+    const BAssetRecord *newSound = BAssetRegistry_FindByPath(&reconciled, "assets/sound.ogg");
+
+    failures += Check(newSound != NULL && newSound->id[0] != '\0' &&
+                          strcmp(newSound->id, "asset-aaaaaaaaaaaaaaaa") != 0 &&
+                          strcmp(newSound->id, "asset-bbbbbbbbbbbbbbbb") != 0,
+                      "new asset receives a new stable ID");
+
+    BAssetRecord ambiguousRecords[2] = {0};
+
+    snprintf(ambiguousRecords[0].id, sizeof(ambiguousRecords[0].id), "%s", "asset-first");
+
+    snprintf(ambiguousRecords[0].path, sizeof(ambiguousRecords[0].path), "%s", "assets/first.txt");
+
+    ambiguousRecords[0].kind = BASSET_KIND_TEXT_SPRITE;
+
+    ambiguousRecords[0].size = 5;
+    ambiguousRecords[0].contentHash = UINT64_C(0x5555555555555555);
+
+    snprintf(ambiguousRecords[1].id, sizeof(ambiguousRecords[1].id), "%s", "asset-second");
+
+    snprintf(ambiguousRecords[1].path, sizeof(ambiguousRecords[1].path), "%s", "assets/second.txt");
+
+    ambiguousRecords[1].kind = BASSET_KIND_TEXT_SPRITE;
+
+    ambiguousRecords[1].size = 5;
+    ambiguousRecords[1].contentHash = UINT64_C(0x5555555555555555);
+
+    BAssetRegistry ambiguousPrevious;
+    BAssetRegistry_Init(&ambiguousPrevious);
+
+    failures += Check(BAssetRegistry_Assign(&ambiguousPrevious, ambiguousRecords, 2, &diagnostics),
+                      "ambiguous registry is assigned");
+
+    BAssetObservation ambiguousObservation = {0};
+
+    snprintf(ambiguousObservation.path, sizeof(ambiguousObservation.path), "%s",
+             "assets/moved.txt");
+
+    ambiguousObservation.kind = BASSET_KIND_TEXT_SPRITE;
+
+    ambiguousObservation.size = 5;
+
+    ambiguousObservation.contentHash = UINT64_C(0x5555555555555555);
+
+    BAssetRegistry ambiguousResult;
+    BAssetRegistry_Init(&ambiguousResult);
+
+    failures += Check(BAssetRegistry_Reconcile(&ambiguousPrevious, &ambiguousObservation, 1,
+                                               &ambiguousResult, &diagnostics),
+                      "ambiguous observation reconciles safely");
+
+    const BAssetRecord *ambiguousAsset =
+        BAssetRegistry_FindByPath(&ambiguousResult, "assets/moved.txt");
+
+    failures += Check(ambiguousAsset != NULL && strcmp(ambiguousAsset->id, "asset-first") != 0 &&
+                          strcmp(ambiguousAsset->id, "asset-second") != 0,
+                      "ambiguous content does not guess identity");
+
     remove(savedPath);
     remove(backupPath);
 
@@ -162,6 +291,11 @@ int main(void)
     BAssetRegistry_Destroy(&registry);
 
     BAssetRegistry_Destroy(&registry);
+
+    BAssetRegistry_Destroy(&ambiguousResult);
+    BAssetRegistry_Destroy(&ambiguousPrevious);
+    BAssetRegistry_Destroy(&reconciled);
+    BAssetRegistry_Destroy(&identityPrevious);
 
     failures += Check(registry.records == NULL && registry.count == 0, "destroy is idempotent");
 
