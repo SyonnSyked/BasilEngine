@@ -88,7 +88,7 @@ bool BEditorPreferences_Load(
         return false;
     }
 
-    if (schemaVersion->valueint != BEDITOR_PREFERENCES_SCHEMA_VERSION)
+    if (schemaVersion->valueint != 1 && schemaVersion->valueint != BEDITOR_PREFERENCES_SCHEMA_VERSION)
     {
         cJSON_Delete(root);
         error = "Editor preferences use an unsupported schema version.";
@@ -104,8 +104,19 @@ bool BEditorPreferences_Load(
         return false;
     }
 
-    output.schemaVersion = schemaVersion->valueint;
+    output.schemaVersion = BEDITOR_PREFERENCES_SCHEMA_VERSION;
     output.interfaceScale = scale;
+    if (schemaVersion->valueint >= 2)
+    {
+        cJSON* externalEditor = cJSON_GetObjectItemCaseSensitive(root, "externalEditor");
+        cJSON* terminal = cJSON_GetObjectItemCaseSensitive(root, "terminal");
+        if (!cJSON_IsString(externalEditor) || !cJSON_IsString(terminal) || !externalEditor->valuestring[0] ||
+            !terminal->valuestring[0] || std::char_traits<char>::length(externalEditor->valuestring) > 1024 ||
+            std::char_traits<char>::length(terminal->valuestring) > 1024)
+        { cJSON_Delete(root); output = BEditorPreferences_Default(); error = "Editor tool commands are missing or invalid."; return false; }
+        output.externalEditor = externalEditor->valuestring;
+        output.terminal = terminal->valuestring;
+    }
     cJSON_Delete(root);
     return true;
 }
@@ -119,7 +130,8 @@ bool BEditorPreferences_Save(
     error.clear();
 
     if (preferences.schemaVersion != BEDITOR_PREFERENCES_SCHEMA_VERSION ||
-        !BEditorPreferences_IsSupportedScale(preferences.interfaceScale))
+        !BEditorPreferences_IsSupportedScale(preferences.interfaceScale) || preferences.externalEditor.empty() ||
+        preferences.terminal.empty() || preferences.externalEditor.size() > 1024 || preferences.terminal.size() > 1024)
     {
         error = "Editor preferences contain unsupported values.";
         return false;
@@ -145,6 +157,8 @@ bool BEditorPreferences_Save(
 
     cJSON_AddNumberToObject(root, "schemaVersion", preferences.schemaVersion);
     cJSON_AddNumberToObject(root, "interfaceScale", preferences.interfaceScale);
+    cJSON_AddStringToObject(root, "externalEditor", preferences.externalEditor.c_str());
+    cJSON_AddStringToObject(root, "terminal", preferences.terminal.c_str());
     char* json = cJSON_Print(root);
     cJSON_Delete(root);
 

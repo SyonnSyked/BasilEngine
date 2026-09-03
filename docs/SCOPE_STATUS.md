@@ -1,23 +1,30 @@
 # BasilEngine Scope and Course Audit
 
 **Audit date:** 2026-09-02  
-**Project phase:** Editor/project foundation approaching its runtime-integration
-boundary  
-**Overall verdict:** On course, with one deliberate correction required
+**Project phase:** Alpha Stage 3 asset foundation closeout
+**Overall verdict:** On course; stable asset identity and editing are active
 
 BasilEngine still matches the product charter. The repository has not drifted
 into game-specific engine code, a speculative ECS, or an oversized editor.
-However, editor and project-management features have advanced ahead of the
-reusable runtime data model. The next development slice must connect Projects,
-Workspaces, and runtime rendering before more editor surface area is added.
+The earlier gap between editor-authored data and runtime rendering is now
+closed. Further work can build on one shared Project, Workspace, Text Sprite,
+and draw-list path without expanding into a speculative ECS or oversized IDE.
+
+The accepted final-stretch boundary is now recorded in
+`ALPHA_PRODUCT_CONTRACT.md`. It requires a complete create/author/program/build/
+run/export loop and an independently runnable Where Birds Nest proof. It keeps
+the alpha achievable by explicitly deferring embedded gameplay, code hot reload,
+semantic IDE features, gamepads, additive Workspaces, general-purpose engine
+scope, and non-Windows certification.
 
 This document is the current status checkpoint. The charter and architecture
 remain the source of truth for product intent; the roadmap remains the ordered
-plan.
+plan; and the Alpha Product Contract governs first-alpha inclusion and exit
+criteria.
 
 ## Verification snapshot
 
-At this checkpoint, all 8 runtime/core tests and all 13 editor-enabled tests
+At this checkpoint, all 11 runtime/core tests and all 16 editor-enabled tests
 pass on the Windows development machine. These suites include Project and
 Workspace persistence, recent Projects, interactive Project creation, generated
 Project compilation, combat logic, ASCII canvas behavior, input, editor
@@ -30,14 +37,14 @@ review.
 
 | Intended outcome | Current evidence | Status | Remaining gap |
 | --- | --- | --- | --- |
-| BasilEngine is reusable; Where Birds Nest is its proving project | Engine and reference game are separate, and documented architecture forbids game concepts in engine code | Aligned | Move the feasibility arena onto the same Project/Workspace runtime path used by generated projects |
-| ASCII and text art are first-class | Layered glyph rendering, foreground/background color, text-asset loading, and runtime glyph editing exist | Foundation proven | Represent renderable text assets through stable Workspace/component data and asset identities |
+| BasilEngine is reusable; Where Birds Nest is its proving project | Engine and game code remain separate; Where Birds Nest now also has a Workspace-authored reference room using only reusable engine data/APIs | Aligned and proven for static authoring | Migrate gameplay only after the reusable gameplay/module boundary is intentionally designed |
+| ASCII and text art are first-class | Strict decoding/cache, stable asset registry, change detection, bounded Text Sprite editor, deterministic interpretation, standalone rendering, and reference room exist | Shared authoring/runtime foundation proven | Exercise the visible Stage 3 checklist and later export relocation |
 | Smooth real-time action-RPG play | Delta-time movement, camera, collision, input routing, a target, attack cooldown, damage, and death exist | Feasibility spike complete in breadth; feel unvalidated | Conduct play-feel validation before treating combat APIs as stable |
 | C-first runtime with narrow C++ use | Runtime and public-facing systems are C11; BasilEditor uses C++ for ImGui integration | Aligned | Preserve the C boundary when component and future game-module APIs are introduced |
 | Windows, macOS, and Linux | Cross-platform code paths and CMake structure exist | Not fully verified | Windows is the active verified platform; macOS/Linux need native configure, build, test, and process-control verification |
-| Medium-ambition, practical editor | Browser, dock shell, core panels, Workspace entity editing, build/run controls, diagnostics, and preferences exist | Strong foundation | Viewport content editing, components, runtime consumption, and later code workflow remain |
-| New empty Projects work without manual engine setup | Generator creates manifests, editable CMake, source, assets, and a starter Workspace; editor can create, open, edit, build, and launch them | Partial end-to-end | The launched program does not yet consume or render its Workspace, so “runnable Project” is not fully achieved |
-| Editor and runtime use the same data and APIs | Project and Workspace parsing/editing are shared engine-side capabilities | Partial | Standalone runtime still bypasses Workspace entity data; this is the highest-priority mismatch |
+| Medium-ambition, practical editor | Browser, dock shell, glyph/Text Sprite/empty entity authoring, component Inspector, shared-data Viewport preview, build/run controls, diagnostics, and preferences exist | Strong foundation | Development-play hosting and later code workflow remain |
+| New empty Projects work without manual engine setup | Generator creates manifests, editable CMake, source, assets, and a starter Workspace; editor authors, previews, validates, saves, builds, and runs them | End-to-end foundation proven | Native platform/toolchain packaging remains before a public-quality workflow |
+| Editor and runtime use the same data and APIs | Project, Workspace, Text Sprite, and draw-list services are shared by generated runtimes, editor preview, and the Where Birds Nest room | Aligned for the completed slice | Gameplay hosting remains deliberately later |
 | Built-in coding and terminal workflow, with Neovim first-class | Build Output and Problems plumbing exist; terminal and code-editor panels are planned | Deliberately deferred | Implement only after the runtime/project boundary is stable; avoid building an IDE or terminal emulator prematurely |
 | Mature NetRunner visual identity | Central theme, electric-cyan/restrained-violet palette, bundled JetBrains Mono, scale preferences, dock layout, and application icon exist | Aligned | Apply the system consistently to future functional panels; avoid decorative expansion |
 | Hot-loadable game development | Architecture records a future versioned C module boundary and failure recovery | Deliberately deferred | Requires stable runtime ownership, handles, serialization, and module lifecycle first |
@@ -53,10 +60,25 @@ review.
 - In-memory diagnostics and a developer console overlay.
 - Layered ASCII rendering with per-cell foreground/background colors.
 - Plain-text asset loading and runtime glyph editing.
+- Bounded Text Sprite decoding with LF/CRLF support, transparent-space grids,
+  root-contained paths, structured diagnostics, and last-known-good caching.
+- Deterministic host-neutral draw lists with fractional anchor placement, layer
+  ordering, colors, transparency, visibility, and stable source entity IDs.
+- Generated runtime discovery from explicit manifests, working directories, or
+  executable ancestry; startup-Workspace loading; draw-list presentation; and
+  stable empty/error states.
+- Editor creation for printable glyph, Project Text Sprite, and transform-only
+  empty entities, plus focused validated Transform2D/ASCII Renderable controls.
+- Run preflight across all referenced Text Sprites, structured Problems output,
+  safe autosave, and an absolute `--project` child-process launch contract.
+- Shared-data Viewport rendering with pan/zoom, grid/origin guides, selection
+  outlines, and toggleable editor-only markers and labels for empty entities.
 - Smooth movement, camera tracking, arena collision, and corrected contact on
   all wall sides.
 - A damageable target, range-checked basic attack, cooldown, visual feedback,
   health, and death state in Where Birds Nest.
+- An editor-openable Where Birds Nest Project whose schema-3 room exercises a
+  layered environment, player Text Sprite, enemy glyph, and empty marker.
 
 ### Project and persistence foundation
 
@@ -96,12 +118,13 @@ review.
 | --- | --- | --- |
 | 0 — Reliable foundation | Mostly achieved on the current Windows development machine | A clean-checkout dependency story and native macOS/Linux verification are still required |
 | 1 — Gameplay feasibility spike | Mechanically implemented; still in progress | Responsiveness and ASCII combat feel need an intentional play-test decision |
-| 2 — Reusable runtime model | Partially started | Explicit ownership, minimal components, asset handles, and the Project/Workspace-driven runtime path are missing |
-| 3 — Project and asset system | In progress | Stable asset identifiers, file-change detection, actionable asset errors, and relocation across machines remain |
-| 4 — Editor foundation | In progress and healthy | The Viewport does not render editable content, components are absent, and runtime play is external |
-| 5 — Project creation | Workflow shell implemented, outcome incomplete | A generated Project builds and launches, but its runtime does not yet render editor-authored Workspace data |
-| 6 — Code workflow and hot reload | Supporting build/diagnostic plumbing only | Code editor, external-editor service, real terminal hosting, module boundary, and reload safety are intentionally deferred |
+| 2 — Reusable runtime model | In progress with its first coherent slice complete | Explicit ownership, minimal components, asset identity/decoding, and shared rendering exist; the game-module boundary remains |
+| 3 — Project and asset system | Substantially achieved on Windows | Stable IDs, focused watching, Text Sprite authoring, diagnostics, and relocation tests exist; later runtime asset kinds still need their consumers |
+| 4 — Editor foundation | In progress and healthy | Component authoring and shared-data Viewport preview are active; gameplay remains in the controlled external process |
+| 5 — Project creation | Exit condition achieved on Windows | A new Project can be created, opened, authored, previewed, saved, built, and run end to end; native macOS/Linux and distribution verification remain |
+| 6 — Alpha game-code workflow | Supporting build/diagnostic plumbing only | Code editor, external-editor service, single terminal session, and versioned module boundary remain |
 | 7 — Action-RPG vertical slice | Not started as a production slice | The current arena is a feasibility proof, not a Workspace-authored vertical slice |
+| 8 — Windows alpha export and proof | Contract accepted; implementation pending | Reliability, asset, programming, runtime-service, export, proof-game, and independent verification stages remain |
 
 Milestones overlap in implementation because the editor needed Project creation
 to become useful. Their exit conditions must not be declared complete out of
@@ -109,28 +132,29 @@ order merely because a button or panel exists.
 
 ## Highest-priority gaps and risks
 
-1. **Runtime/Workspace disconnect.** The editor can author entity records and
-   launch a process, but that process does not consume those records. This is
-   the main product gap and the next course correction.
-2. **Runtime model lag.** Stable IDs exist, but transform, ASCII-renderable,
-   component, asset-handle, and ownership models do not. They should be added
-   only in the smallest form needed by the reference room.
-3. **Portability is promised but not demonstrated.** Build-service defaults
+1. **Portability is promised but not demonstrated.** Build-service defaults
    currently reflect the toolchain and paths used to build BasilEditor. That is
    acceptable for this development milestone, not an install/distribution
    solution.
-4. **Dependency reproducibility.** Local raylib/ImGui integration works on the
+2. **Dependency reproducibility.** Local raylib/ImGui integration works on the
    development machine, but clean-checkout and cross-platform provisioning need
    a deliberate policy before Milestone 0 can be considered fully closed.
-5. **Prototype limits may be mistaken for permanent architecture.** The flat
+3. **Asset identity has a deliberate bridge boundary.** The Project registry is
+   authoritative while Workspace schema 3 retains readable path hints. Move
+   repair is transactional, but later component schemas should store IDs
+   directly once custom-component metadata proves the representation.
+4. **Prototype limits may be mistaken for permanent architecture.** The flat
    512-entity Workspace is a useful bounded first format, not a reason to build
    a general ECS now and not a promise of final scale.
-6. **Shutdown safety is incomplete.** Project-browser transitions protect dirty
+5. **Shutdown safety is incomplete.** Project-browser transitions protect dirty
    data, but native window/application shutdown still needs equivalent
    unsaved-change handling.
+6. **Gameplay feel remains unvalidated.** The original combat spike has useful
+   mechanics, but its responsiveness should be deliberately play-tested before
+   its APIs shape the reusable gameplay model.
 7. **Feature-surface temptation.** UI Config files, native dialogs, terminal
-   hosting, code editing, LSP integration, and hot reload are appealing, but
-   none closes the current runtime/Workspace gap.
+   hosting, and bounded code editing now serve the alpha workflow. Semantic IDE
+   features, a debugger, custom terminal emulation, and hot reload do not.
 
 ## Scope guardrails for a two-person team
 
@@ -138,30 +162,28 @@ order merely because a button or panel exists.
 
 - One active Project per editor window.
 - One active, flat Workspace with stable entities.
-- Only the transform and ASCII-renderable data needed to prove the shared path.
-- Project/Workspace loading in the standalone runtime.
-- A visible result: an entity authored in BasilEditor appears when Run is used.
-- Tests for serialization, runtime mapping, malformed input, and generated
-  Project relocation within the supported development setup.
+- Execute the ordered stages in `ALPHA_PRODUCT_CONTRACT.md`.
+- Begin with editor reliability; do not couple recovery, UI Config persistence,
+  and native dialogs to unrelated gameplay systems.
+- Preserve the proven shared Project/Workspace/Text Sprite rendering path.
+- Keep every stage independently testable and reviewable.
 
-### Next, after the shared path works
+### Immediate next work
 
-- Use the same path for a small Where Birds Nest test room.
-- Complete meaningful Viewport rendering/editing and close Milestone 4.
-- Add stable asset identities and focused file-change/error handling.
-- Validate and refine the Project toolchain configuration story.
-- Perform the deferred gameplay-feel review before stabilizing combat APIs.
+- Complete the interactive checklists in `EDITOR_RELIABILITY.md` and
+  `ASSET_FOUNDATION.md`, plus the Stage 4 checklist in
+  `GAME_MODULE_AND_COMPONENTS.md`.
+- Begin Stage 5 with the integrated programming workflow.
 
 ### Later
 
-- Portable JSON UI Config files.
-- Built-in text/code editing and simple configurable external-editor commands.
-- Platform shell integration, followed much later by a custom terminal tab.
-- Dynamic game modules, safe hot reload, and in-Viewport play.
+- Built-in code editing, external-editor commands, and one terminal session.
+- Alpha runtime services, export, and the Where Birds Nest proof.
+- After alpha: safe hot reload, in-Viewport play, semantic IDE features, and a
+  custom terminal emulator.
 - Additive Workspaces, richer components, and hierarchy when a demonstrated
   use case requires them.
-- Native file dialogs, installers/file association, and full three-platform
-  release verification.
+- Installers/file association and full three-platform release verification.
 
 ### Not now
 
@@ -173,13 +195,16 @@ order merely because a button or panel exists.
 - Broad action-RPG content systems before one editor-authored room runs through
   the reusable engine path.
 
-## Bounded next development slice
+## Completed development slice
 
-The next slice is **Runtime Workspace Bridge**. Its acceptance result is simple:
+The completed slice is **Runtime Workspace Bridge**. Its acceptance result was:
 create or edit an entity in BasilEditor, press Run, and see that entity rendered
 by the generated standalone application using shared engine APIs.
 
-The slice may introduce:
+The concrete schema, ownership, Text Sprite, diagnostics, migration, testing,
+and implementation contract is defined in `RUNTIME_WORKSPACE_BRIDGE.md`.
+
+The slice introduced:
 
 1. A C runtime API that loads a Project and its startup Workspace.
 2. Minimal transform and ASCII-renderable component data with validation.
@@ -187,9 +212,11 @@ The slice may introduce:
 4. Generated entry-point code that runs that shared path.
 5. Tests proving load, validation, render mapping, and the generated workflow.
 
-The slice does not include embedded play, hot reload, hierarchy, arbitrary
-components, a generalized ECS, code editing, terminal hosting, or UI Config
-persistence.
+The completed Runtime Workspace Bridge intentionally excluded the systems above.
+Subsequent alpha stages have now added editor reliability, the bounded asset
+foundation, and the native game-module/restricted component metadata boundary
+without revising its proven data path. The next bounded acceptance result is an
+integrated programming workflow, not hot reload or a generalized ECS.
 
 ## Recurring scope-check process
 

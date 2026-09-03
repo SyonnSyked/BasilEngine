@@ -11,8 +11,17 @@ opened Project through independently dockable Project Details and Workspace
 Viewport windows. The remaining core panel windows are present as dockable
 scaffolds, including a read-only top-level asset listing. Startup Workspace
 entities can now be edited and saved through the Hierarchy and Inspector.
-Native file dialogs, component/spatial data, and runtime Workspace consumption
-remain future work.
+The broader alpha asset/code/export workflow remains future work. Editor
+component controls, runtime Workspace consumption, native Windows Project/folder
+dialogs, document history/recovery, and portable UI Config persistence are
+implemented.
+
+Projects opened in BasilEditor receive a versioned `.basil/assets.json`
+registry for stable identities across Text Sprite, JSON data, font, and audio
+assets. Paths remain readable and Project-relative; detected moves retain
+identity and remap matching Workspace references transactionally. The bounded
+Text Sprite editor uses the shared decoder and participates in Save All,
+external-change handling, and close protection. See `ASSET_FOUNDATION.md`.
 
 ## User workflow
 
@@ -83,13 +92,68 @@ Empty files or directories are included only when they serve an immediate
 workflow purpose.
 
 Project schema version 2 uses a `startupWorkspace` path and generated Projects
-store `workspaces/Main.basilworkspace`. Workspace schema version 2 is versioned
-JSON containing its identity, next stable entity ID, and a bounded flat entity
-list. The first entity record contains an immutable ID, editable display name,
-and enabled state. Component data and parent/child relationships are not yet
-part of the contract.
+store `workspaces/Main.basilworkspace`. Workspace schema version 3 contains its
+identity, next stable entity ID, a bounded flat entity list, and bounded
+versioned component envelopes. Transform2D position and ASCII Renderable data
+are the first typed components. Unknown optional component JSON is owned and
+preserved; unknown required components are rejected. Parent/child relationships
+are not part of the contract.
 
-BasilEditor loads the startup Workspace into an editor-owned session. Hierarchy
+Text Sprite assets are decoded by a shared C service from normalized paths
+relative to the Project root. Version 1 accepts printable ASCII with LF or CRLF
+line endings, treats spaces as transparent cells, pads uneven rows, and rejects
+empty visual content or dimensions beyond the documented bounds. Loads and
+cache refreshes are transactional: a malformed edit cannot replace the last
+known-good decoded sprite. The service does not depend on raylib or BasilEditor.
+
+The shared C runtime interpretation service converts enabled Transform2D and
+ASCII Renderable components into an owned `BAsciiDrawList`. Its glyph items use
+world-space floating-point positions and retain colors, logical layer, stable
+source entity ID, and deterministic entity/cell ordering. The build is
+transactional, host-neutral, and applies the same anchor and transparent-space
+rules for future standalone and editor presentation paths.
+
+Generated applications call an engine-owned runtime host. It accepts an
+explicit `--project <manifest>` path, otherwise checks the working directory and
+then walks upward from the executable for exactly one `.basilproject`. It loads
+the startup Workspace, decodes referenced Text Sprites, builds the shared draw
+list, and presents it through raylib. Empty content receives a restrained
+`WORKSPACE ONLINE` state; load failures are written to standard error and remain
+visible in a graphical error state. `--basil-validate` performs the identical
+load/interpretation path without creating a window for tooling and tests.
+
+BasilEditor's entity picker creates visible single-glyph entities from the full
+printable ASCII set, Text Sprite entities from recursively discovered `.txt`
+files under `assets/`, or explicit transform-only empty entities. The Inspector
+edits position, source, colors, logical layer, anchor, visibility, and
+transparent-space behavior. Editor changes use shared transactional C mutation
+APIs, so invalid typed values do not replace the last valid component state.
+
+Run is a stricter operation than Build. Before starting a build, BasilEditor
+validates the complete in-memory Workspace and every referenced Text Sprite,
+including references on disabled or invisible entities. A failure does not save,
+build, or launch; its path, line/column, entity ID, component type, and message
+flow into Problems where available. A successful preflight saves through the
+temporary/backup path and launches the built executable with `--project` and the
+absolute manifest path as separate process arguments.
+
+The Workspace Viewport builds the same host-neutral `BAsciiDrawList` used by the
+generated runtime. It previews glyphs, Text Sprites, colors, layers, anchors,
+visibility, and transparent spaces without running simulation. It adds only
+editor presentation: grid/origin guides, selection outlines, pan/zoom, manual
+asset refresh, and toggleable markers/name labels for enabled spatial entities
+without an active renderable. Preview failure retains the last valid draw list.
+
+Where Birds Nest provides the first maintained reference Project at
+`projects/wherebirdsnest/WhereBirdsNest.basilproject`. Its startup Workspace is
+ordinary schema-3 data and demonstrates a layered environment Text Sprite,
+multi-line player Text Sprite, enemy glyph, and transform-only editor marker.
+The older hand-coded combat arena remains a separate feasibility spike until a
+later gameplay-model migration is justified.
+
+BasilEditor loads the startup Workspace into an explicitly owned, lifecycle-safe
+document held by the editor session. Loads and clones are transactional, so a
+failed operation cannot partially replace the last valid document. Hierarchy
 selection drives the Inspector; entities can be created, renamed, enabled or
 disabled, and deleted. Save and Ctrl+S validate the complete Workspace, write a
 temporary file, preserve the previous file as `.bak`, and then replace the
@@ -104,15 +168,18 @@ output/error, Problems extracts compiler/linker/CMake error lines, and the menu
 controls the real process through Pause, Resume, and Stop. An active build or
 game must be stopped before returning to the Project Browser.
 
-This standalone process workflow is implemented and tested, but it is not the
-final in-editor development-play model: generated runtimes do not yet load the
-Workspace entity file, and their rendering is not yet hosted in the editor
-Viewport.
+This standalone process workflow is implemented and tested. Generated runtimes
+load and render the same Workspace data previewed by the editor. The game
+process is not hosted in the editor Viewport; separate-window stop/build/run is
+the required alpha workflow, while in-Viewport simulation remains a later
+product direction.
 
-Schema version 2 rejects unknown and duplicate fields rather than accepting
-data it cannot preserve. Empty schema-version-1 Workspace files remain loadable
-and are represented as version 2 in memory; their first save retains the
-original file as a backup.
+Schema version 3 rejects unknown and duplicate structural fields. It preserves
+bounded unknown optional component `data` without interpreting it, while
+rejecting required component types or versions it cannot execute. Schema-1 empty
+Workspaces and schema-2 entity Workspaces remain loadable and are represented as
+version 3 in memory without inventing components. Their first save retains the
+original file as a backup and writes the current schema.
 
 Project schema version 1 remains loadable. Its `startupScene` path is preserved
 in memory while the Project is represented using the current API. Loading does
@@ -166,3 +233,5 @@ than logic embedded directly in an ImGui event handler.
 
 The complete interaction, terminology, visual, code-editing, terminal, and UI
 Config direction is defined in `EDITOR_EXPERIENCE.md`.
+The first complete Windows alpha and its end-to-end acceptance checks are
+defined in `ALPHA_PRODUCT_CONTRACT.md`.

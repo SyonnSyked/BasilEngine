@@ -1,52 +1,59 @@
 {
-  "version": 6,
-  "configurePresets": [
-    {
-      "name": "ucrt64-base",
-      "hidden": true,
-      "generator": "Ninja",
-      "toolchainFile": "C:/dev/cmake/toolchains/ucrt64-gcc.cmake",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-      }
-    },
-    {
-      "name": "ucrt64-debug",
-      "displayName": "BasilEngine Runtime (UCRT64 Debug)",
-      "inherits": "ucrt64-base",
-      "binaryDir": "${sourceDir}/build/runtime-debug"
-    },
-    {
-      "name": "ucrt64-editor-debug",
-      "displayName": "BasilEditor (UCRT64 Debug)",
-      "inherits": "ucrt64-base",
-      "binaryDir": "${sourceDir}/build/editor-debug",
-      "cacheVariables": {
-        "BASIL_BUILD_EDITOR_DEPS": "ON"
-      }
-    }
-  ],
-  "buildPresets": [
-    {
-      "name": "ucrt64-debug",
-      "configurePreset": "ucrt64-debug"
-    },
-    {
-      "name": "ucrt64-editor-debug",
-      "configurePreset": "ucrt64-editor-debug"
-    }
-  ],
-  "testPresets": [
-    {
-      "name": "ucrt64-debug",
-      "configurePreset": "ucrt64-debug",
-      "output": { "outputOnFailure": true }
-    },
-    {
-      "name": "ucrt64-editor-debug",
-      "configurePreset": "ucrt64-editor-debug",
-      "output": { "outputOnFailure": true }
-    }
-  ]
+    "version": 6,
+
+    "configurePresets": [
+        {
+            "name": "ucrt64-base",
+            "hidden": true,
+            "generator": "Ninja",
+            "toolchainFile": "C:/dev/cmake/toolchains/ucrt64-gcc.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+
+        {
+            "name": "dev-base",
+            "hidden": true,
+            "inherits": "ucrt64-base",
+            "binaryDir": "${sourceDir}/build/dev",
+            "cacheVariables": {
+                "BASIL_BUILD_EDITOR_DEPS": "ON",
+                "BASIL_BUILD_PROJECT_TOOL": "ON",
+                "BASIL_BUILD_REFERENCE_GAME": "ON",
+                "BUILD_TESTING": "ON"
+            }
+        },
+
+        {
+            "name": "headless-debug",
+            "displayName": "BasilEngine Headless Debug",
+            "inherits": "ucrt64-base",
+            "binaryDir": "${sourceDir}/build/headless-debug",
+            "cacheVariables": {
+                "BASIL_BUILD_EDITOR_DEPS": "OFF",
+                "BASIL_BUILD_PROJECT_TOOL": "ON",
+                "BASIL_BUILD_REFERENCE_GAME": "ON",
+                "BUILD_TESTING": "ON"
+            }
+        }
+    ],
+
+    "buildPresets": [
+        {
+            "name": "headless-debug",
+            "configurePreset": "headless-debug"
+        }
+    ],
+
+    "testPresets": [
+        {
+            "name": "headless-debug",
+            "configurePreset": "headless-debug",
+            "output": {
+                "outputOnFailure": true
+            }
+        }
+    ]
 }

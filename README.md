@@ -18,7 +18,14 @@ The authoritative visual and interaction plan is recorded in the
 editor visual-foundation pass and its verification evidence are summarized in
 the [visual-foundation closeout](docs/EDITOR_VISUAL_FOUNDATION.md). The current
 capabilities, roadmap alignment, risks, scope guardrails, and next bounded slice
-are tracked in the [scope and course audit](docs/SCOPE_STATUS.md).
+are tracked in the [scope and course audit](docs/SCOPE_STATUS.md). The proposed
+technical contract for that next slice is the
+[Runtime Workspace Bridge design](docs/RUNTIME_WORKSPACE_BRIDGE.md), followed by
+the implemented [game-module and Project-component boundary](docs/GAME_MODULE_AND_COMPONENTS.md).
+The integrated edit/build/diagnose/run loop is specified and checked in the
+[programming workflow closeout](docs/INTEGRATED_PROGRAMMING_WORKFLOW.md).
+The requirements and measurable completion boundary for the current final
+stretch are defined in the [Alpha Product Contract](docs/ALPHA_PRODUCT_CONTRACT.md).
 
 ## Current capabilities
 
@@ -31,6 +38,8 @@ are tracked in the [scope and course audit](docs/SCOPE_STATUS.md).
 - Plain-text ASCII asset loading and runtime glyph editing
 - Smooth world-space movement, camera tracking, and collision
 - A small `WhereBirdsNest` combat feasibility arena
+- An editor-openable Where Birds Nest reference Project with a Workspace-authored
+  layered test room, Text Sprite environment/player, glyph enemy, and empty marker
 - Versioned JSON Project and empty-Workspace formats with a headless generator
 - A graphical BasilEditor project browser with New, Open, and Recent workflows
 - A centralized cyberpunk editor theme with bundled JetBrains Mono typography
@@ -40,12 +49,41 @@ are tracked in the [scope and course audit](docs/SCOPE_STATUS.md).
   Terminal scaffolds with honest service states
 - Editable startup Workspaces with stable entity IDs, selection, Inspector
   changes, dirty-state protection, and backup-assisted saves
+- Lifecycle-managed Workspace documents with transactional load/clone and
+  structured diagnostics
+- Workspace schema v3 with versioned Transform2D/ASCII Renderable components,
+  safe legacy migration, and preservation of unknown optional component data
+- A bounded, project-root-contained Text Sprite decoder with transparent-space
+  grids, structured diagnostics, and last-known-good cache replacement
+- Deterministic host-neutral ASCII draw-list interpretation with shared anchor,
+  layer, visibility, transparency, color, and source-entity semantics
+- Generated runtimes that discover or accept their Project manifest, load the
+  startup Workspace, render its draw list, and show stable empty/error states
+- Editor authoring for visible glyphs, Project Text Sprites, and empty entities,
+  with validated Transform2D and ASCII Renderable Inspector controls
+- Run preflight with complete Text Sprite validation, safe Workspace save,
+  explicit manifest launch arguments, and structured editor Problems
+- A shared-data authoring Viewport with glyph/Text Sprite previews, grid,
+  pan/zoom, selection outlines, and editor-only empty-entity markers
 - Asynchronous CMake Build and Run controls with streamed output, extracted
   problems, and native Pause, Resume, and Stop process control
 - Geometric circuit-leaf application branding and embedded Windows icon
 - Persistent global interface-scale presets from 100% through 175%
 - Optional Git initialization during or after project creation
 - Project-root Git detection that avoids redundant initialization controls
+- Workspace undo/redo, safe duplication, recovery snapshots, and native-window
+  unsaved-change protection
+- Portable JSON UI Configs with global/Project precedence, import, and export
+- Native Windows Project, folder, and UI Config dialogs
+- Case-insensitive Hierarchy and asset filtering
+- Stable Project asset registry for Text Sprites, JSON data, fonts, and audio,
+  with external change/move detection and reference repair
+- Dockable bounded Text Sprite editor with transactional preview, safe save,
+  transparent-space visualization, and external-edit conflict handling
+- Versioned C-compatible native game modules for C, C++, and mixed Projects,
+  with compatibility checks and last-valid artifact preservation
+- Strict Project component metadata and human-readable custom Workspace data,
+  inspected without executing Project code
 - Headless project, generated-build, input, canvas, and combat tests
 
 ## Reference demo
@@ -56,6 +94,10 @@ are tracked in the [scope and course audit](docs/SCOPE_STATUS.md).
 - Attack the `D` target with `Space` when in range.
 - Open the developer console with the backtick/grave key.
 - Enter `help` in the console to list commands.
+
+The separate editor-authored reference Project can be opened from
+`projects/wherebirdsnest/WhereBirdsNest.basilproject`. It intentionally coexists
+with the combat spike until gameplay is migrated onto the reusable runtime model.
 
 ## Building on the current Windows development machine
 

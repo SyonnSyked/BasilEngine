@@ -1,34 +1,44 @@
-#include "BProject.h"
-#include "BProjectGenerator.h"
-#include "BRecentProjects.h"
-#include "BEditorGit.h"
 #include "BEditorBuildService.h"
+#include "BEditorCodeWorkspace.h"
+#include "BEditorComponentRegistry.h"
+#include "BEditorGit.h"
 #include "BEditorPanels.h"
+#include "BEditorPlatformDialogs.h"
 #include "BEditorPreferences.h"
+#include "BEditorTerminalService.h"
 #include "BEditorTheme.h"
 #include "BEditorUIConfig.h"
 #include "BEditorWorkspaceSession.h"
+#include "BProject.h"
+#include "BProjectGenerator.h"
+#include "BRecentProjects.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "raylib.h"
 #include "rlImGui.h"
 
+#include <algorithm>
+#include <cstdint>
+#include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <exception>
 #include <filesystem>
-#include <cstdio>
+#include <sstream>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace fs = std::filesystem;
 
-struct EditorState
-{
+struct EditorState {
     BRecentProjects recent{};
     BProject project{};
     fs::path manifestPath;
     fs::path recentPath;
     fs::path preferencesPath;
+    fs::path globalUIConfigPath;
     BEditorPreferences preferences{};
     char openPath[BPROJECT_PATH_MAX]{};
     char projectName[BPROJECT_NAME_MAX] = "My Basil Game";
@@ -44,19 +54,81 @@ struct EditorState
     bool resetDockLayout = true;
     BEditorUIConfig uiConfig = BEditorUIConfig_Default();
     BEditorWorkspaceSession workspaceSession;
+    BEditorAssetService assetService;
+    BEditorComponentRegistry componentRegistry;
+    BEditorCodeWorkspace codeWorkspace;
+    BEditorTerminalService terminalService;
+    std::size_t activeCodeTab = 0;
+    bool requestCodeTabSelection = false;
+    char codeFind[128]{};
+    char codeReplace[128]{};
+    std::size_t codeSearchOffset = 0;
+    int codeGoToLine = 1;
+    int codeCursorTarget = -1;
+    int codeCursorPosition = 0;
+    float codeScrollY = 0.0f;
+    bool codeSyntaxPreview = false;
+    double nextCodeRefreshTime = 0.0;
+    BEditorTextSpriteDocument textSpriteDocument;
+    double nextAssetRefreshTime = 0.0;
     bool confirmProjectClose = false;
+    bool confirmApplicationClose = false;
+    bool confirmRecovery = false;
+    bool showUIConfigManager = false;
+    bool showToolSettings = false;
+    bool exitApproved = false;
+    double recoveryDueTime = 0.0;
+    std::uint64_t recoveryObservedRevision = 0;
     BEditorBuildService buildService;
     BEditorBuildState observedBuildState = BEditorBuildState::Idle;
     std::string message;
     bool messageIsError = false;
+    BTextSpriteCache viewportSpriteCache{};
+    BAsciiDrawList viewportDrawList{};
+    std::uint64_t viewportRevision = 0;
+    std::string viewportError;
+    ImVec2 viewportPan{0.0f, 0.0f};
+    float viewportZoom = 1.0f;
+    bool viewportShowMarkers = true;
+    bool viewportShowLabels = true;
 };
+
+static void ResetViewportPreview(EditorState &state)
+{
+    BAsciiDrawList_Destroy(&state.viewportDrawList);
+    BTextSpriteCache_Destroy(&state.viewportSpriteCache);
+    state.viewportRevision = 0;
+    state.viewportError.clear();
+    state.viewportPan = {0.0f, 0.0f};
+    state.viewportZoom = 1.0f;
+}
+
+static bool ApplyAssetMoves(EditorState &state, const std::vector<BEditorAssetMove> &moves,
+                            std::string &error)
+{
+    for (const BEditorAssetMove &move : moves) {
+        if (!state.workspaceSession.RemapAssetPath(move.oldPath, move.newPath, error))
+            return false;
+        if (state.textSpriteDocument.IsOpen() &&
+            state.textSpriteDocument.RelativePath() == move.oldPath) {
+            if (state.textSpriteDocument.IsDirty()) {
+                error = "An externally moved Text Sprite has unsaved editor changes.";
+                return false;
+            }
+            if (!state.textSpriteDocument.Open(state.manifestPath.parent_path(), move.newPath,
+                                               error))
+                return false;
+        }
+    }
+    return true;
+}
 
 static fs::path UserHome()
 {
 #ifdef _WIN32
-    const char* home = std::getenv("USERPROFILE");
+    const char *home = std::getenv("USERPROFILE");
 #else
-    const char* home = std::getenv("HOME");
+    const char *home = std::getenv("HOME");
 #endif
     return home != nullptr ? fs::path(home) : fs::current_path();
 }
@@ -69,13 +141,13 @@ static fs::path DefaultProjectDirectory()
 static fs::path EditorDataDirectory()
 {
 #ifdef _WIN32
-    const char* appData = std::getenv("APPDATA");
+    const char *appData = std::getenv("APPDATA");
     if (appData != nullptr)
         return fs::path(appData) / "BasilEngine";
 #elif defined(__APPLE__)
     return UserHome() / "Library" / "Application Support" / "BasilEngine";
 #else
-    const char* configHome = std::getenv("XDG_CONFIG_HOME");
+    const char *configHome = std::getenv("XDG_CONFIG_HOME");
     if (configHome != nullptr)
         return fs::path(configHome) / "BasilEngine";
     return UserHome() / ".config" / "BasilEngine";
@@ -85,14 +157,13 @@ static fs::path EditorDataDirectory()
 
 static void ApplyApplicationIcons()
 {
-    static const int sizes[] = { 16, 24, 32, 48, 64, 128, 256 };
+    static const int sizes[] = {16, 24, 32, 48, 64, 128, 256};
     Image images[IM_ARRAYSIZE(sizes)]{};
     int imageCount = 0;
-    fs::path iconRoot = fs::path(GetApplicationDirectory()) / "assets" /
-        "editor" / "branding" / "icons";
+    fs::path iconRoot =
+        fs::path(GetApplicationDirectory()) / "assets" / "editor" / "branding" / "icons";
 
-    for (int size : sizes)
-    {
+    for (int size : sizes) {
         fs::path path = iconRoot / ("basil-editor-" + std::to_string(size) + ".png");
 
         if (!fs::is_regular_file(path))
@@ -111,30 +182,31 @@ static void ApplyApplicationIcons()
         UnloadImage(images[i]);
 }
 
-static void SetMessage(EditorState& state, const char* message, bool isError)
+static void SetMessage(EditorState &state, const char *message, bool isError)
 {
     state.message = message != nullptr ? message : "Unknown error.";
     state.messageIsError = isError;
 }
 
-static void SaveRecentProjects(EditorState& state)
+static void SaveRecentProjects(EditorState &state)
 {
     BProjectError error{};
     std::error_code directoryError;
     fs::create_directories(state.recentPath.parent_path(), directoryError);
 
-    if (directoryError || !BRecentProjects_Save(state.recentPath.string().c_str(), &state.recent, &error))
+    if (directoryError ||
+        !BRecentProjects_Save(state.recentPath.string().c_str(), &state.recent, &error))
         SetMessage(state, directoryError ? directoryError.message().c_str() : error.message, true);
 }
 
-static bool OpenProject(EditorState& state, const fs::path& manifestPath)
+static bool OpenProject(EditorState &state, const fs::path &manifestPath)
 {
+    ResetViewportPreview(state);
     BProjectError error{};
     std::error_code pathError;
     fs::path absolutePath = fs::absolute(manifestPath, pathError).lexically_normal();
 
-    if (pathError || !BProject_Load(absolutePath.string().c_str(), &state.project, &error))
-    {
+    if (pathError || !BProject_Load(absolutePath.string().c_str(), &state.project, &error)) {
         SetMessage(state, pathError ? pathError.message().c_str() : error.message, true);
         return false;
     }
@@ -145,33 +217,55 @@ static bool OpenProject(EditorState& state, const fs::path& manifestPath)
     state.projectOpen = true;
     state.resetDockLayout = true;
     state.uiConfig = BEditorUIConfig_Default();
-    state.workspaceSession = BEditorWorkspaceSession{};
+    std::string uiConfigError;
+    fs::path projectUIConfig = absolutePath.parent_path() / ".basil" / "editor-ui.basilui.json";
+    if (fs::is_regular_file(projectUIConfig))
+        BEditorUIConfig_Load(projectUIConfig.string(), state.uiConfig, uiConfigError);
+    else if (fs::is_regular_file(state.globalUIConfigPath))
+        BEditorUIConfig_Load(state.globalUIConfigPath.string(), state.uiConfig, uiConfigError);
+    state.workspaceSession.Reset();
     std::string workspaceError;
     bool workspaceLoaded = state.workspaceSession.Load(
-        absolutePath.parent_path(),
-        state.project.startupWorkspace,
-        workspaceError
-    );
+        absolutePath.parent_path(), state.project.startupWorkspace, workspaceError);
+    std::string assetError;
+    bool assetsOpened = state.assetService.Open(absolutePath.parent_path(), assetError);
+    std::string componentError;
+    bool componentsOpened =
+        state.componentRegistry.Open(absolutePath.parent_path(), componentError);
+    std::string codeError;
+    bool codeOpened = state.codeWorkspace.OpenProject(absolutePath.parent_path(), codeError);
+    state.nextAssetRefreshTime = GetTime() + 1.0;
 
-    if (!workspaceLoaded)
+    if (!workspaceLoaded || !componentsOpened || !codeOpened)
         state.uiConfig.showProblems = true;
+    else
+        state.confirmRecovery = state.workspaceSession.HasNewerRecovery();
+    state.recoveryObservedRevision = state.workspaceSession.Revision();
+    state.recoveryDueTime = 0.0;
 
     BRecentProjects_Add(&state.recent, absolutePath.string().c_str());
     SaveRecentProjects(state);
     SetWindowTitle(TextFormat("BasilEditor - %s", state.project.name));
-    SetMessage(
-        state,
-        workspaceLoaded ? "Project and startup Workspace opened successfully." : workspaceError.c_str(),
-        !workspaceLoaded
-    );
+    SetMessage(state,
+               !uiConfigError.empty() ? uiConfigError.c_str()
+               : !assetsOpened        ? assetError.c_str()
+               : !componentsOpened    ? componentError.c_str()
+               : !codeOpened          ? codeError.c_str()
+               : workspaceLoaded      ? (state.workspaceSession.RequiresMigration()
+                                             ? "Project opened. Startup Workspace will migrate "
+                                               "safely on first save."
+                                             : "Project and startup Workspace opened successfully.")
+                                      : workspaceError.c_str(),
+               !uiConfigError.empty() || !assetsOpened || !componentsOpened || !codeOpened ||
+                   !workspaceLoaded);
     return true;
 }
 
-static void CreateProject(EditorState& state)
+static void CreateProject(EditorState &state)
 {
     BProject project = BProject_Default(state.projectName, state.identifier);
-    static const int cStandards[] = { 90, 99, 11, 17, 23 };
-    static const int cppStandards[] = { 98, 11, 14, 17, 20, 23, 26 };
+    static const int cStandards[] = {90, 99, 11, 17, 23};
+    static const int cppStandards[] = {98, 11, 14, 17, 20, 23, 26};
     project.languageMode = static_cast<BProjectLanguageMode>(state.languageMode);
     project.cStandard = cStandards[state.cStandardIndex];
     project.cppStandard = cppStandards[state.cppStandardIndex];
@@ -179,16 +273,14 @@ static void CreateProject(EditorState& state)
     std::error_code directoryError;
     fs::create_directories(state.parentDirectory, directoryError);
 
-    if (directoryError)
-    {
+    if (directoryError) {
         SetMessage(state, directoryError.message().c_str(), true);
         return;
     }
 
     BProjectError error{};
 
-    if (!BProjectGenerator_Create(&project, state.parentDirectory, &error))
-    {
+    if (!BProjectGenerator_Create(&project, state.parentDirectory, &error)) {
         SetMessage(state, error.message, true);
         return;
     }
@@ -198,21 +290,25 @@ static void CreateProject(EditorState& state)
     bool gitFailed = state.initializeGit && !BEditorGit_Initialize(root);
 
     if (OpenProject(state, root / (std::string(project.identifier) + ".basilproject")) && gitFailed)
-        SetMessage(state, "The project was created, but Git initialization failed. You can retry it from the project overview.", true);
+        SetMessage(state,
+                   "The project was created, but Git initialization failed. You "
+                   "can retry it from the project overview.",
+                   true);
 }
 
-static void DrawMessage(const EditorState& state)
+static void DrawMessage(const EditorState &state)
 {
     if (state.message.empty())
         return;
 
-    const BEditorThemePalette& palette = BEditorTheme_GetPalette();
+    const BEditorThemePalette &palette = BEditorTheme_GetPalette();
     ImVec4 color = state.messageIsError ? palette.error : palette.success;
     ImVec4 background = color;
     background.w = 0.10f;
     ImGui::PushStyleColor(ImGuiCol_ChildBg, background);
     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(color.x, color.y, color.z, 0.60f));
-    ImGui::BeginChild("##StatusMessage", ImVec2(0.0f, ImGui::GetTextLineHeightWithSpacing() * 2.2f), true);
+    ImGui::BeginChild("##StatusMessage", ImVec2(0.0f, ImGui::GetTextLineHeightWithSpacing() * 2.2f),
+                      true);
     ImGui::PushStyleColor(ImGuiCol_Text, color);
     ImGui::TextUnformatted(state.messageIsError ? "[!] SYSTEM NOTICE" : "[+] STATUS");
     ImGui::SameLine();
@@ -222,16 +318,14 @@ static void DrawMessage(const EditorState& state)
     ImGui::PopStyleColor(2);
 }
 
-static void DrawInterfaceScale(EditorState& state)
+static void DrawInterfaceScale(EditorState &state)
 {
-    static const char* labels[] = { "100%", "115%", "135%", "150%", "175%" };
-    static const float scales[] = { 1.0f, 1.15f, 1.35f, 1.5f, 1.75f };
+    static const char *labels[] = {"100%", "115%", "135%", "150%", "175%"};
+    static const float scales[] = {1.0f, 1.15f, 1.35f, 1.5f, 1.75f};
     int selected = 2;
 
-    for (int i = 0; i < IM_ARRAYSIZE(scales); ++i)
-    {
-        if (state.preferences.interfaceScale == scales[i])
-        {
+    for (int i = 0; i < IM_ARRAYSIZE(scales); ++i) {
+        if (state.preferences.interfaceScale == scales[i]) {
             selected = i;
             break;
         }
@@ -252,9 +346,9 @@ static void DrawInterfaceScale(EditorState& state)
         SetMessage(state, "Interface scale saved.", false);
 }
 
-static void DrawHeading(const char* text)
+static void DrawHeading(const char *text)
 {
-    ImFont* bold = BEditorTheme_GetBoldFont();
+    ImFont *bold = BEditorTheme_GetBoldFont();
 
     if (bold != nullptr)
         ImGui::PushFont(bold);
@@ -265,9 +359,9 @@ static void DrawHeading(const char* text)
         ImGui::PopFont();
 }
 
-static void DrawBrandRail(EditorState& state)
+static void DrawBrandRail(EditorState &state)
 {
-    const BEditorThemePalette& palette = BEditorTheme_GetPalette();
+    const BEditorThemePalette &palette = BEditorTheme_GetPalette();
     float width = 250.0f * state.preferences.interfaceScale;
     ImGui::PushStyleColor(ImGuiCol_ChildBg, palette.surface);
     ImGui::BeginChild("##BrandRail", ImVec2(width, 0.0f), true);
@@ -300,23 +394,23 @@ static void DrawBrandRail(EditorState& state)
     ImGui::PopStyleColor();
 }
 
-static void DrawRecentProjects(EditorState& state)
+static void DrawRecentProjects(EditorState &state)
 {
-    if (state.recent.count == 0)
-    {
+    if (state.recent.count == 0) {
         ImGui::Spacing();
         ImGui::TextDisabled("NO PROJECT LINKS RECORDED");
-        ImGui::TextWrapped("Create a new Project or open an existing .basilproject manifest to establish a recent link.");
+        ImGui::TextWrapped("Create a new Project or open an existing .basilproject "
+                           "manifest to establish a recent link.");
         return;
     }
 
     bool removed = false;
 
-    for (size_t i = 0; i < state.recent.count && !removed; ++i)
-    {
+    for (size_t i = 0; i < state.recent.count && !removed; ++i) {
         ImGui::PushID(static_cast<int>(i));
         fs::path path(state.recent.paths[i]);
-        ImGui::BeginChild("##RecentProject", ImVec2(0.0f, ImGui::GetTextLineHeightWithSpacing() * 4.6f), true);
+        ImGui::BeginChild("##RecentProject",
+                          ImVec2(0.0f, ImGui::GetTextLineHeightWithSpacing() * 4.6f), true);
         DrawHeading(path.stem().string().c_str());
         ImGui::TextDisabled("%s", state.recent.paths[i]);
         ImGui::Spacing();
@@ -326,8 +420,7 @@ static void DrawRecentProjects(EditorState& state)
 
         ImGui::SameLine();
 
-        if (ImGui::Button("REMOVE"))
-        {
+        if (ImGui::Button("REMOVE")) {
             BRecentProjects_Remove(&state.recent, i);
             SaveRecentProjects(state);
             removed = true;
@@ -339,25 +432,31 @@ static void DrawRecentProjects(EditorState& state)
     }
 }
 
-static void DrawOpenProject(EditorState& state)
+static void DrawOpenProject(EditorState &state)
 {
     ImGui::TextDisabled("MANIFEST ENDPOINT");
     ImGui::SetNextItemWidth(-1.0f);
     ImGui::InputText("##ManifestPath", state.openPath, sizeof(state.openPath));
     ImGui::Spacing();
 
+    if (ImGui::Button("BROWSE...", ImVec2(-1.0f, 0.0f))) {
+        fs::path selected = state.openPath;
+        std::string error;
+        if (BEditorDialog_OpenProject(selected, error))
+            std::snprintf(state.openPath, sizeof(state.openPath), "%s", selected.string().c_str());
+        else if (!error.empty())
+            SetMessage(state, error.c_str(), true);
+    }
+
     if (ImGui::Button("OPEN PROJECT LINK", ImVec2(-1.0f, 0.0f)))
         OpenProject(state, state.openPath);
-
-    ImGui::Spacing();
-    ImGui::TextDisabled("Native platform file selection arrives with the platform-integration stage.");
 }
 
-static void DrawNewProject(EditorState& state)
+static void DrawNewProject(EditorState &state)
 {
-    const char* modes[] = { "C only", "C++ only", "C and C++" };
-    const char* cStandards[] = { "C90", "C99", "C11", "C17", "C23" };
-    const char* cppStandards[] = { "C++98", "C++11", "C++14", "C++17", "C++20", "C++23", "C++26" };
+    const char *modes[] = {"C only", "C++ only", "C and C++"};
+    const char *cStandards[] = {"C90", "C99", "C11", "C17", "C23"};
+    const char *cppStandards[] = {"C++98", "C++11", "C++14", "C++17", "C++20", "C++23", "C++26"};
 
     ImGui::TextDisabled("PROJECT IDENTITY");
     ImGui::SetNextItemWidth(-1.0f);
@@ -366,21 +465,29 @@ static void DrawNewProject(EditorState& state)
     ImGui::InputText("Code identifier", state.identifier, sizeof(state.identifier));
     ImGui::SetNextItemWidth(-1.0f);
     ImGui::InputText("Project location", state.parentDirectory, sizeof(state.parentDirectory));
+    if (ImGui::Button("SELECT PROJECT LOCATION...", ImVec2(-1.0f, 0.0f))) {
+        fs::path selected = state.parentDirectory;
+        std::string error;
+        if (BEditorDialog_SelectFolder(selected, error))
+            std::snprintf(state.parentDirectory, sizeof(state.parentDirectory), "%s",
+                          selected.string().c_str());
+        else if (!error.empty())
+            SetMessage(state, error.c_str(), true);
+    }
     ImGui::Spacing();
     ImGui::SeparatorText("LANGUAGE MATRIX");
     ImGui::SetNextItemWidth(-1.0f);
     ImGui::Combo("Languages", &state.languageMode, modes, IM_ARRAYSIZE(modes));
 
-    if (state.languageMode != static_cast<int>(BPROJECT_LANGUAGE_CPP))
-    {
+    if (state.languageMode != static_cast<int>(BPROJECT_LANGUAGE_CPP)) {
         ImGui::SetNextItemWidth(-1.0f);
         ImGui::Combo("C standard", &state.cStandardIndex, cStandards, IM_ARRAYSIZE(cStandards));
     }
 
-    if (state.languageMode != static_cast<int>(BPROJECT_LANGUAGE_C))
-    {
+    if (state.languageMode != static_cast<int>(BPROJECT_LANGUAGE_C)) {
         ImGui::SetNextItemWidth(-1.0f);
-        ImGui::Combo("C++ standard", &state.cppStandardIndex, cppStandards, IM_ARRAYSIZE(cppStandards));
+        ImGui::Combo("C++ standard", &state.cppStandardIndex, cppStandards,
+                     IM_ARRAYSIZE(cppStandards));
     }
 
     ImGui::Checkbox("Initialize a Git repository", &state.initializeGit);
@@ -390,13 +497,14 @@ static void DrawNewProject(EditorState& state)
         CreateProject(state);
 }
 
-static void DrawProjectBrowser(EditorState& state)
+static void DrawProjectBrowser(EditorState &state)
 {
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-    ImGui::Begin("BasilEngine Project Browser", nullptr, ImGuiWindowFlags_NoTitleBar |
-        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+    ImGui::Begin("BasilEngine Project Browser", nullptr,
+                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+                     ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
     DrawBrandRail(state);
     ImGui::SameLine(0.0f, 0.0f);
@@ -408,24 +516,20 @@ static void DrawProjectBrowser(EditorState& state)
     ImGui::Spacing();
     ImGui::Separator();
 
-    if (ImGui::BeginTabBar("ProjectActions"))
-    {
-        if (ImGui::BeginTabItem("RECENT LINKS"))
-        {
+    if (ImGui::BeginTabBar("ProjectActions")) {
+        if (ImGui::BeginTabItem("RECENT LINKS")) {
             ImGui::Spacing();
             DrawRecentProjects(state);
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("OPEN PROJECT"))
-        {
+        if (ImGui::BeginTabItem("OPEN PROJECT")) {
             ImGui::Spacing();
             DrawOpenProject(state);
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("NEW PROJECT"))
-        {
+        if (ImGui::BeginTabItem("NEW PROJECT")) {
             ImGui::Spacing();
             DrawNewProject(state);
             ImGui::EndTabItem();
@@ -441,60 +545,116 @@ static void DrawProjectBrowser(EditorState& state)
     ImGui::PopStyleVar();
 }
 
-static void ReturnToProjectBrowser(EditorState& state)
+static void ReturnToProjectBrowser(EditorState &state)
 {
-    if (state.buildService.IsBusy())
-    {
+    if (state.buildService.IsBusy()) {
         SetMessage(state, "Stop the active build or game before closing the Project.", true);
         return;
     }
 
-    if (state.workspaceSession.IsDirty())
-    {
+    if (state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty() ||
+        state.codeWorkspace.HasDirtyDocuments()) {
         state.confirmProjectClose = true;
         return;
     }
 
     state.projectOpen = false;
-    state.workspaceSession = BEditorWorkspaceSession{};
+    state.workspaceSession.Reset();
+    state.assetService.Reset();
+    state.textSpriteDocument.Reset();
+    state.codeWorkspace = BEditorCodeWorkspace{};
+    state.terminalService.Stop();
+    ResetViewportPreview(state);
     SetWindowTitle("BasilEditor");
 }
 
-static bool SaveWorkspace(EditorState& state)
+static bool SaveWorkspace(EditorState &state)
 {
     std::string error;
+    if (!state.codeWorkspace.SaveAll(error)) {
+        SetMessage(state, error.c_str(), true);
+        return false;
+    }
+    if (state.textSpriteDocument.IsDirty() && !state.textSpriteDocument.Save(error)) {
+        SetMessage(state, error.c_str(), true);
+        return false;
+    }
     bool succeeded = state.workspaceSession.Save(error);
-    SetMessage(state, succeeded ? "Workspace saved. A recovery backup was retained." : error.c_str(), !succeeded);
+    SetMessage(state, succeeded ? "All modified authoring documents saved." : error.c_str(),
+               !succeeded);
     return succeeded;
 }
 
-static void StartProjectBuild(EditorState& state, bool runAfterBuild)
+static void StartProjectBuild(EditorState &state, bool runAfterBuild)
 {
-    if (state.workspaceSession.IsDirty() && !SaveWorkspace(state))
+    if (runAfterBuild) {
+        BDiagnosticList diagnostics{};
+        std::string validationError;
+        if (!state.workspaceSession.ValidateForRun(diagnostics, validationError)) {
+            std::vector<std::string> problems;
+            for (std::size_t i = 0; i < diagnostics.count; ++i) {
+                const BDiagnostic &diagnostic = diagnostics.items[i];
+                if (diagnostic.severity != BDIAGNOSTIC_ERROR)
+                    continue;
+                std::string problem =
+                    diagnostic.path[0] ? std::string(diagnostic.path) : "Workspace";
+                if (diagnostic.line > 0)
+                    problem += ":" + std::to_string(diagnostic.line) + ":" +
+                               std::to_string(diagnostic.column);
+                if (diagnostic.entityId[0])
+                    problem += " [" + std::string(diagnostic.entityId) + "]";
+                if (diagnostic.componentType[0])
+                    problem += " [" + std::string(diagnostic.componentType) + "]";
+                problem += ": " + std::string(diagnostic.message);
+                problems.push_back(std::move(problem));
+            }
+            state.buildService.ReportPreflightFailure(problems);
+            SetMessage(state, validationError.c_str(), true);
+            return;
+        }
+    }
+
+    if ((state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty() ||
+         state.codeWorkspace.HasDirtyDocuments()) &&
+        !SaveWorkspace(state))
         return;
 
     std::string error;
     bool started = state.buildService.StartBuild(
-        state.manifestPath.parent_path(),
-        state.project,
-        runAfterBuild,
-        error
-    );
+        state.manifestPath.parent_path(), state.manifestPath, state.project, runAfterBuild, error);
 
-    if (!started)
-    {
+    if (!started) {
         SetMessage(state, error.c_str(), true);
         return;
     }
 
     state.uiConfig.showBuildOutput = true;
     state.observedBuildState = state.buildService.State();
-    SetMessage(state, runAfterBuild ? "Project build started; the game will run after success." : "Project build started.", false);
+    SetMessage(state,
+               runAfterBuild ? "Project build started; the game will run after success."
+                             : "Project build started.",
+               false);
 }
 
-static void DrawEditorMenuBar(EditorState& state)
+static void CaptureUIConfigLayout(EditorState &state)
 {
-    const BEditorThemePalette& palette = BEditorTheme_GetPalette();
+    const ImVec2 display = ImGui::GetIO().DisplaySize;
+    if (display.x <= 0.0f || display.y <= 0.0f)
+        return;
+    ImGuiWindow *left = ImGui::FindWindowByName(BEditorPanel_Name(BEditorPanel::ProjectDetails));
+    ImGuiWindow *right = ImGui::FindWindowByName(BEditorPanel_Name(BEditorPanel::Inspector));
+    ImGuiWindow *bottom = ImGui::FindWindowByName(BEditorPanel_Name(BEditorPanel::Assets));
+    if (left && left->DockNode)
+        state.uiConfig.leftRatio = std::clamp(left->DockNode->Size.x / display.x, 0.1f, 0.4f);
+    if (right && right->DockNode)
+        state.uiConfig.rightRatio = std::clamp(right->DockNode->Size.x / display.x, 0.1f, 0.4f);
+    if (bottom && bottom->DockNode)
+        state.uiConfig.bottomRatio = std::clamp(bottom->DockNode->Size.y / display.y, 0.1f, 0.45f);
+}
+
+static void DrawEditorMenuBar(EditorState &state)
+{
+    const BEditorThemePalette &palette = BEditorTheme_GetPalette();
 
     if (!ImGui::BeginMainMenuBar())
         return;
@@ -502,19 +662,25 @@ static void DrawEditorMenuBar(EditorState& state)
     ImGui::TextColored(palette.cyan, "[ BASIL//EDITOR ]");
     ImGui::Separator();
 
-    if (ImGui::BeginMenu("Project"))
-    {
+    if (ImGui::BeginMenu("Project")) {
         ImGui::TextDisabled("ACTIVE // %s", state.project.name);
         ImGui::Separator();
 
         if (ImGui::MenuItem("Return to Project Browser"))
             ReturnToProjectBrowser(state);
 
+        ImGui::Separator();
+        if (ImGui::MenuItem("Exit BasilEditor")) {
+            state.confirmApplicationClose = state.workspaceSession.IsDirty() ||
+                                            state.textSpriteDocument.IsDirty() ||
+                                            state.codeWorkspace.HasDirtyDocuments();
+            state.exitApproved = !state.confirmApplicationClose;
+        }
+
         ImGui::EndMenu();
     }
 
-    if (ImGui::BeginMenu("Workspace"))
-    {
+    if (ImGui::BeginMenu("Workspace")) {
         ImGui::BeginDisabled();
         ImGui::MenuItem("New Workspace");
         ImGui::MenuItem("Open Workspace...");
@@ -522,33 +688,103 @@ static void DrawEditorMenuBar(EditorState& state)
 
         ImGui::BeginDisabled(!state.workspaceSession.IsLoaded());
 
-        if (ImGui::MenuItem("Save Workspace", "Ctrl+S"))
+        ImGui::BeginDisabled(!state.workspaceSession.CanUndo());
+        if (ImGui::MenuItem("Undo", "Ctrl+Z")) {
+            std::string error;
+            if (!state.workspaceSession.Undo(error))
+                SetMessage(state, error.c_str(), true);
+        }
+        ImGui::EndDisabled();
+        ImGui::BeginDisabled(!state.workspaceSession.CanRedo());
+        if (ImGui::MenuItem("Redo", "Ctrl+Y")) {
+            std::string error;
+            if (!state.workspaceSession.Redo(error))
+                SetMessage(state, error.c_str(), true);
+        }
+        ImGui::EndDisabled();
+        ImGui::BeginDisabled(state.workspaceSession.SelectedEntity() == nullptr);
+        if (ImGui::MenuItem("Duplicate Entity", "Ctrl+D")) {
+            std::string error;
+            bool ok = state.workspaceSession.DuplicateSelectedEntity(error);
+            SetMessage(state, ok ? "Entity duplicated." : error.c_str(), !ok);
+        }
+        ImGui::EndDisabled();
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Save All", "Ctrl+S"))
             SaveWorkspace(state);
 
         ImGui::EndDisabled();
         ImGui::EndMenu();
     }
 
-    if (ImGui::BeginMenu("View"))
-    {
+    if (ImGui::BeginMenu("View")) {
         ImGui::MenuItem("Project Details", nullptr, &state.uiConfig.showProjectDetails);
         ImGui::MenuItem("Workspace Hierarchy", nullptr, &state.uiConfig.showWorkspaceHierarchy);
         ImGui::MenuItem("Inspector", nullptr, &state.uiConfig.showInspector);
         ImGui::MenuItem("Workspace Viewport", nullptr, &state.uiConfig.showWorkspaceViewport);
         ImGui::MenuItem("Assets", nullptr, &state.uiConfig.showAssets);
-        ImGui::MenuItem("Console", nullptr, &state.uiConfig.showConsole);
+        ImGui::MenuItem("Status", nullptr, &state.uiConfig.showConsole);
         ImGui::MenuItem("Build Output", nullptr, &state.uiConfig.showBuildOutput);
         ImGui::MenuItem("Problems", nullptr, &state.uiConfig.showProblems);
         ImGui::MenuItem("Terminal", nullptr, &state.uiConfig.showTerminal);
+        ImGui::MenuItem("Text Sprite Editor", nullptr, &state.uiConfig.showTextSpriteEditor);
+        ImGui::MenuItem("Code Editor", nullptr, &state.uiConfig.showCodeEditor);
         ImGui::Separator();
 
-        if (ImGui::MenuItem("Reset Default UI Config"))
-        {
+        ImGui::MenuItem("UI Config Manager", nullptr, &state.showUIConfigManager);
+
+        if (ImGui::MenuItem("Reset Default UI Config")) {
             state.uiConfig = BEditorUIConfig_Default();
             state.resetDockLayout = true;
             SetMessage(state, "Default UI Config restored.", false);
         }
 
+        if (ImGui::MenuItem("Save as Global Default")) {
+            CaptureUIConfigLayout(state);
+            std::string error;
+            bool ok =
+                BEditorUIConfig_Save(state.globalUIConfigPath.string(), state.uiConfig, error);
+            SetMessage(state, ok ? "Global UI Config saved." : error.c_str(), !ok);
+        }
+        if (ImGui::MenuItem("Save for This Project")) {
+            CaptureUIConfigLayout(state);
+            fs::path path = state.manifestPath.parent_path() / ".basil" / "editor-ui.basilui.json";
+            std::string error;
+            bool ok = BEditorUIConfig_Save(path.string(), state.uiConfig, error);
+            SetMessage(state, ok ? "Project UI Config saved." : error.c_str(), !ok);
+        }
+        if (ImGui::MenuItem("Import UI Config...")) {
+            fs::path path;
+            std::string error;
+            if (BEditorDialog_OpenUIConfig(path, error)) {
+                BEditorUIConfig loaded;
+                bool ok = BEditorUIConfig_Load(path.string(), loaded, error);
+                if (ok) {
+                    state.uiConfig = loaded;
+                    state.resetDockLayout = true;
+                }
+                SetMessage(state, ok ? "UI Config imported." : error.c_str(), !ok);
+            } else if (!error.empty())
+                SetMessage(state, error.c_str(), true);
+        }
+        if (ImGui::MenuItem("Export UI Config...")) {
+            fs::path path = "BasilEditor.basilui.json";
+            std::string error;
+            if (BEditorDialog_SaveUIConfig(path, error)) {
+                CaptureUIConfigLayout(state);
+                bool ok = BEditorUIConfig_Save(path.string(), state.uiConfig, error);
+                SetMessage(state, ok ? "UI Config exported." : error.c_str(), !ok);
+            } else if (!error.empty())
+                SetMessage(state, error.c_str(), true);
+        }
+
+        ImGui::EndMenu();
+    }
+
+    if (ImGui::BeginMenu("Tools")) {
+        if (ImGui::MenuItem("Programming Tools..."))
+            state.showToolSettings = true;
         ImGui::EndMenu();
     }
 
@@ -564,17 +800,13 @@ static void DrawEditorMenuBar(EditorState& state)
 
     ImGui::BeginDisabled(!state.buildService.IsGameActive());
 
-    if (state.buildService.State() == BEditorBuildState::Paused)
-    {
-        if (ImGui::MenuItem("Resume"))
-        {
+    if (state.buildService.State() == BEditorBuildState::Paused) {
+        if (ImGui::MenuItem("Resume")) {
             std::string error;
             bool succeeded = state.buildService.Resume(error);
             SetMessage(state, succeeded ? "Game resumed." : error.c_str(), !succeeded);
         }
-    }
-    else if (ImGui::MenuItem("Pause"))
-    {
+    } else if (ImGui::MenuItem("Pause")) {
         std::string error;
         bool succeeded = state.buildService.Pause(error);
         SetMessage(state, succeeded ? "Game paused." : error.c_str(), !succeeded);
@@ -583,8 +815,7 @@ static void DrawEditorMenuBar(EditorState& state)
     ImGui::EndDisabled();
     ImGui::BeginDisabled(!state.buildService.IsBusy());
 
-    if (ImGui::MenuItem("Stop"))
-    {
+    if (ImGui::MenuItem("Stop")) {
         std::string error;
         bool succeeded = state.buildService.Stop(error);
         SetMessage(state, succeeded ? "Active process stopped." : error.c_str(), !succeeded);
@@ -595,32 +826,79 @@ static void DrawEditorMenuBar(EditorState& state)
     if (ImGui::MenuItem("Terminal"))
         state.uiConfig.showTerminal = true;
 
-    const char* statusText = state.workspaceSession.IsDirty() ?
-        "WORKSPACE // MODIFIED" : "PROJECT LINK // STABLE";
+    const char *statusText =
+        (state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty() ||
+         state.codeWorkspace.HasDirtyDocuments())
+            ? "WORKSPACE // MODIFIED"
+            : "PROJECT LINK // STABLE";
     float statusWidth = ImGui::CalcTextSize(statusText).x;
     ImGui::SameLine(ImGui::GetWindowWidth() - statusWidth - ImGui::GetStyle().ItemSpacing.x);
-    ImGui::TextColored(
-        state.workspaceSession.IsDirty() ? palette.warning : palette.success,
-        statusText
-    );
+    ImGui::TextColored((state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty() ||
+                        state.codeWorkspace.HasDirtyDocuments())
+                           ? palette.warning
+                           : palette.success,
+                       statusText);
     ImGui::EndMainMenuBar();
+
+    if (state.showToolSettings)
+        ImGui::OpenPopup("PROGRAMMING TOOL SETTINGS");
+    if (ImGui::BeginPopupModal("PROGRAMMING TOOL SETTINGS", &state.showToolSettings,
+                               ImGuiWindowFlags_AlwaysAutoResize)) {
+        static char editorCommand[1025]{};
+        static char terminalCommand[1025]{};
+        static bool initialized = false;
+        if (!initialized) {
+            std::snprintf(editorCommand, sizeof(editorCommand), "%s",
+                          state.preferences.externalEditor.c_str());
+            std::snprintf(terminalCommand, sizeof(terminalCommand), "%s",
+                          state.preferences.terminal.c_str());
+            initialized = true;
+        }
+        ImGui::TextDisabled("Executable names or absolute executable paths");
+        ImGui::InputText("External editor", editorCommand, sizeof(editorCommand));
+        ImGui::InputText("Terminal", terminalCommand, sizeof(terminalCommand));
+        if (ImGui::Button("SAVE")) {
+            state.preferences.externalEditor = editorCommand;
+            state.preferences.terminal = terminalCommand;
+            std::string error;
+            bool ok =
+                BEditorPreferences_Save(state.preferencesPath.string(), state.preferences, error);
+            SetMessage(state, ok ? "Programming tool settings saved." : error.c_str(), !ok);
+            if (ok) {
+                state.showToolSettings = false;
+                initialized = false;
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("CANCEL")) {
+            state.showToolSettings = false;
+            initialized = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
 }
 
-static void BuildDefaultDockLayout(ImGuiID dockspaceId, const BEditorUIConfig& config)
+static void BuildDefaultDockLayout(ImGuiID dockspaceId, const BEditorUIConfig &config)
 {
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGuiViewport *viewport = ImGui::GetMainViewport();
     ImGui::DockBuilderRemoveNode(dockspaceId);
     ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
     ImGui::DockBuilderSetNodeSize(dockspaceId, viewport->WorkSize);
 
     ImGuiID center = dockspaceId;
-    ImGuiID left = ImGui::DockBuilderSplitNode(center, ImGuiDir_Left, config.leftRatio, nullptr, &center);
-    ImGuiID right = ImGui::DockBuilderSplitNode(center, ImGuiDir_Right, config.rightRatio, nullptr, &center);
-    ImGuiID bottom = ImGui::DockBuilderSplitNode(center, ImGuiDir_Down, config.bottomRatio, nullptr, &center);
+    ImGuiID left =
+        ImGui::DockBuilderSplitNode(center, ImGuiDir_Left, config.leftRatio, nullptr, &center);
+    ImGuiID right =
+        ImGui::DockBuilderSplitNode(center, ImGuiDir_Right, config.rightRatio, nullptr, &center);
+    ImGuiID bottom =
+        ImGui::DockBuilderSplitNode(center, ImGuiDir_Down, config.bottomRatio, nullptr, &center);
 
     ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::ProjectDetails), left);
     ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::WorkspaceHierarchy), left);
     ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::Inspector), right);
+    ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::CodeEditor), center);
     ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::WorkspaceViewport), center);
     ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::Assets), bottom);
     ImGui::DockBuilderDockWindow(BEditorPanel_Name(BEditorPanel::Console), bottom);
@@ -630,16 +908,14 @@ static void BuildDefaultDockLayout(ImGuiID dockspaceId, const BEditorUIConfig& c
     ImGui::DockBuilderFinish(dockspaceId);
 }
 
-static void DrawProjectDetails(EditorState& state)
+static void DrawProjectDetails(EditorState &state)
 {
     if (!state.uiConfig.showProjectDetails)
         return;
 
-    ImGui::Begin(
-        BEditorPanel_Name(BEditorPanel::ProjectDetails),
-        &state.uiConfig.showProjectDetails
-    );
-    const BEditorThemePalette& palette = BEditorTheme_GetPalette();
+    ImGui::Begin(BEditorPanel_Name(BEditorPanel::ProjectDetails),
+                 &state.uiConfig.showProjectDetails);
+    const BEditorThemePalette &palette = BEditorTheme_GetPalette();
     ImGui::TextColored(palette.cyan, "[ PROJECT//ACTIVE ]");
     DrawHeading(state.project.name);
     ImGui::Separator();
@@ -659,14 +935,16 @@ static void DrawProjectDetails(EditorState& state)
     ImGui::SeparatorText("PROJECT OPERATIONS");
 
     ImGui::BeginDisabled(state.gitInitialized);
-    const char* gitButtonLabel = state.gitInitialized ?
-        "GIT REPOSITORY ACTIVE" : "INITIALIZE GIT";
+    const char *gitButtonLabel = state.gitInitialized ? "GIT REPOSITORY ACTIVE" : "INITIALIZE GIT";
 
-    if (ImGui::Button(gitButtonLabel, ImVec2(-1.0f, 0.0f)))
-    {
+    if (ImGui::Button(gitButtonLabel, ImVec2(-1.0f, 0.0f))) {
         bool succeeded = BEditorGit_Initialize(state.manifestPath.parent_path());
         state.gitInitialized = succeeded;
-        SetMessage(state, succeeded ? "Git repository initialized." : "Git initialization failed. Verify that Git is installed and available on PATH.", !succeeded);
+        SetMessage(state,
+                   succeeded ? "Git repository initialized."
+                             : "Git initialization failed. Verify that Git is "
+                               "installed and available on PATH.",
+                   !succeeded);
     }
 
     ImGui::EndDisabled();
@@ -677,65 +955,576 @@ static void DrawProjectDetails(EditorState& state)
     ImGui::End();
 }
 
-static void DrawWorkspaceViewport(EditorState& state)
+static void DrawWorkspaceViewport(EditorState &state)
 {
     if (!state.uiConfig.showWorkspaceViewport)
         return;
 
-    const BEditorThemePalette& palette = BEditorTheme_GetPalette();
+    const BEditorThemePalette &palette = BEditorTheme_GetPalette();
     ImGui::PushStyleColor(ImGuiCol_WindowBg, palette.background);
-    ImGui::Begin(
-        BEditorPanel_Name(BEditorPanel::WorkspaceViewport),
-        &state.uiConfig.showWorkspaceViewport
-    );
-    ImGui::TextColored(palette.violet, "WORKSPACE VIEWPORT // EDIT SESSION ONLINE");
+    ImGui::Begin(BEditorPanel_Name(BEditorPanel::WorkspaceViewport),
+                 &state.uiConfig.showWorkspaceViewport);
+    ImGui::TextColored(palette.violet, "WORKSPACE VIEWPORT // AUTHORING PREVIEW");
+    ImGui::SameLine();
+    ImGui::TextDisabled("NOT PLAY MODE");
     ImGui::Separator();
 
-    if (!state.workspaceSession.IsLoaded())
-    {
+    if (!state.workspaceSession.IsLoaded()) {
         ImGui::TextColored(palette.error, "[ STARTUP WORKSPACE UNAVAILABLE ]");
         ImGui::End();
         ImGui::PopStyleColor();
         return;
     }
 
-    ImVec2 available = ImGui::GetContentRegionAvail();
-    std::string summary = "[ " + std::to_string(state.workspaceSession.Workspace().entityCount) +
-        " ENTITIES LOADED ]";
-    float headingWidth = ImGui::CalcTextSize(summary.c_str()).x;
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + available.y * 0.38f);
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (available.x - headingWidth) * 0.5f);
-    ImGui::TextColored(palette.cyan, "%s", summary.c_str());
-    ImGui::Spacing();
-    ImGui::TextDisabled("Entity editing is active. Spatial rendering follows the component model.");
+    if (ImGui::Button("RESET VIEW")) {
+        state.viewportPan = {0.0f, 0.0f};
+        state.viewportZoom = 1.0f;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("REFRESH ASSETS"))
+        state.viewportRevision = 0;
+    ImGui::SameLine();
+    ImGui::Checkbox("Markers", &state.viewportShowMarkers);
+    ImGui::SameLine();
+    ImGui::Checkbox("Labels", &state.viewportShowLabels);
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(130.0f);
+    ImGui::SliderFloat("Zoom", &state.viewportZoom, 0.35f, 3.0f, "%.2fx");
+
+    std::uint64_t revision = state.workspaceSession.Revision();
+    if (state.viewportRevision != revision) {
+        BDiagnosticList diagnostics{};
+        if (BAsciiDrawList_Build(&state.workspaceSession.Workspace(),
+                                 state.manifestPath.parent_path().string().c_str(),
+                                 &state.viewportSpriteCache, &state.viewportDrawList,
+                                 &diagnostics)) {
+            state.viewportError.clear();
+        } else {
+            const BDiagnostic *error = BDiagnosticList_FirstError(&diagnostics);
+            state.viewportError =
+                error != nullptr ? error->message : "Viewport preview could not be built.";
+        }
+        state.viewportRevision = revision;
+    }
+
+    if (!state.viewportError.empty())
+        ImGui::TextColored(palette.error, "[ PREVIEW ERROR ] %s", state.viewportError.c_str());
+
+    ImVec2 canvasSize = ImGui::GetContentRegionAvail();
+    canvasSize.x = std::max(canvasSize.x, 64.0f);
+    canvasSize.y = std::max(canvasSize.y, 64.0f);
+    ImVec2 canvasStart = ImGui::GetCursorScreenPos();
+    ImGui::InvisibleButton("##WorkspaceViewportCanvas", canvasSize,
+                           ImGuiButtonFlags_MouseButtonMiddle);
+    bool hovered = ImGui::IsItemHovered();
+    if (hovered && ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) {
+        ImVec2 delta = ImGui::GetIO().MouseDelta;
+        state.viewportPan.x += delta.x;
+        state.viewportPan.y += delta.y;
+    }
+    if (hovered && ImGui::GetIO().MouseWheel != 0.0f)
+        state.viewportZoom =
+            std::clamp(state.viewportZoom + ImGui::GetIO().MouseWheel * 0.1f, 0.35f, 3.0f);
+
+    ImDrawList *draw = ImGui::GetWindowDrawList();
+    ImVec2 canvasEnd{canvasStart.x + canvasSize.x, canvasStart.y + canvasSize.y};
+    draw->AddRectFilled(canvasStart, canvasEnd, ImGui::ColorConvertFloat4ToU32(palette.background));
+    draw->PushClipRect(canvasStart, canvasEnd, true);
+    float fontSize = ImGui::GetFontSize() * state.viewportZoom;
+    float cellWidth = ImGui::GetFontSize() * 0.68f * state.viewportZoom;
+    float cellHeight = ImGui::GetFontSize() * 1.25f * state.viewportZoom;
+    ImVec2 origin{canvasStart.x + canvasSize.x * 0.5f + state.viewportPan.x,
+                  canvasStart.y + canvasSize.y * 0.5f + state.viewportPan.y};
+    ImU32 gridColor = ImGui::ColorConvertFloat4ToU32(
+        ImVec4(palette.cyan.x, palette.cyan.y, palette.cyan.z, 0.08f));
+    for (float x = origin.x; x < canvasEnd.x; x += cellWidth)
+        draw->AddLine({x, canvasStart.y}, {x, canvasEnd.y}, gridColor);
+    for (float x = origin.x - cellWidth; x > canvasStart.x; x -= cellWidth)
+        draw->AddLine({x, canvasStart.y}, {x, canvasEnd.y}, gridColor);
+    for (float y = origin.y; y < canvasEnd.y; y += cellHeight)
+        draw->AddLine({canvasStart.x, y}, {canvasEnd.x, y}, gridColor);
+    for (float y = origin.y - cellHeight; y > canvasStart.y; y -= cellHeight)
+        draw->AddLine({canvasStart.x, y}, {canvasEnd.x, y}, gridColor);
+    draw->AddLine({canvasStart.x, origin.y}, {canvasEnd.x, origin.y},
+                  ImGui::ColorConvertFloat4ToU32(
+                      ImVec4(palette.cyan.x, palette.cyan.y, palette.cyan.z, 0.35f)),
+                  1.5f);
+    draw->AddLine({origin.x, canvasStart.y}, {origin.x, canvasEnd.y},
+                  ImGui::ColorConvertFloat4ToU32(
+                      ImVec4(palette.cyan.x, palette.cyan.y, palette.cyan.z, 0.35f)),
+                  1.5f);
+
+    const BWorkspaceEntity *selected = state.workspaceSession.SelectedEntity();
+    for (std::size_t i = 0; i < state.viewportDrawList.count; ++i) {
+        const BAsciiDrawItem &item = state.viewportDrawList.items[i];
+        ImVec2 position{origin.x + item.x * cellWidth, origin.y + item.y * cellHeight};
+        ImU32 background =
+            IM_COL32(item.background.r, item.background.g, item.background.b, item.background.a);
+        if (item.background.a > 0)
+            draw->AddRectFilled(position, {position.x + cellWidth, position.y + cellHeight},
+                                background);
+        char glyph[2] = {item.glyph, '\0'};
+        draw->AddText(
+            BEditorTheme_GetRegularFont(), fontSize, position,
+            IM_COL32(item.foreground.r, item.foreground.g, item.foreground.b, item.foreground.a),
+            glyph);
+        if (selected != nullptr && std::strcmp(selected->id, item.entityId) == 0)
+            draw->AddRect(position, {position.x + cellWidth, position.y + cellHeight},
+                          ImGui::ColorConvertFloat4ToU32(palette.violet));
+    }
+
+    if (state.viewportShowMarkers) {
+        const BWorkspaceDocument &workspace = state.workspaceSession.Workspace();
+        for (std::size_t i = 0; i < workspace.entityCount; ++i) {
+            const BWorkspaceEntity &entity = workspace.entities[i];
+            const BWorkspaceComponent *transform =
+                BWorkspaceEntity_FindComponentConst(&entity, BWORKSPACE_TRANSFORM2D_TYPE);
+            const BWorkspaceComponent *renderable =
+                BWorkspaceEntity_FindComponentConst(&entity, BWORKSPACE_ASCII_RENDERABLE_TYPE);
+            bool activeRenderable =
+                renderable != nullptr && renderable->data.asciiRenderable.visible;
+            if (!entity.enabled || transform == nullptr || activeRenderable)
+                continue;
+            ImVec2 marker{origin.x + transform->data.transform2d.x * cellWidth,
+                          origin.y + transform->data.transform2d.y * cellHeight};
+            bool isSelected = selected != nullptr && std::strcmp(selected->id, entity.id) == 0;
+            ImU32 color =
+                ImGui::ColorConvertFloat4ToU32(isSelected ? palette.violet : palette.cyan);
+            float radius = 6.0f * state.viewportZoom;
+            draw->AddLine({marker.x - radius, marker.y}, {marker.x + radius, marker.y}, color,
+                          2.0f);
+            draw->AddLine({marker.x, marker.y - radius}, {marker.x, marker.y + radius}, color,
+                          2.0f);
+            if (state.viewportShowLabels)
+                draw->AddText({marker.x + radius + 3.0f, marker.y - fontSize * 0.5f}, color,
+                              entity.name);
+        }
+    }
+    draw->PopClipRect();
     ImGui::End();
     ImGui::PopStyleColor();
 }
 
-static void DrawEditorShell(EditorState& state)
+static void DrawCodeEditor(EditorState &state)
+{
+    if (!state.uiConfig.showCodeEditor)
+        return;
+    if (!ImGui::Begin(BEditorPanel_Name(BEditorPanel::CodeEditor),
+                      &state.uiConfig.showCodeEditor)) {
+        ImGui::End();
+        return;
+    }
+    ImGui::BeginChild("##ProjectFiles", ImVec2(240.0f, 0.0f), true);
+    ImGui::TextDisabled("PROJECT FILES");
+    static char newFile[256] = "source/new_file.c";
+    if (ImGui::SmallButton("+ FILE"))
+        ImGui::OpenPopup("CREATE PROJECT FILE");
+    if (ImGui::BeginPopup("CREATE PROJECT FILE")) {
+        ImGui::InputText("Project path", newFile, sizeof(newFile));
+        if (ImGui::Button("CREATE")) {
+            std::string error;
+            bool ok = state.codeWorkspace.CreateFile(newFile, error);
+            SetMessage(state, ok ? "Project file created." : error.c_str(), !ok);
+            if (ok)
+                ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("REFRESH")) {
+        std::string error;
+        if (!state.codeWorkspace.RefreshTree(error))
+            SetMessage(state, error.c_str(), true);
+    }
+    ImGui::Separator();
+    for (const std::string &path : state.codeWorkspace.Files()) {
+        if (ImGui::Selectable(path.c_str(), false)) {
+            std::string error;
+            if (!state.codeWorkspace.OpenFile(path, error))
+                SetMessage(state, error.c_str(), true);
+            else {
+                const auto &documents = state.codeWorkspace.Documents();
+                for (std::size_t i = 0; i < documents.size(); ++i)
+                    if (documents[i].relativePath == path) {
+                        state.activeCodeTab = i;
+                        state.requestCodeTabSelection = true;
+                        break;
+                    }
+            }
+        }
+    }
+    ImGui::EndChild();
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    auto &documents = state.codeWorkspace.Documents();
+    if (documents.empty())
+        ImGui::TextDisabled("Select a C, C++, CMake, JSON, or text file from the Project tree.");
+    else {
+        if (state.activeCodeTab >= documents.size())
+            state.activeCodeTab = documents.size() - 1;
+        if (ImGui::BeginTabBar("##CodeTabs")) {
+            for (std::size_t i = 0; i < documents.size(); ++i) {
+                std::string label = documents[i].relativePath + (documents[i].dirty ? " *" : "");
+
+                ImGuiTabItemFlags flags = ImGuiTabItemFlags_None;
+
+                if (state.requestCodeTabSelection && i == state.activeCodeTab) {
+                    flags |= ImGuiTabItemFlags_SetSelected;
+                }
+
+                if (ImGui::BeginTabItem(label.c_str(), nullptr, flags)) {
+                    state.activeCodeTab = i;
+                    ImGui::EndTabItem();
+                }
+            }
+
+            state.requestCodeTabSelection = false;
+
+            ImGui::EndTabBar();
+        }
+        BEditorCodeDocument &document = documents[state.activeCodeTab];
+        if (ImGui::SmallButton("SAVE")) {
+            std::string error;
+            bool ok = state.codeWorkspace.Save(state.activeCodeTab, error);
+            SetMessage(state, ok ? "Source file saved." : error.c_str(), !ok);
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("RELOAD")) {
+            std::string error;
+            bool ok = state.codeWorkspace.Reload(state.activeCodeTab, error);
+            SetMessage(state, ok ? "Source file reloaded." : error.c_str(), !ok);
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("CLOSE")) {
+            std::string error;
+            bool ok = state.codeWorkspace.Close(state.activeCodeTab, false, error);
+            SetMessage(state, ok ? "Source tab closed." : error.c_str(), !ok);
+            if (ok) {
+                if (state.activeCodeTab)
+                    --state.activeCodeTab;
+                ImGui::EndGroup();
+                ImGui::End();
+                return;
+            }
+        }
+        ImGui::SameLine();
+        static char renamePath[512]{};
+        if (ImGui::SmallButton("RENAME")) {
+            std::snprintf(renamePath, sizeof(renamePath), "%s", document.relativePath.c_str());
+            ImGui::OpenPopup("RENAME PROJECT FILE");
+        }
+        if (ImGui::BeginPopup("RENAME PROJECT FILE")) {
+            ImGui::InputText("New Project path", renamePath, sizeof(renamePath));
+            if (ImGui::Button("APPLY")) {
+                std::string error;
+                std::string oldPath = document.relativePath;
+                bool ok = state.codeWorkspace.RenameFile(oldPath, renamePath, error);
+                SetMessage(state, ok ? "Project file renamed." : error.c_str(), !ok);
+                if (ok)
+                    ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("DELETE"))
+            ImGui::OpenPopup("DELETE PROJECT FILE");
+        if (ImGui::BeginPopup("DELETE PROJECT FILE")) {
+            ImGui::TextWrapped("Delete %s?", document.relativePath.c_str());
+            if (ImGui::Button("DELETE")) {
+                std::string error;
+                std::string path = document.relativePath;
+                bool ok = state.codeWorkspace.Close(state.activeCodeTab, false, error) &&
+                          state.codeWorkspace.DeleteFile(path, error);
+                SetMessage(state, ok ? "Project file deleted." : error.c_str(), !ok);
+                if (ok) {
+                    if (state.activeCodeTab)
+                        --state.activeCodeTab;
+                    ImGui::CloseCurrentPopup();
+                    ImGui::EndPopup();
+                    ImGui::EndGroup();
+                    ImGui::End();
+                    return;
+                }
+            }
+            ImGui::EndPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("EXTERNAL EDITOR")) {
+            std::string error;
+            bool ok = BEditorPlatform_OpenExternalEditor(state.codeWorkspace.Root() /
+                                                             document.relativePath,
+                                                         state.preferences.externalEditor, error);
+            SetMessage(state, ok ? "Opened external editor." : error.c_str(), !ok);
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("REVEAL")) {
+            std::string error;
+            bool ok = BEditorPlatform_RevealFile(state.codeWorkspace.Root() / document.relativePath,
+                                                 error);
+            SetMessage(state, ok ? "Revealed Project file." : error.c_str(), !ok);
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("TERMINAL")) {
+            std::string error;
+            bool ok = BEditorPlatform_OpenTerminal(state.codeWorkspace.Root(),
+                                                   state.preferences.terminal, error);
+            SetMessage(state, ok ? "Opened Project terminal." : error.c_str(), !ok);
+        }
+        ImGui::SetNextItemWidth(180.0f);
+        ImGui::InputTextWithHint("##CodeFind", "Find", state.codeFind, sizeof(state.codeFind));
+        ImGui::SameLine();
+        if (ImGui::SmallButton("FIND NEXT") && state.codeFind[0]) {
+            std::size_t start = state.codeSearchOffset;
+            std::size_t found = document.text.find(state.codeFind, start);
+            if (found == std::string::npos && start)
+                found = document.text.find(state.codeFind);
+            if (found == std::string::npos)
+                SetMessage(state, "Search text was not found.", true);
+            else {
+                state.codeCursorTarget = static_cast<int>(found);
+                state.codeSearchOffset = found + std::strlen(state.codeFind);
+            }
+        }
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(150.0f);
+        ImGui::InputTextWithHint("##CodeReplace", "Replace with", state.codeReplace,
+                                 sizeof(state.codeReplace));
+        ImGui::SameLine();
+        if (ImGui::SmallButton("REPLACE NEXT") && state.codeFind[0]) {
+            std::size_t found = document.text.find(state.codeFind, state.codeSearchOffset);
+            if (found == std::string::npos)
+                found = document.text.find(state.codeFind);
+            if (found == std::string::npos)
+                SetMessage(state, "Search text was not found.", true);
+            else {
+                std::string replaced = document.text;
+                replaced.replace(found, std::strlen(state.codeFind), state.codeReplace);
+                std::string error;
+                if (!state.codeWorkspace.SetText(state.activeCodeTab, replaced, error))
+                    SetMessage(state, error.c_str(), true);
+                state.codeSearchOffset = found + std::strlen(state.codeReplace);
+                state.codeCursorTarget = static_cast<int>(state.codeSearchOffset);
+            }
+        }
+        ImGui::SameLine();
+        bool indentLine = ImGui::SmallButton("INDENT LINE");
+        ImGui::SameLine();
+        bool unindentLine = ImGui::SmallButton("UNINDENT LINE");
+        if (indentLine || unindentLine) {
+            std::size_t cursor =
+                std::min<std::size_t>(state.codeCursorPosition, document.text.size());
+            std::size_t lineStart = cursor == 0 ? 0 : document.text.rfind('\n', cursor - 1) + 1;
+            std::string changed = document.text;
+            if (unindentLine) {
+                std::size_t count = 0;
+                while (count < 4 && lineStart + count < changed.size() &&
+                       changed[lineStart + count] == ' ')
+                    ++count;
+                changed.erase(lineStart, count);
+                state.codeCursorTarget =
+                    static_cast<int>(cursor - std::min(cursor - lineStart, count));
+            } else {
+                changed.insert(lineStart, "    ");
+                state.codeCursorTarget = static_cast<int>(cursor + 4);
+            }
+            std::string error;
+            if (!state.codeWorkspace.SetText(state.activeCodeTab, changed, error))
+                SetMessage(state, error.c_str(), true);
+        }
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(90.0f);
+        ImGui::InputInt("##GoLine", &state.codeGoToLine, 0, 0);
+        ImGui::SameLine();
+        if (ImGui::SmallButton("GO TO LINE")) {
+            int line = std::max(1, state.codeGoToLine);
+            std::size_t position = 0;
+            for (int current = 1; current < line && position < document.text.size(); ++current) {
+                position = document.text.find('\n', position);
+                if (position == std::string::npos) {
+                    position = document.text.size();
+                    break;
+                }
+                ++position;
+            }
+            state.codeCursorTarget = static_cast<int>(position);
+        }
+        if (document.externalConflict)
+            ImGui::TextColored(BEditorTheme_GetPalette().error,
+                               "EXTERNAL CONFLICT // Save is blocked");
+        int lineCount =
+            1 + static_cast<int>(std::count(document.text.begin(), document.text.end(), '\n'));
+        std::string extension = fs::path(document.relativePath).extension().string();
+        const char *language = extension == ".cpp" || extension == ".hpp" ? "C++"
+                               : extension == ".c" || extension == ".h"   ? "C"
+                               : extension == ".json"                     ? "JSON"
+                               : fs::path(document.relativePath).filename() == "CMakeLists.txt" ||
+                                       extension == ".cmake"
+                                   ? "CMAKE"
+                                   : "TEXT";
+        int cursorLine =
+            1 + static_cast<int>(std::count(
+                    document.text.begin(),
+                    document.text.begin() +
+                        std::min<std::size_t>(state.codeCursorPosition, document.text.size()),
+                    '\n'));
+        int bracketMatch = -1;
+        std::size_t bracketAt =
+            std::min<std::size_t>(state.codeCursorPosition, document.text.size());
+        if (bracketAt == document.text.size() ||
+            std::string("()[]{}").find(document.text[bracketAt]) == std::string::npos) {
+            if (bracketAt > 0)
+                --bracketAt;
+        }
+        if (bracketAt < document.text.size()) {
+            char open = document.text[bracketAt], close = 0;
+            int direction = 1;
+            if (open == '(')
+                close = ')';
+            else if (open == '[')
+                close = ']';
+            else if (open == '{')
+                close = '}';
+            else if (open == ')') {
+                close = '(';
+                direction = -1;
+            } else if (open == ']') {
+                close = '[';
+                direction = -1;
+            } else if (open == '}') {
+                close = '{';
+                direction = -1;
+            }
+            if (close) {
+                int depth = 0;
+                for (int p = static_cast<int>(bracketAt);
+                     p >= 0 && p < static_cast<int>(document.text.size()); p += direction) {
+                    if (document.text[p] == open)
+                        ++depth;
+                    else if (document.text[p] == close && --depth == 0) {
+                        bracketMatch = p;
+                        break;
+                    }
+                }
+            }
+        }
+        ImGui::TextDisabled("%s // LINE %d OF %d", language, cursorLine, lineCount);
+        if (bracketMatch >= 0) {
+            ImGui::SameLine();
+            if (ImGui::SmallButton("JUMP MATCHING BRACKET"))
+                state.codeCursorTarget = bracketMatch;
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton(state.codeSyntaxPreview ? "EDIT MODE" : "SYNTAX PREVIEW"))
+            state.codeSyntaxPreview = !state.codeSyntaxPreview;
+        if (state.codeSyntaxPreview) {
+            ImGui::BeginChild("##SyntaxPreview", ImGui::GetContentRegionAvail(), true,
+                              ImGuiWindowFlags_HorizontalScrollbar);
+            std::istringstream lines(document.text);
+            std::string line;
+            int number = 1;
+            while (std::getline(lines, line)) {
+                std::size_t first = line.find_first_not_of(" \t");
+                std::string trimmed = first == std::string::npos ? "" : line.substr(first);
+                ImVec4 color = BEditorTheme_GetPalette().text;
+                if (trimmed.rfind("//", 0) == 0 || trimmed.rfind("#", 0) == 0)
+                    color = trimmed.rfind("//", 0) == 0 ? BEditorTheme_GetPalette().textMuted
+                                                        : BEditorTheme_GetPalette().violet;
+                else if (line.find('"') != std::string::npos)
+                    color = BEditorTheme_GetPalette().cyan;
+                ImGui::TextDisabled("%5d", number++);
+                ImGui::SameLine();
+                ImGui::TextColored(color, "%s", line.c_str());
+            }
+            ImGui::EndChild();
+            ImGui::EndGroup();
+            ImGui::End();
+            return;
+        }
+        std::vector<char> buffer(1024 * 1024 + 1, 0);
+        std::memcpy(buffer.data(), document.text.data(),
+                    std::min(document.text.size(), buffer.size() - 1));
+        ImVec2 available = ImGui::GetContentRegionAvail();
+        float gutterWidth = ImGui::CalcTextSize("000000").x + 12.0f;
+        ImGui::BeginChild("##LineNumbers", ImVec2(gutterWidth, available.y), false,
+                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::SetCursorPosY(-state.codeScrollY);
+        for (int line = 1; line <= lineCount; ++line)
+            ImGui::TextDisabled("%5d", line);
+        ImGui::EndChild();
+        ImGui::SameLine();
+        struct Navigation {
+            int *target;
+            int *cursor;
+        } navigationState{&state.codeCursorTarget, &state.codeCursorPosition};
+        auto navigation = [](ImGuiInputTextCallbackData *data) -> int {
+            Navigation *value = static_cast<Navigation *>(data->UserData);
+            if (*value->target >= 0) {
+                data->CursorPos = *value->target;
+                data->SelectionStart = *value->target;
+                data->SelectionEnd = *value->target;
+                *value->target = -1;
+            }
+            *value->cursor = data->CursorPos;
+            return 0;
+        };
+        if (ImGui::InputTextMultiline("##CodeText", buffer.data(), buffer.size(),
+                                      ImVec2(ImGui::GetContentRegionAvail().x, available.y),
+                                      ImGuiInputTextFlags_AllowTabInput |
+                                          ImGuiInputTextFlags_CallbackAlways,
+                                      navigation, &navigationState)) {
+            std::string error;
+            if (!state.codeWorkspace.SetText(state.activeCodeTab, buffer.data(), error))
+                SetMessage(state, error.c_str(), true);
+        }
+        if (ImGuiInputTextState *input = ImGui::GetInputTextState(ImGui::GetItemID()))
+            state.codeScrollY = input->Scroll.y;
+    }
+    ImGui::EndGroup();
+    ImGui::End();
+}
+
+static void DrawEditorShell(EditorState &state)
 {
     double currentTime = GetTime();
+    state.terminalService.Update();
 
-    if (currentTime >= state.nextGitRefreshTime)
-    {
+    if (currentTime >= state.nextGitRefreshTime) {
         state.gitInitialized = BEditorGit_IsInitialized(state.manifestPath.parent_path());
         state.nextGitRefreshTime = currentTime + 1.0;
+    }
+
+    if (currentTime >= state.nextAssetRefreshTime) {
+        std::uint64_t previousRevision = state.assetService.Revision();
+        std::vector<BEditorAssetMove> moves;
+        std::string error;
+        if (!state.assetService.Refresh(moves, error) || !ApplyAssetMoves(state, moves, error))
+            SetMessage(state, error.c_str(), true);
+        if (state.assetService.Revision() != previousRevision) {
+            BAsciiDrawList_Destroy(&state.viewportDrawList);
+            BTextSpriteCache_Destroy(&state.viewportSpriteCache);
+            state.viewportRevision = 0;
+        }
+        state.nextAssetRefreshTime = currentTime + 1.0;
+    }
+    if (currentTime >= state.nextCodeRefreshTime) {
+        std::string error;
+        if (!state.codeWorkspace.PollExternalChanges(error) && !error.empty())
+            SetMessage(state, error.c_str(), true);
+        state.nextCodeRefreshTime = currentTime + 1.0;
     }
 
     state.buildService.Update();
     BEditorBuildState buildState = state.buildService.State();
 
-    if (buildState != state.observedBuildState)
-    {
+    if (buildState != state.observedBuildState) {
         state.observedBuildState = buildState;
 
-        if (buildState == BEditorBuildState::Failed)
-        {
+        if (buildState == BEditorBuildState::Failed) {
             state.uiConfig.showBuildOutput = true;
             state.uiConfig.showProblems = true;
-            SetMessage(state, "Build or game process failed. Inspect Build Output and Problems.", true);
-        }
-        else if (buildState == BEditorBuildState::BuildSucceeded)
+            SetMessage(state, "Build or game process failed. Inspect Build Output and Problems.",
+                       true);
+        } else if (buildState == BEditorBuildState::BuildSucceeded)
             SetMessage(state, "Project build succeeded.", false);
         else if (buildState == BEditorBuildState::Running)
             SetMessage(state, "Project is running.", false);
@@ -745,54 +1534,115 @@ static void DrawEditorShell(EditorState& state)
 
     DrawEditorMenuBar(state);
 
-    if (state.workspaceSession.IsLoaded() &&
-        ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S, false))
-    {
+    if (state.workspaceSession.IsLoaded() && ImGui::GetIO().KeyCtrl &&
+        ImGui::IsKeyPressed(ImGuiKey_S, false)) {
         SaveWorkspace(state);
     }
+    if (state.workspaceSession.IsLoaded() && ImGui::GetIO().KeyCtrl &&
+        ImGui::IsKeyPressed(ImGuiKey_Z, false)) {
+        std::string error;
+        if (!state.workspaceSession.Undo(error))
+            SetMessage(state, error.c_str(), true);
+    }
+    if (state.workspaceSession.IsLoaded() && ImGui::GetIO().KeyCtrl &&
+        ImGui::IsKeyPressed(ImGuiKey_Y, false)) {
+        std::string error;
+        if (!state.workspaceSession.Redo(error))
+            SetMessage(state, error.c_str(), true);
+    }
+    if (state.workspaceSession.IsLoaded() && ImGui::GetIO().KeyCtrl &&
+        ImGui::IsKeyPressed(ImGuiKey_D, false)) {
+        std::string error;
+        bool ok = state.workspaceSession.DuplicateSelectedEntity(error);
+        SetMessage(state, ok ? "Entity duplicated." : error.c_str(), !ok);
+    }
     ImGuiID dockspaceId = ImGui::GetID("BasilEditorDockspace");
-    ImGui::DockSpaceOverViewport(
-        dockspaceId,
-        ImGui::GetMainViewport(),
-        ImGuiDockNodeFlags_PassthruCentralNode
-    );
+    ImGui::DockSpaceOverViewport(dockspaceId, ImGui::GetMainViewport(),
+                                 ImGuiDockNodeFlags_PassthruCentralNode);
 
-    if (state.resetDockLayout)
-    {
+    if (state.resetDockLayout) {
         BuildDefaultDockLayout(dockspaceId, state.uiConfig);
         state.resetDockLayout = false;
     }
 
     DrawProjectDetails(state);
     DrawWorkspaceViewport(state);
+    DrawCodeEditor(state);
     BEditorPanelFeedback feedback = BEditorPanels_DrawScaffolds(
-        state.uiConfig,
-        state.project,
-        state.workspaceSession,
-        state.buildService,
-        state.manifestPath.parent_path(),
-        state.message,
-        state.messageIsError
-    );
+        state.uiConfig, state.project, state.workspaceSession, state.assetService,
+        state.componentRegistry, state.codeWorkspace, state.terminalService,
+        state.preferences.terminal, state.textSpriteDocument, state.buildService,
+        state.manifestPath.parent_path(), state.message, state.messageIsError);
 
     if (!feedback.message.empty())
         SetMessage(state, feedback.message.c_str(), feedback.isError);
+    if (!feedback.openFile.empty()) {
+        std::string error;
+        if (state.codeWorkspace.OpenFile(feedback.openFile, error)) {
+            state.uiConfig.showCodeEditor = true;
+            const auto &documents = state.codeWorkspace.Documents();
+            for (std::size_t i = 0; i < documents.size(); ++i)
+                if (documents[i].relativePath == feedback.openFile)
+                    state.activeCodeTab = i;
+            if (feedback.openLine > 0) {
+                state.codeGoToLine = feedback.openLine;
+                std::size_t position = 0;
+                const std::string &text = documents[state.activeCodeTab].text;
+                for (int line = 1; line < feedback.openLine && position < text.size(); ++line) {
+                    position = text.find('\n', position);
+                    if (position == std::string::npos) {
+                        position = text.size();
+                        break;
+                    }
+                    ++position;
+                }
+                state.codeCursorTarget = static_cast<int>(position);
+            }
+        } else
+            SetMessage(state, error.c_str(), true);
+    }
+
+    if (state.showUIConfigManager) {
+        if (ImGui::Begin("UI CONFIG MANAGER", &state.showUIConfigManager)) {
+            ImGui::TextUnformatted("Save a reusable global default or an explicit "
+                                   "Project-owned layout.");
+            ImGui::TextDisabled("GLOBAL // %s", state.globalUIConfigPath.string().c_str());
+            ImGui::TextDisabled("PROJECT // .basil/editor-ui.basilui.json");
+            ImGui::Separator();
+            if (ImGui::Button("SAVE GLOBAL DEFAULT", ImVec2(-1.0f, 0.0f))) {
+                CaptureUIConfigLayout(state);
+                std::string error;
+                bool ok =
+                    BEditorUIConfig_Save(state.globalUIConfigPath.string(), state.uiConfig, error);
+                SetMessage(state, ok ? "Global UI Config saved." : error.c_str(), !ok);
+            }
+            if (ImGui::Button("SAVE FOR THIS PROJECT", ImVec2(-1.0f, 0.0f))) {
+                CaptureUIConfigLayout(state);
+                fs::path path =
+                    state.manifestPath.parent_path() / ".basil" / "editor-ui.basilui.json";
+                std::string error;
+                bool ok = BEditorUIConfig_Save(path.string(), state.uiConfig, error);
+                SetMessage(state, ok ? "Project UI Config saved." : error.c_str(), !ok);
+            }
+            if (ImGui::Button("RESET MAINTAINED DEFAULT", ImVec2(-1.0f, 0.0f))) {
+                state.uiConfig = BEditorUIConfig_Default();
+                state.resetDockLayout = true;
+                SetMessage(state, "Maintained default UI Config restored.", false);
+            }
+        }
+        ImGui::End();
+    }
 
     if (state.confirmProjectClose)
-        ImGui::OpenPopup("UNSAVED WORKSPACE CHANGES");
+        ImGui::OpenPopup("UNSAVED PROJECT CHANGES");
 
-    if (ImGui::BeginPopupModal(
-        "UNSAVED WORKSPACE CHANGES",
-        nullptr,
-        ImGuiWindowFlags_AlwaysAutoResize
-    ))
-    {
-        ImGui::TextUnformatted("The active Workspace has unsaved changes.");
+    if (ImGui::BeginPopupModal("UNSAVED PROJECT CHANGES", nullptr,
+                               ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("The Project has unsaved authoring changes.");
         ImGui::TextDisabled("Save before returning to the Project Browser, discard, or cancel.");
         ImGui::Spacing();
 
-        if (ImGui::Button("SAVE + CLOSE", ImVec2(170.0f, 0.0f)) && SaveWorkspace(state))
-        {
+        if (ImGui::Button("SAVE + CLOSE", ImVec2(170.0f, 0.0f)) && SaveWorkspace(state)) {
             state.confirmProjectClose = false;
             ImGui::CloseCurrentPopup();
             ReturnToProjectBrowser(state);
@@ -800,10 +1650,16 @@ static void DrawEditorShell(EditorState& state)
 
         ImGui::SameLine();
 
-        if (ImGui::Button("DISCARD", ImVec2(120.0f, 0.0f)))
-        {
+        if (ImGui::Button("DISCARD", ImVec2(120.0f, 0.0f))) {
+            std::string ignored;
+            state.workspaceSession.DiscardRecovery(ignored);
             state.confirmProjectClose = false;
-            state.workspaceSession = BEditorWorkspaceSession{};
+            state.workspaceSession.Reset();
+            state.assetService.Reset();
+            state.textSpriteDocument.Reset();
+            state.codeWorkspace = BEditorCodeWorkspace{};
+            state.terminalService.Stop();
+            ResetViewportPreview(state);
             state.projectOpen = false;
             SetWindowTitle("BasilEditor");
             ImGui::CloseCurrentPopup();
@@ -811,32 +1667,89 @@ static void DrawEditorShell(EditorState& state)
 
         ImGui::SameLine();
 
-        if (ImGui::Button("CANCEL", ImVec2(100.0f, 0.0f)))
-        {
+        if (ImGui::Button("CANCEL", ImVec2(100.0f, 0.0f))) {
             state.confirmProjectClose = false;
             ImGui::CloseCurrentPopup();
         }
 
         ImGui::EndPopup();
     }
+
+    if (state.confirmRecovery)
+        ImGui::OpenPopup("WORKSPACE RECOVERY AVAILABLE");
+    if (ImGui::BeginPopupModal("WORKSPACE RECOVERY AVAILABLE", nullptr,
+                               ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("A newer recovery snapshot exists for this Workspace.");
+        ImGui::TextDisabled("Restore it as unsaved work, or discard the snapshot.");
+        if (ImGui::Button("RESTORE", ImVec2(140.0f, 0.0f))) {
+            std::string error;
+            bool ok = state.workspaceSession.RestoreRecovery(error);
+            if (ok) {
+                state.confirmRecovery = false;
+                SetMessage(state, "Workspace recovery restored as unsaved work.", false);
+                ImGui::CloseCurrentPopup();
+            } else
+                SetMessage(state, error.c_str(), true);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("DISCARD", ImVec2(140.0f, 0.0f))) {
+            std::string error;
+            bool ok = state.workspaceSession.DiscardRecovery(error);
+            if (ok) {
+                state.confirmRecovery = false;
+                SetMessage(state, "Workspace recovery discarded.", false);
+                ImGui::CloseCurrentPopup();
+            } else
+                SetMessage(state, error.c_str(), true);
+        }
+        ImGui::EndPopup();
+    }
+
+    if (state.confirmApplicationClose)
+        ImGui::OpenPopup("EXIT WITH UNSAVED CHANGES");
+    if (ImGui::BeginPopupModal("EXIT WITH UNSAVED CHANGES", nullptr,
+                               ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("The Project has unsaved authoring changes.");
+        if (ImGui::Button("SAVE + EXIT", ImVec2(150.0f, 0.0f)) && SaveWorkspace(state)) {
+            state.confirmApplicationClose = false;
+            state.exitApproved = true;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("DISCARD + EXIT", ImVec2(150.0f, 0.0f))) {
+            std::string ignored;
+            state.workspaceSession.DiscardRecovery(ignored);
+            state.confirmApplicationClose = false;
+            state.exitApproved = true;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("CANCEL", ImVec2(100.0f, 0.0f))) {
+            state.confirmApplicationClose = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
 }
 
-static int RunEditor(int argumentCount, char** arguments)
+static int RunEditor(int argumentCount, char **arguments)
 {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
     InitWindow(1100, 700, "BasilEditor");
     ApplyApplicationIcons();
     SetTargetFPS(60);
+    SetExitKey(KEY_NULL);
 
     EditorState state;
     state.recentPath = EditorDataDirectory() / "recent-projects.json";
     state.preferencesPath = EditorDataDirectory() / "preferences.json";
+    state.globalUIConfigPath = EditorDataDirectory() / "ui-configs" / "default.basilui.json";
+    std::string closeInterceptorError;
+    bool closeInterceptorInstalled =
+        BEditorPlatform_InstallCloseInterceptor(GetWindowHandle(), closeInterceptorError);
     std::string preferencesError;
-    bool preferencesLoaded = BEditorPreferences_Load(
-        state.preferencesPath.string(),
-        state.preferences,
-        preferencesError
-    );
+    bool preferencesLoaded = BEditorPreferences_Load(state.preferencesPath.string(),
+                                                     state.preferences, preferencesError);
 
     rlImGuiBeginInitImGui();
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -847,26 +1760,38 @@ static int RunEditor(int argumentCount, char** arguments)
     snprintf(state.parentDirectory, sizeof(state.parentDirectory), "%s", defaultDirectory.c_str());
 
     BProjectError recentError{};
-    bool recentProjectsLoaded = BRecentProjects_Load(
-        state.recentPath.string().c_str(),
-        &state.recent,
-        &recentError
-    );
+    bool recentProjectsLoaded =
+        BRecentProjects_Load(state.recentPath.string().c_str(), &state.recent, &recentError);
 
     if (!preferencesLoaded)
         SetMessage(state, preferencesError.c_str(), true);
     else if (!recentProjectsLoaded)
         SetMessage(state, recentError.message, true);
     else if (!bundledFontsLoaded)
-        SetMessage(state, "JetBrains Mono could not be loaded; BasilEditor is using its fallback font.", true);
+        SetMessage(state,
+                   "JetBrains Mono could not be loaded; BasilEditor is using its "
+                   "fallback font.",
+                   true);
+    else if (!closeInterceptorInstalled)
+        SetMessage(state, closeInterceptorError.c_str(), true);
 
     if (argumentCount > 1)
         OpenProject(state, arguments[1]);
 
-    while (!WindowShouldClose())
-    {
+    while (!state.exitApproved) {
+        if (state.workspaceSession.IsLoaded() && state.workspaceSession.IsDirty()) {
+            if (state.recoveryObservedRevision != state.workspaceSession.Revision()) {
+                state.recoveryObservedRevision = state.workspaceSession.Revision();
+                state.recoveryDueTime = GetTime() + 10.0;
+            } else if (state.recoveryDueTime > 0.0 && GetTime() >= state.recoveryDueTime) {
+                std::string recoveryError;
+                if (!state.workspaceSession.SaveRecovery(recoveryError))
+                    SetMessage(state, recoveryError.c_str(), true);
+                state.recoveryDueTime = 0.0;
+            }
+        }
         BeginDrawing();
-        ClearBackground(Color{ 22, 25, 31, 255 });
+        ClearBackground(Color{22, 25, 31, 255});
         rlImGuiBegin();
         if (state.projectOpen)
             DrawEditorShell(state);
@@ -874,25 +1799,33 @@ static int RunEditor(int argumentCount, char** arguments)
             DrawProjectBrowser(state);
         rlImGuiEnd();
         EndDrawing();
+
+        if (BEditorPlatform_TakeCloseRequest() || WindowShouldClose()) {
+            if (state.buildService.IsBusy())
+                SetMessage(state, "Stop the active build or game before exiting BasilEditor.",
+                           true);
+            else if (state.workspaceSession.IsDirty() || state.textSpriteDocument.IsDirty() ||
+                     state.codeWorkspace.HasDirtyDocuments())
+                state.confirmApplicationClose = true;
+            else
+                state.exitApproved = true;
+        }
     }
 
     rlImGuiShutdown();
+    ResetViewportPreview(state);
+    BEditorPlatform_RemoveCloseInterceptor();
     CloseWindow();
     return 0;
 }
 
-int main(int argumentCount, char** arguments)
+int main(int argumentCount, char **arguments)
 {
-    try
-    {
+    try {
         return RunEditor(argumentCount, arguments);
-    }
-    catch (const std::exception& exception)
-    {
+    } catch (const std::exception &exception) {
         std::fprintf(stderr, "BasilEditor fatal error: %s\n", exception.what());
-    }
-    catch (...)
-    {
+    } catch (...) {
         std::fprintf(stderr, "BasilEditor fatal error: unknown exception\n");
     }
 

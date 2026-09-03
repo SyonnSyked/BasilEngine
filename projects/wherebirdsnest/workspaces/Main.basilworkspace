@@ -1,0 +1,107 @@
+{
+	"schemaVersion":	3,
+	"name":	"Ash Basin Test Room",
+	"identifier":	"Main",
+	"nextEntityId":	"5",
+	"entities":	[{
+			"id":	"entity-0000000000000001",
+			"name":	"Ash Basin",
+			"enabled":	true,
+			"components":	[{
+					"type":	"basil.transform2d",
+					"version":	1,
+					"required":	true,
+					"data":	{
+						"x":	-24,
+						"y":	-12
+					}
+				}, {
+					"type":	"basil.ascii-renderable",
+					"version":	1,
+					"required":	true,
+					"data":	{
+						"source":	{
+							"kind":	"text-sprite",
+							"path":	"assets/arena.txt"
+						},
+						"foreground":	"#536B72FF",
+						"background":	"#05090EFF",
+						"layer":	-10,
+						"anchor":	"top-left",
+						"visible":	true,
+						"transparentSpaces":	true
+					}
+				}]
+		}, {
+			"id":	"entity-0000000000000002",
+			"name":	"Wayfinder",
+			"enabled":	true,
+			"components":	[{
+					"type":	"basil.transform2d",
+					"version":	1,
+					"required":	true,
+					"data":	{
+						"x":	0,
+						"y":	0
+					}
+				}, {
+					"type":	"basil.ascii-renderable",
+					"version":	1,
+					"required":	true,
+					"data":	{
+						"source":	{
+							"kind":	"text-sprite",
+							"path":	"assets/player.txt"
+						},
+						"foreground":	"#00E5FFFF",
+						"background":	"#00000000",
+						"layer":	10,
+						"anchor":	"bottom-center",
+						"visible":	true,
+						"transparentSpaces":	true
+					}
+				}]
+		}, {
+			"id":	"entity-0000000000000003",
+			"name":	"Silt Horror",
+			"enabled":	true,
+			"components":	[{
+					"type":	"basil.transform2d",
+					"version":	1,
+					"required":	true,
+					"data":	{
+						"x":	8,
+						"y":	3
+					}
+				}, {
+					"type":	"basil.ascii-renderable",
+					"version":	1,
+					"required":	true,
+					"data":	{
+						"source":	{
+							"kind":	"glyph",
+							"glyph":	"D"
+						},
+						"foreground":	"#B784F7FF",
+						"background":	"#120C1FFF",
+						"layer":	5,
+						"anchor":	"center",
+						"visible":	true,
+						"transparentSpaces":	true
+					}
+				}]
+		}, {
+			"id":	"entity-0000000000000004",
+			"name":	"Encounter Origin",
+			"enabled":	true,
+			"components":	[{
+					"type":	"basil.transform2d",
+					"version":	1,
+					"required":	true,
+					"data":	{
+						"x":	-8,
+						"y":	4
+					}
+				}]
+		}]
+}

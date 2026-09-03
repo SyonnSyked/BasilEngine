@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "name": "Previous Workspace",
+  "identifier": "Previous",
+  "nextEntityId": "2",
+  "entities": [
+    {
+      "id": "entity-0000000000000001",
+      "name": "Previous Entity",
+      "enabled": true
+    }
+  ]
+}

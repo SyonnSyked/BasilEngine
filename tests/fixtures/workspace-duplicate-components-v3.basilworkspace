@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 3,
+  "name": "Duplicate Components",
+  "identifier": "DuplicateComponents",
+  "nextEntityId": "2",
+  "entities": [
+    {
+      "id": "entity-0000000000000001",
+      "name": "Duplicate Entity",
+      "enabled": true,
+      "components": [
+        {
+          "type": "basil.transform2d",
+          "version": 1,
+          "required": true,
+          "data": { "x": 0, "y": 0 }
+        },
+        {
+          "type": "basil.transform2d",
+          "version": 1,
+          "required": true,
+          "data": { "x": 1, "y": 1 }
+        }
+      ]
+    }
+  ]
+}

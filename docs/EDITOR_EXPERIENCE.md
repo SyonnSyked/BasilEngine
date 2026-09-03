@@ -60,11 +60,11 @@ Workspace, Open Workspace, Save Workspace, Active Workspace, Workspace
 Hierarchy, and loading an additional Workspace.
 
 Multiple/additive Workspaces are intended, but their exact runtime and ownership
-semantics remain **unresolved**. Workspace schema version 2 is **implemented**
+semantics remain **unresolved**. Workspace schema version 3 is **implemented**
 as JSON using `.basilworkspace`. It supports a flat list of entities with stable
-immutable IDs, editable names, and enabled state. Component serialization,
-parenting, and runtime ownership remain deliberately undefined until their
-reusable runtime models exist.
+immutable IDs, editable names, enabled state, and versioned Transform2D/ASCII
+Renderable components. Shared runtime ownership and interpretation are
+implemented; parenting remains deliberately deferred.
 
 ### Viewport
 
@@ -127,6 +127,11 @@ The core panel set is Workspace Hierarchy, Inspector, Asset Browser, Console,
 Build Output, Problems, Terminal, and Code Editor. The Code Editor remains
 planned; the other windows exist at scaffold level or better.
 
+The dockable Text Sprite Editor is **implemented** as a focused asset tool. It
+provides bounded ASCII editing, dimensions, transparent-space and color preview,
+safe save, and explicit external-change handling. Advanced painting remains
+deferred.
+
 The full-viewport dockspace, main Project/Workspace/View command surface,
 independently dockable Project Details and Workspace Viewport windows, stable
 core-panel identities, and resettable default layout are **implemented**. The
@@ -134,18 +139,20 @@ default reserves the dominant center for the Viewport, side regions for Project
 Details/Hierarchy and Inspector, and a lower tab region for operational panels.
 Workspace Hierarchy, Inspector, Assets, Console, Build Output, Problems, and
 Terminal scaffold windows are also **implemented** and independently dockable.
-Hierarchy loads the startup Workspace and owns entity creation and selection;
-Inspector edits the selected entity's name and enabled state. Assets safely
-lists the real top-level asset directory, and Console reports current editor
-status. Build Output and Problems are connected to the asynchronous build
-service. Terminal still states clearly that shell hosting is not connected.
+Hierarchy loads the startup Workspace and creates/selects glyph, Text Sprite,
+and empty entities. Inspector edits identity, enabled state, position, source,
+colors, layer, anchor, visibility, and transparent spaces through shared C
+mutation APIs. Assets safely lists the real top-level asset directory, and
+Console reports current editor status. Build Output and Problems are connected
+to the asynchronous build service. Terminal still states clearly that shell
+hosting is not connected.
 
 Save Workspace and Ctrl+S are implemented with full-model validation,
 temporary-file writing, and a recovery `.bak`. The editor reports clean/dirty
 state and guards the transition back to the Project Browser with Save, Discard,
-and Cancel choices. Additional Workspace creation/opening, undo/redo, component
-editing, parenting, and protection around every operating-system shutdown path
-remain planned.
+and Cancel choices. Undo/redo, duplication, recovery snapshots, and native
+Windows shutdown protection are **implemented**. Additional Workspace
+creation/opening, parenting, and non-Windows shutdown adapters remain planned.
 
 ## UI Configs
 
@@ -161,10 +168,10 @@ The following behavior is **confirmed**:
 - Users may select a global default; Projects may explicitly override it.
 - Reset to the maintained BasilEditor default remains available.
 
-The versioned in-memory default UI Config model, validated layout ratios, stable
-panel registry, and Reset Default UI Config action are **implemented**. Saving,
-loading, importing, and exporting JSON UI Config files remain **planned**; raw
-ImGui docking state is not being presented as the portable format.
+The versioned default model, validated layout ratios, stable panel registry,
+Reset action, JSON saving/loading, global and explicit Project ownership,
+import/export, and UI Config Manager are **implemented**. Raw ImGui docking state
+is not presented as the portable format.
 
 The public JSON should describe stable panel identities, visibility, and
 editor-owned layout concepts. Raw ImGui state must not be the only long-lived
@@ -184,11 +191,21 @@ The following direction is **confirmed**:
 - External edits must not break file watching, diagnostics, builds, running, or
   future hot reload.
 
-The first practical internal editor is **planned** to support multiple tabs,
-line numbers, C/C++/CMake/JSON/text syntax highlighting, find/replace, go to
-line, unsaved-change handling, compiler diagnostics, file-and-line navigation,
-indent/format commands, Open in External Editor, and Reveal in Terminal/File
-Browser.
+The first practical internal editor is **in implementation**. Its shared,
+Project-contained document service and initial dockable Project tree/multi-tab
+editing surface are implemented with dirty-state, Save All, close/build
+protection, transactional writes, and external-change conflict detection. It
+also provides find/replace, go-to-line, compiler-problem file navigation, file
+creation, Open in External Editor, Reveal in File Browser, and a Project-root
+terminal launch bridge. External editor and terminal executable settings persist
+in the global editor preferences and remain optionally overridable with
+`BASIL_EXTERNAL_EDITOR` and `BASIL_TERMINAL`. Clean-file rename/delete/reload,
+protected tab closing, and precise compiler diagnostic line placement are also
+implemented. The built-in editor now has a scroll-synchronized line-number
+gutter, language identification, a restrained syntax-colored inspection mode,
+current-line indent/unindent, live cursor/line state, and matching-bracket jump.
+The Terminal panel now hosts one persistent, bounded Project-root shell process
+with command input, captured output, clear, restart, and controlled shutdown.
 
 Language-server completion, semantic navigation, refactoring, and deeper IDE
 features are **deferred** until the core workflow is useful. External-editor
@@ -222,8 +239,8 @@ are planned, not implemented.
 
 ## Development play
 
-The first final-form development-play workflow is **confirmed** to run inside
-the editor Viewport, with Play, Stop, and Pause where supported. Editor and
+The final-form development-play workflow is **confirmed** to run inside the
+editor Viewport, with Play, Stop, and Pause where supported. Editor and
 standalone runtime must use the same Project, Workspace, asset, and
 serialization code. A separate game window may remain an option but is not the
 intended final default. Hot reload follows only after the runtime module
@@ -233,9 +250,14 @@ An asynchronous standalone-process bridge is **implemented** as the reliable
 precursor to that workflow. Build configures and compiles the Project through
 its editable CMake files; Run builds and launches it; Pause/Resume and Stop
 control the native process. Output and detected failures feed their dockable
-panels without blocking the editor. The current generated runtime does not yet
-consume Workspace entities, and the game window is not embedded in the
-Viewport, so this bridge must not be described as in-editor development play.
+panels without blocking the editor. The generated runtime consumes Workspace
+entities and Text Sprites through the shared draw-list path. The editor Viewport
+previews that same data, but the game process is not embedded there, so this
+must not be described as in-editor development play.
+
+For the first complete Windows alpha, the separate-window stop/build/run loop is
+the required workflow. In-Viewport simulation and native-code hot reload remain
+post-alpha work. This sequencing does not change the intended final default.
 
 ## Notifications
 
@@ -280,8 +302,8 @@ The implemented Project Browser and dockable editor shell consume this visual
 system. The browser uses a restrained system rail, terminal-style status
 language, structured Project actions, and clear full-width forms. The shell
 uses independently dockable Project Details and Workspace Viewport windows;
-the Viewport remains a deliberate placeholder that communicates the planned
-next stage without presenting Workspace editing as implemented.
+the Viewport renders the shared authoring draw list with restrained grid,
+selection, navigation, and empty-entity helper overlays.
 
 Global editor preferences are stored as versioned JSON in BasilEngine's user
 configuration directory. Missing preferences use safe defaults. Malformed or
@@ -339,11 +361,11 @@ Future macOS application-bundle packaging will require an ICNS export.
 
 - Final `.basilproject` and Where Birds Nest icons
 - Workspace component/parenting schema and additive semantics
-- Portable UI Config JSON schema and extension
+- Richer UI Config preset-library organization beyond global and Project files
 - External-editor configuration schema and placeholders
 - Exact default docking measurements
-- Native file-dialog strategy per platform
-- Initial terminal hosting/launch approach
+- Native file-dialog adapters for macOS and Linux
+- Post-alpha custom terminal-emulation approach
 
 Gameplay questions remain in `OPEN_DESIGN_QUESTIONS.md` and must not distract
 from editor-foundation work.
