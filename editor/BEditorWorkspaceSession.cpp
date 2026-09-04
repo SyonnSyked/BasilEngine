@@ -282,7 +282,8 @@ bool BEditorWorkspaceSession::AddGlyphEntity(char glyph, std::string &error)
     return true;
 }
 
-bool BEditorWorkspaceSession::AddTextSpriteEntity(const std::string &relativePath,
+bool BEditorWorkspaceSession::AddTextSpriteEntity(const std::string &assetId,
+                                                  const std::string &relativePath,
                                                   std::string &error)
 {
     if (!loaded_) {
@@ -301,8 +302,14 @@ bool BEditorWorkspaceSession::AddTextSpriteEntity(const std::string &relativePat
     std::size_t index = 0;
     BAsciiRenderable renderable = BAsciiRenderable_DefaultGlyph('@');
     renderable.sourceKind = BASCII_SOURCE_TEXT_SPRITE;
-    std::snprintf(renderable.textSpritePath, sizeof(renderable.textSpritePath), "%s",
-                  relativePath.c_str());
+    if (!BAssetRef_Set(&renderable.textSprite, assetId.c_str(), relativePath.c_str(),
+                       &diagnostics)) {
+        CancelMutation();
+        error = FirstDiagnosticMessage(diagnostics);
+
+        return false;
+    }
+
     if (!BWorkspaceDocument_AddEntity(&workspace_, name, &index, &diagnostics)) {
         CancelMutation();
         error = FirstDiagnosticMessage(diagnostics);
@@ -537,7 +544,7 @@ bool BEditorWorkspaceSession::RemapAssetPath(const std::string &oldPath, const s
         BWorkspaceComponent *component = BWorkspaceEntity_FindComponent(
             &workspace_.entities[i], BWORKSPACE_ASCII_RENDERABLE_TYPE);
         if (component && component->data.asciiRenderable.sourceKind == BASCII_SOURCE_TEXT_SPRITE &&
-            oldPath == component->data.asciiRenderable.textSpritePath)
+            oldPath == component->data.asciiRenderable.textSprite.path)
             matches.push_back(i);
     }
     if (matches.empty()) {
@@ -551,7 +558,7 @@ bool BEditorWorkspaceSession::RemapAssetPath(const std::string &oldPath, const s
         BWorkspaceComponent *component = BWorkspaceEntity_FindComponent(
             &workspace_.entities[index], BWORKSPACE_ASCII_RENDERABLE_TYPE);
         BAsciiRenderable updated = component->data.asciiRenderable;
-        std::snprintf(updated.textSpritePath, sizeof(updated.textSpritePath), "%s",
+        std::snprintf(updated.textSprite.path, sizeof(updated.textSprite.path), "%s",
                       newPath.c_str());
         if (!BWorkspaceDocument_SetAsciiRenderable(&workspace_, index, &updated, &diagnostics)) {
             auto snapshot = std::move(undo_.back());
