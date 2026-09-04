@@ -226,6 +226,7 @@ if(BUILD_TESTING)
               workspace-legacy-empty.basilworkspace
               workspace-unknown-field.basilworkspace
               workspace-components-v3.basilworkspace
+              workspace-components-v4.basilworkspace
               workspace-required-unknown-v3.basilworkspace
               workspace-entities-v2.basilworkspace
               workspace-duplicate-components-v3.basilworkspace)

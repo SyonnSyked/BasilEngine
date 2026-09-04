@@ -176,7 +176,7 @@ static bool BWorkspace_IsRenderableValidForSchema(const BAsciiRenderable *render
         return (unsigned char)renderable->glyph >= 0x20 && (unsigned char)renderable->glyph <= 0x7e;
     }
 
-    if (sourceSchemaVersion >= BWORKSPACE_ASSET_REF_SCHEMA_VERSION) {
+    if (renderable->textSprite.id[0] != '\0') {
         BDiagnosticList diagnostics = {0};
 
         return BAssetRef_Validate(&renderable->textSprite, &diagnostics);

@@ -1,0 +1,45 @@
+
+{
+  "schemaVersion": 4,
+  "name": "Component Workspace",
+  "identifier": "Components",
+  "nextEntityId": "2",
+  "entities": [
+    {
+      "id": "entity-0000000000000001",
+      "name": "Rendered Entity",
+      "enabled": true,
+      "components": [
+        {
+          "type": "basil.transform2d",
+          "version": 1,
+          "required": true,
+          "data": { "x": 12.5, "y": -3.25 }
+        },
+        {
+          "type": "basil.ascii-renderable",
+          "version": 1,
+          "required": true,
+          "data": {
+            "source": { "kind": "text-sprite", "id": "asset-player-test", "path": "assets/sprites/player.txt" },
+            "foreground": "#00E5FFFF",
+            "background": "#120C1FFF",
+            "layer": 7,
+            "anchor": "center",
+            "visible": true,
+            "transparentSpaces": true
+          }
+        },
+        {
+          "type": "example.gameplay-note",
+          "version": 4,
+          "required": false,
+          "data": {
+            "text": "preserve me",
+            "values": [1, 2, 3]
+          }
+        }
+      ]
+    }
+  ]
+}

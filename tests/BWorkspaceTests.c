@@ -331,6 +331,26 @@ int main(void)
                   mutations.componentCount == 1,
               "component can be removed with totals repaired");
 
+    BWorkspaceDocument componentsV4;
+    BWorkspaceDocument_Init(&componentsV4);
+
+    failures +=
+        Check(BWorkspaceDocument_Load("test-fixtures/workspace-components-v4.basilworkspace",
+                                      &componentsV4, &diagnostics),
+              "schema 4 components load");
+
+    const BWorkspaceEntity *renderedV4 = &componentsV4.entities[0];
+
+    const BWorkspaceComponent *asciiV4 =
+        BWorkspaceEntity_FindComponentConst(renderedV4, BWORKSPACE_ASCII_RENDERABLE_TYPE);
+
+    failures += Check(
+        asciiV4 != NULL && asciiV4->kind == BWORKSPACE_COMPONENT_ASCII_RENDERABLE &&
+            asciiV4->data.asciiRenderable.sourceKind == BASCII_SOURCE_TEXT_SPRITE &&
+            strcmp(asciiV4->data.asciiRenderable.textSprite.id, "asset-player-test") == 0 &&
+            strcmp(asciiV4->data.asciiRenderable.textSprite.path, "assets/sprites/player.txt") == 0,
+        "schema 4 Text Sprite loads stable ID and path");
+
     BWorkspaceDocument_Destroy(&mutations);
     BWorkspaceDocument_Destroy(&migrated);
     BWorkspaceDocument_Destroy(&previous);
@@ -343,6 +363,7 @@ int main(void)
     BWorkspaceDocument_Destroy(&collision);
     BWorkspaceDocument_Destroy(&workspace);
     BWorkspaceDocument_Destroy(&workspace);
+    BWorkspaceDocument_Destroy(&componentsV4);
     failures +=
         Check(workspace.entities == NULL && workspace.entityCount == 0, "destroy is idempotent");
 
