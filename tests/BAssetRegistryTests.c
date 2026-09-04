@@ -127,6 +127,43 @@ int main(void)
 
     failures += Check(roundTrip.count == 2, "missing registry load preserves destination");
 
+    BAssetRef arenaRef;
+    BAssetRef_Clear(&arenaRef);
+
+    failures += Check(BAssetRef_IsEmpty(&arenaRef), "cleared asset reference is empty");
+
+    failures +=
+        Check(BAssetRef_Set(&arenaRef, "asset-4cd22aaa66b511e0", "assets/arena.txt", &diagnostics),
+              "valid asset reference can be assigned");
+
+    failures += Check(!BAssetRef_IsEmpty(&arenaRef), "assigned asset reference is not empty");
+
+    const BAssetRecord *resolvedArena =
+        BAssetRegistry_ResolveRef(&registry, &arenaRef, &diagnostics);
+
+    failures +=
+        Check(resolvedArena != NULL && strcmp(resolvedArena->id, "asset-4cd22aaa66b511e0") == 0,
+              "asset reference resolves through stable ID");
+
+    BAssetRef staleArenaRef;
+    BAssetRef_Clear(&staleArenaRef);
+
+    failures += Check(BAssetRef_Set(&staleArenaRef, "asset-4cd22aaa66b511e0",
+                                    "assets/old-arena-name.txt", &diagnostics),
+                      "asset reference accepts a structurally valid stale path hint");
+
+    const BAssetRecord *resolvedStale =
+        BAssetRegistry_ResolveRef(&registry, &staleArenaRef, &diagnostics);
+
+    failures += Check(resolvedStale != NULL && strcmp(resolvedStale->path, "assets/arena.txt") == 0,
+                      "stable ID resolves even when path hint is stale");
+
+    failures += Check(BAssetRegistry_RefreshRefPath(&registry, &staleArenaRef, &diagnostics),
+                      "asset reference path hint can be refreshed");
+
+    failures += Check(strcmp(staleArenaRef.path, "assets/arena.txt") == 0,
+                      "asset reference path hint refreshes to registry path");
+
     BAssetRecord assignedRecords[2] = {0};
 
     snprintf(assignedRecords[0].id, sizeof(assignedRecords[0].id), "%s", "asset-aaaaaaaaaaaaaaaa");
@@ -283,6 +320,35 @@ int main(void)
     failures += Check(ambiguousAsset != NULL && strcmp(ambiguousAsset->id, "asset-first") != 0 &&
                           strcmp(ambiguousAsset->id, "asset-second") != 0,
                       "ambiguous content does not guess identity");
+
+    BAssetRef wrongIdentity;
+    BAssetRef_Clear(&wrongIdentity);
+
+    failures += Check(
+        BAssetRef_Set(&wrongIdentity, "asset-does-not-exist", "assets/player.txt", &diagnostics),
+        "structurally valid unknown asset reference can be represented");
+
+    failures += Check(BAssetRegistry_ResolveRef(&registry, &wrongIdentity, &diagnostics) == NULL,
+                      "unknown stable ID does not fall back to path");
+
+    BAssetRef invalidPath;
+    BAssetRef_Clear(&invalidPath);
+
+    failures += Check(!BAssetRef_Set(&invalidPath, "asset-invalid", "../outside.txt", &diagnostics),
+                      "asset reference rejects Project-escaping path");
+
+    failures += Check(
+        !BAssetRef_Set(&invalidPath, "asset-invalid", "workspaces/not-an-asset.txt", &diagnostics),
+        "asset reference rejects paths outside assets directory");
+
+    BAssetRef preservedRef = arenaRef;
+
+    failures += Check(!BAssetRef_Set(&preservedRef, "", "assets/arena.txt", &diagnostics),
+                      "asset reference rejects empty stable ID");
+
+    failures += Check(strcmp(preservedRef.id, arenaRef.id) == 0 &&
+                          strcmp(preservedRef.path, arenaRef.path) == 0,
+                      "failed asset reference assignment preserves destination");
 
     remove(savedPath);
     remove(backupPath);

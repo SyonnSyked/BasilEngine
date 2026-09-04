@@ -3,6 +3,7 @@
 
 #include "../core/BDiagnostic.h"
 #include "BProject.h"
+#include "BAssetRef.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -13,7 +14,6 @@ extern "C" {
 #endif
 
 #define BASSET_REGISTRY_SCHEMA_VERSION 1
-#define BASSET_ID_MAX 64
 #define BASSET_RECORD_MAX 8192
 #define BASSET_REGISTRY_FILE_MAX (16u * 1024u * 1024u)
 #define BASSET_FILE_MAX (256u * 1024u * 1024u)
@@ -74,6 +74,13 @@ bool BAssetRegistry_Save(const BAssetRegistry *registry, const char *registryPat
 const BAssetRecord *BAssetRegistry_FindById(const BAssetRegistry *registry, const char *id);
 
 const BAssetRecord *BAssetRegistry_FindByPath(const BAssetRegistry *registry, const char *path);
+
+const BAssetRecord *BAssetRegistry_ResolveRef(const BAssetRegistry *registry,
+                                              const BAssetRef *reference,
+                                              BDiagnosticList *diagnostics);
+
+bool BAssetRegistry_RefreshRefPath(const BAssetRegistry *registry, BAssetRef *reference,
+                                   BDiagnosticList *diagnostics);
 
 const char *BAssetKind_ToString(BAssetKind kind);
 
