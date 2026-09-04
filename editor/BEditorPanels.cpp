@@ -39,23 +39,6 @@ void DrawPanelState(const char *state, const char *explanation)
     ImGui::TextDisabled("%s", explanation);
 }
 
-std::vector<std::string> FindTextSprites(const fs::path &projectRoot)
-{
-    std::vector<std::string> paths;
-    std::error_code error;
-    fs::path assetRoot = projectRoot / "assets";
-    if (!fs::is_directory(assetRoot, error))
-        return paths;
-    for (fs::recursive_directory_iterator iterator(assetRoot, error), end;
-         !error && iterator != end; iterator.increment(error)) {
-        std::error_code typeError;
-        if (iterator->is_regular_file(typeError) && iterator->path().extension() == ".txt")
-            paths.push_back(iterator->path().lexically_relative(projectRoot).generic_string());
-    }
-    std::sort(paths.begin(), paths.end());
-    return paths;
-}
-
 void SetFeedback(BEditorPanelFeedback &feedback, bool succeeded, const char *success,
                  const std::string &error)
 {
@@ -186,7 +169,8 @@ BEditorPanelFeedback DrawWorkspaceHierarchy(BEditorUIConfig &config, const BProj
 }
 
 BEditorPanelFeedback DrawInspector(BEditorUIConfig &config, BEditorWorkspaceSession &session,
-                                   const BEditorComponentRegistry &registry)
+                                   const BEditorComponentRegistry &registry,
+                                   BEditorAssetService &assetService)
 {
     if (!config.showInspector)
         return {};
@@ -254,11 +238,19 @@ BEditorPanelFeedback DrawInspector(BEditorUIConfig &config, BEditorWorkspaceSess
                     if (renderable.sourceKind == BASCII_SOURCE_GLYPH &&
                         (renderable.glyph < 0x20 || renderable.glyph > 0x7e))
                         renderable.glyph = '@';
-                    std::vector<std::string> sprites = FindTextSprites(session.ProjectRoot());
                     if (renderable.sourceKind == BASCII_SOURCE_TEXT_SPRITE &&
-                        (size_t)renderable.textSprite.id == '\0' && !sprites.empty())
-                        std::snprintf(renderable.textSprite.path, sizeof(renderable.textSprite),
-                                      "%s", sprites.front().c_str());
+                        renderable.textSprite.id[0] == '\0') {
+                        for (const BEditorAssetRecord &record : assetService.Records()) {
+                            if (record.kind != BEditorAssetKind::TextSprite)
+                                continue;
+
+                            BDiagnosticList diagnostics{};
+
+                            if (BAssetRef_Set(&renderable.textSprite, record.id.c_str(),
+                                              record.relativePath.c_str(), &diagnostics))
+                                break;
+                        }
+                    }
                 }
 
                 if (renderable.sourceKind == BASCII_SOURCE_GLYPH) {
@@ -277,16 +269,37 @@ BEditorPanelFeedback DrawInspector(BEditorUIConfig &config, BEditorWorkspaceSess
                         ImGui::EndCombo();
                     }
                 } else {
-                    std::vector<std::string> sprites = FindTextSprites(session.ProjectRoot());
-                    if (ImGui::BeginCombo("Text Sprite", *renderable.textSprite.id
-                                                             ? renderable.textSprite.id
-                                                             : "SELECT .TXT ASSET")) {
-                        for (const std::string &path : sprites) {
-                            if (ImGui::Selectable(path.c_str(),
-                                                  path == renderable.textSprite.path)) {
-                                std::snprintf(renderable.textSprite.path,
-                                              sizeof(renderable.textSprite), "%s", path.c_str());
-                                changed = true;
+                    const char *preview = renderable.textSprite.path[0] != '\0'
+                                              ? renderable.textSprite.path
+                                              : "SELECT .TXT ASSET";
+
+                    if (ImGui::BeginCombo("Text Sprite", preview)) {
+                        for (const BEditorAssetRecord &record : assetService.Records()) {
+                            if (record.kind != BEditorAssetKind::TextSprite) {
+                                continue;
+                            }
+
+                            bool selected = record.id == renderable.textSprite.id;
+
+                            if (ImGui::Selectable(record.relativePath.c_str(), selected)) {
+                                BDiagnosticList diagnostics{};
+
+                                if (BAssetRef_Set(&renderable.textSprite, record.id.c_str(),
+                                                  record.relativePath.c_str(), &diagnostics)) {
+                                    changed = true;
+                                } else {
+                                    const BDiagnostic *diagnostic =
+                                        BDiagnosticList_FirstError(&diagnostics);
+
+                                    feedback = {diagnostic != nullptr
+                                                    ? diagnostic->message
+                                                    : "Could not assign Text Sprite asset.",
+                                                true};
+                                }
+                            }
+
+                            if (selected) {
+                                ImGui::SetItemDefaultFocus();
                             }
                         }
                         ImGui::EndCombo();
@@ -694,7 +707,7 @@ BEditorPanelFeedback BEditorPanels_DrawScaffolds(
     BEditorPanelFeedback feedback =
         DrawWorkspaceHierarchy(config, project, workspaceSession, assetService);
     BEditorPanelFeedback inspectorFeedback =
-        DrawInspector(config, workspaceSession, componentRegistry);
+        DrawInspector(config, workspaceSession, componentRegistry, assetService);
 
     if (!inspectorFeedback.message.empty())
         feedback = inspectorFeedback;
