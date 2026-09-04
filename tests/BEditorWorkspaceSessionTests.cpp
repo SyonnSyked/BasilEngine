@@ -129,7 +129,7 @@ int main()
     failures +=
         Check(textRenderable != nullptr &&
                   textRenderable->data.asciiRenderable.sourceKind == BASCII_SOURCE_TEXT_SPRITE &&
-                  std::string(textRenderable->data.asciiRenderable.textSprite) ==
+                  std::string(textRenderable->data.asciiRenderable.textSprite.path) ==
                       "assets/sprites/ship.txt",
               "Text Sprite entity stores a portable Project-relative asset path");
     failures +=
@@ -137,7 +137,7 @@ int main()
               "asset reference remaps transactionally");
     textRenderable = BWorkspaceEntity_FindComponentConst(session.SelectedEntity(),
                                                          BWORKSPACE_ASCII_RENDERABLE_TYPE);
-    failures += Check(std::string(textRenderable->data.asciiRenderable.textSprite) ==
+    failures += Check(std::string(textRenderable->data.asciiRenderable.textSprite.id) ==
                           "assets/sprites/vessel.txt",
                       "remap updates matching renderable");
     failures += Check(session.Undo(error), "asset remap participates in undo");

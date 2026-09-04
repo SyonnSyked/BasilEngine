@@ -301,7 +301,8 @@ bool BEditorWorkspaceSession::AddTextSpriteEntity(const std::string &relativePat
     std::size_t index = 0;
     BAsciiRenderable renderable = BAsciiRenderable_DefaultGlyph('@');
     renderable.sourceKind = BASCII_SOURCE_TEXT_SPRITE;
-    std::snprintf(renderable.textSprite, sizeof(renderable.textSprite), "%s", relativePath.c_str());
+    std::snprintf(renderable.textSprite.path, sizeof(renderable.textSprite), "%s",
+                  relativePath.c_str());
     if (!BWorkspaceDocument_AddEntity(&workspace_, name, &index, &diagnostics)) {
         CancelMutation();
         error = FirstDiagnosticMessage(diagnostics);
@@ -536,7 +537,7 @@ bool BEditorWorkspaceSession::RemapAssetPath(const std::string &oldPath, const s
         BWorkspaceComponent *component = BWorkspaceEntity_FindComponent(
             &workspace_.entities[i], BWORKSPACE_ASCII_RENDERABLE_TYPE);
         if (component && component->data.asciiRenderable.sourceKind == BASCII_SOURCE_TEXT_SPRITE &&
-            oldPath == component->data.asciiRenderable.textSprite)
+            oldPath == component->data.asciiRenderable.textSprite.path)
             matches.push_back(i);
     }
     if (matches.empty()) {
@@ -550,7 +551,7 @@ bool BEditorWorkspaceSession::RemapAssetPath(const std::string &oldPath, const s
         BWorkspaceComponent *component = BWorkspaceEntity_FindComponent(
             &workspace_.entities[index], BWORKSPACE_ASCII_RENDERABLE_TYPE);
         BAsciiRenderable updated = component->data.asciiRenderable;
-        std::snprintf(updated.textSprite, sizeof(updated.textSprite), "%s", newPath.c_str());
+        std::snprintf(updated.textSprite.path, sizeof(updated.textSprite), "%s", newPath.c_str());
         if (!BWorkspaceDocument_SetAsciiRenderable(&workspace_, index, &updated, &diagnostics)) {
             auto snapshot = std::move(undo_.back());
             undo_.pop_back();

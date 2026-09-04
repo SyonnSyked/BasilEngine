@@ -239,9 +239,9 @@ BEditorPanelFeedback DrawInspector(BEditorUIConfig &config, BEditorWorkspaceSess
                         renderable.glyph = '@';
                     std::vector<std::string> sprites = FindTextSprites(session.ProjectRoot());
                     if (renderable.sourceKind == BASCII_SOURCE_TEXT_SPRITE &&
-                        renderable.textSprite == '\0' && !sprites.empty())
-                        std::snprintf(renderable.textSprite, sizeof(renderable.textSprite), "%s",
-                                      sprites.front().c_str());
+                        (size_t)renderable.textSprite.id == '\0' && !sprites.empty())
+                        std::snprintf(renderable.textSprite.path, sizeof(renderable.textSprite),
+                                      "%s", sprites.front().c_str());
                 }
 
                 if (renderable.sourceKind == BASCII_SOURCE_GLYPH) {
@@ -261,13 +261,14 @@ BEditorPanelFeedback DrawInspector(BEditorUIConfig &config, BEditorWorkspaceSess
                     }
                 } else {
                     std::vector<std::string> sprites = FindTextSprites(session.ProjectRoot());
-                    if (ImGui::BeginCombo("Text Sprite", renderable.textSprite
-                                                             ? renderable.textSprite
+                    if (ImGui::BeginCombo("Text Sprite", *renderable.textSprite.id
+                                                             ? renderable.textSprite.id
                                                              : "SELECT .TXT ASSET")) {
                         for (const std::string &path : sprites) {
-                            if (ImGui::Selectable(path.c_str(), path == renderable.textSprite)) {
-                                std::snprintf(renderable.textSprite, sizeof(renderable.textSprite),
-                                              "%s", path.c_str());
+                            if (ImGui::Selectable(path.c_str(),
+                                                  path == renderable.textSprite.path)) {
+                                std::snprintf(renderable.textSprite.path,
+                                              sizeof(renderable.textSprite), "%s", path.c_str());
                                 changed = true;
                             }
                         }

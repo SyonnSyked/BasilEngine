@@ -215,7 +215,7 @@ int main(void)
     failures += Check(
         ascii != NULL && ascii->kind == BWORKSPACE_COMPONENT_ASCII_RENDERABLE &&
             ascii->data.asciiRenderable.sourceKind == BASCII_SOURCE_TEXT_SPRITE &&
-            strcmp(ascii->data.asciiRenderable.textSprite, "assets/sprites/player.txt") == 0 &&
+            strcmp(ascii->data.asciiRenderable.textSprite.path, "assets/sprites/player.txt") == 0 &&
             ascii->data.asciiRenderable.anchor == BASCII_ANCHOR_CENTER &&
             ascii->data.asciiRenderable.layer == 7,
         "ASCII Renderable decodes into typed data");

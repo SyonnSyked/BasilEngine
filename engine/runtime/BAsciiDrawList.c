@@ -158,7 +158,7 @@ bool BWorkspaceDocument_ValidateTextSprites(const BWorkspaceDocument *document,
             continue;
         const BTextSprite *sprite = NULL;
         if (!BTextSpriteCache_Load(spriteCache, projectRoot,
-                                   component->data.asciiRenderable.textSprite, &sprite,
+                                   component->data.asciiRenderable.textSprite.id, &sprite,
                                    diagnostics)) {
             BAsciiDrawList_AttachContext(diagnostics, entity);
             return false;
@@ -208,7 +208,7 @@ bool BAsciiDrawList_Build(const BWorkspaceDocument *document, const char *projec
         size_t height = 1;
 
         if (renderable->sourceKind == BASCII_SOURCE_TEXT_SPRITE) {
-            sprite = BTextSpriteCache_Find(spriteCache, renderable->textSprite);
+            sprite = BTextSpriteCache_Find(spriteCache, renderable->textSprite.path);
             if (sprite == NULL) {
                 BAsciiDrawList_Destroy(&built);
                 return BAsciiDrawList_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,

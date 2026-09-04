@@ -1114,7 +1114,7 @@ static bool BWorkspace_ParseComponent(const cJSON *source, BWorkspaceComponent *
             }
 
             renderable->sourceKind = BASCII_SOURCE_TEXT_SPRITE;
-            snprintf(renderable->textSprite, sizeof(renderable->textSprite), "%s",
+            snprintf(renderable->textSprite.path, sizeof(renderable->textSprite), "%s",
                      path->valuestring);
         } else {
             return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
@@ -1457,7 +1457,7 @@ static cJSON *BWorkspace_ComponentDataToJson(const BWorkspaceComponent *componen
         cJSON_AddStringToObject(source, "glyph", glyph);
     } else {
         cJSON_AddStringToObject(source, "kind", "text-sprite");
-        cJSON_AddStringToObject(source, "path", renderable->textSprite);
+        cJSON_AddStringToObject(source, "path", renderable->textSprite.path);
     }
 
     char foreground[10];

@@ -80,7 +80,7 @@ int main(void)
 
     BAsciiRenderable sprite = BAsciiRenderable_DefaultGlyph('?');
     sprite.sourceKind = BASCII_SOURCE_TEXT_SPRITE;
-    snprintf(sprite.textSprite, sizeof(sprite.textSprite), "assets/ship.txt");
+    snprintf(sprite.textSprite.id, sizeof(sprite.textSprite), "assets/ship.txt");
     sprite.anchor = BASCII_ANCHOR_CENTER;
     sprite.layer = -2;
     sprite.background = (BAsciiColor){9, 8, 7, 6};
