@@ -64,7 +64,8 @@ void SetFeedback(BEditorPanelFeedback &feedback, bool succeeded, const char *suc
 }
 
 BEditorPanelFeedback DrawWorkspaceHierarchy(BEditorUIConfig &config, const BProject &project,
-                                            BEditorWorkspaceSession &session)
+                                            BEditorWorkspaceSession &session,
+                                            BEditorAssetService &assetService)
 {
     if (!config.showWorkspaceHierarchy)
         return {};
@@ -111,19 +112,35 @@ BEditorPanelFeedback DrawWorkspaceHierarchy(BEditorUIConfig &config, const BProj
                 if ((glyph - 0x20) % 12 != 11 && glyph != 0x7e)
                     ImGui::SameLine();
             }
+
             ImGui::SeparatorText("TEXT SPRITES");
-            std::vector<std::string> sprites = FindTextSprites(session.ProjectRoot());
-            if (sprites.empty())
-                ImGui::TextDisabled("No .txt assets found under assets/.");
-            for (const std::string &path : sprites) {
-                if (ImGui::Selectable(path.c_str())) {
+
+            bool foundTextSprite = false;
+
+            for (const BEditorAssetRecord &record : assetService.Records()) {
+                if (record.kind != BEditorAssetKind::TextSprite) {
+                    continue;
+                }
+
+                foundTextSprite = true;
+
+                if (ImGui::Selectable(record.relativePath.c_str())) {
                     std::string error;
-                    bool succeeded = session.AddTextSpriteEntity(path, error);
+
+                    bool succeeded =
+                        session.AddTextSpriteEntity(record.id, record.relativePath, error);
+
                     SetFeedback(feedback, succeeded, "Text Sprite entity created.", error);
+
                     if (succeeded)
                         ImGui::CloseCurrentPopup();
                 }
             }
+
+            if (!foundTextSprite) {
+                ImGui::TextDisabled("No .txt assets found under assets/.");
+            }
+
             ImGui::Separator();
             if (ImGui::Selectable("EMPTY ENTITY // TRANSFORM ONLY")) {
                 std::string error;
@@ -674,7 +691,8 @@ BEditorPanelFeedback BEditorPanels_DrawScaffolds(
     const BEditorBuildService &buildService, const fs::path &projectRoot,
     const std::string &editorMessage, bool messageIsError)
 {
-    BEditorPanelFeedback feedback = DrawWorkspaceHierarchy(config, project, workspaceSession);
+    BEditorPanelFeedback feedback =
+        DrawWorkspaceHierarchy(config, project, workspaceSession, assetService);
     BEditorPanelFeedback inspectorFeedback =
         DrawInspector(config, workspaceSession, componentRegistry);
 

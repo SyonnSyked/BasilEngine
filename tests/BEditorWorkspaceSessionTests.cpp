@@ -122,8 +122,9 @@ int main()
     failures +=
         Check(session.Workspace().entityCount == 0, "removed entity leaves Workspace empty");
     failures += Check(session.SelectedEntity() == nullptr, "remove clears selection");
-    failures += Check(session.AddTextSpriteEntity("assets/sprites/ship.txt", error),
-                      "session adds Text Sprite entity");
+    failures +=
+        Check(session.AddTextSpriteEntity("asset-ship-test", "assets/sprites/ship.txt", error),
+              "session adds Text Sprite entity");
     const BWorkspaceComponent *textRenderable = BWorkspaceEntity_FindComponentConst(
         session.SelectedEntity(), BWORKSPACE_ASCII_RENDERABLE_TYPE);
     failures +=
@@ -137,7 +138,7 @@ int main()
               "asset reference remaps transactionally");
     textRenderable = BWorkspaceEntity_FindComponentConst(session.SelectedEntity(),
                                                          BWORKSPACE_ASCII_RENDERABLE_TYPE);
-    failures += Check(std::string(textRenderable->data.asciiRenderable.textSprite.id) ==
+    failures += Check(std::string(textRenderable->data.asciiRenderable.textSprite.path) ==
                           "assets/sprites/vessel.txt",
                       "remap updates matching renderable");
     failures += Check(session.Undo(error), "asset remap participates in undo");
@@ -169,7 +170,7 @@ int main()
     }
     failures += Check(session.ValidateForRun(runDiagnostics, error),
                       "Run preflight accepts restored Text Sprite");
-    failures += Check(!session.AddTextSpriteEntity("../escape.txt", error),
+    failures += Check(!session.AddTextSpriteEntity("asset-escape-test", "../escape.txt", error),
                       "escaping Text Sprite path is rejected");
     failures += Check(session.Workspace().entityCount == 1,
                       "failed Text Sprite creation rolls back completely");

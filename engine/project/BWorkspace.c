@@ -182,7 +182,7 @@ static bool BWorkspace_IsRenderableValidForSchema(const BAsciiRenderable *render
         return BAssetRef_Validate(&renderable->textSprite, &diagnostics);
     }
 
-    return renderable->textSprite.id[0] == '\0' &&
+    return sourceSchemaVersion < BWORKSPACE_ASSET_REF_SCHEMA_VERSION &&
            BWorkspace_IsRelativeAssetPath(renderable->textSprite.path);
 }
 
@@ -884,7 +884,7 @@ bool BWorkspaceDocument_AddAsciiRenderable(BWorkspaceDocument *document, size_t 
         (renderable->sourceKind == BASCII_SOURCE_GLYPH &&
          ((unsigned char)renderable->glyph < 0x20 || (unsigned char)renderable->glyph > 0x7e)) ||
         (renderable->sourceKind == BASCII_SOURCE_TEXT_SPRITE &&
-         !BWorkspace_IsRenderableValidForSchema(renderable, renderable->sourceKind))) {
+         !BWorkspace_IsRenderableValidForSchema(renderable, BWORKSPACE_SCHEMA_VERSION))) {
         BWorkspaceDocument_ClearError(diagnostics);
         return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
                                        "ASCII Renderable component data is invalid.");
@@ -1022,7 +1022,7 @@ static bool BWorkspace_ParseColor(const cJSON *item, BAsciiColor *color)
 }
 
 static bool BWorkspace_ParseComponent(const cJSON *source, BWorkspaceComponent *destination,
-                                      BDiagnosticList *diagnostics)
+                                      int sourceSchemaVersion, BDiagnosticList *diagnostics)
 {
     const char *const fields[] = {"type", "version", "required", "data"};
     cJSON *type = cJSON_GetObjectItemCaseSensitive(source, "type");
@@ -1084,7 +1084,6 @@ static bool BWorkspace_ParseComponent(const cJSON *source, BWorkspaceComponent *
         }
 
         const char *const glyphFields[] = {"kind", "glyph"};
-        const char *const spriteFields[] = {"kind", "path"};
         cJSON *sourceKind = cJSON_GetObjectItemCaseSensitive(sourceData, "kind");
 
         if (!cJSON_IsString(sourceKind))
@@ -1107,15 +1106,38 @@ static bool BWorkspace_ParseComponent(const cJSON *source, BWorkspaceComponent *
         } else if (strcmp(sourceKind->valuestring, "text-sprite") == 0) {
             cJSON *path = cJSON_GetObjectItemCaseSensitive(sourceData, "path");
 
-            if (!BWorkspaceDocument_HasOnlyFields(sourceData, spriteFields, 2) ||
-                !cJSON_IsString(path) || !BWorkspace_IsRelativeAssetPath(path->valuestring)) {
-                return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
-                                               "Text Sprite source path is invalid.");
+            renderable->sourceKind = BASCII_SOURCE_TEXT_SPRITE;
+
+            if (sourceSchemaVersion >= BWORKSPACE_ASSET_REF_SCHEMA_VERSION) {
+                const char *const spriteFields[] = {"kind", "id", "path"};
+
+                cJSON *id = cJSON_GetObjectItemCaseSensitive(sourceData, "id");
+
+                if (!BWorkspaceDocument_HasOnlyFields(sourceData, spriteFields, 3) ||
+                    !cJSON_IsString(id) || !cJSON_IsString(path)) {
+                    return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
+                                                   "Text Sprite AssetRef is invalid.");
+                }
+
+                if (!BAssetRef_Set(&renderable->textSprite, id->valuestring, path->valuestring,
+                                   diagnostics)) {
+                    return false;
+                }
+            } else {
+                const char *const spriteFields[] = {"kind", "path"};
+
+                if (!BWorkspaceDocument_HasOnlyFields(sourceData, spriteFields, 2) ||
+                    !cJSON_IsString(path) || !BWorkspace_IsRelativeAssetPath(path->valuestring)) {
+                    return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
+                                                   "Legacy Text Sprite source path is invalid.");
+                }
+
+                BAssetRef_Clear(&renderable->textSprite);
+
+                snprintf(renderable->textSprite.path, sizeof(renderable->textSprite.path), "%s",
+                         path->valuestring);
             }
 
-            renderable->sourceKind = BASCII_SOURCE_TEXT_SPRITE;
-            snprintf(renderable->textSprite.path, sizeof(renderable->textSprite), "%s",
-                     path->valuestring);
         } else {
             return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
                                            "ASCII Renderable source kind is unsupported.");
@@ -1209,9 +1231,8 @@ bool BWorkspaceDocument_Load(const char *workspacePath, BWorkspaceDocument *dest
 
     int sourceVersion = schemaVersion->valueint;
 
-    if (sourceVersion != BWORKSPACE_LEGACY_SCHEMA_VERSION &&
-        sourceVersion != BWORKSPACE_PREVIOUS_SCHEMA_VERSION &&
-        sourceVersion != BWORKSPACE_SCHEMA_VERSION) {
+    if (sourceVersion < BWORKSPACE_LEGACY_SCHEMA_VERSION ||
+        sourceVersion > BWORKSPACE_SCHEMA_VERSION) {
         cJSON_Delete(root);
         return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_UNSUPPORTED_VERSION,
                                        "Unsupported Workspace schema version.");
@@ -1296,6 +1317,7 @@ bool BWorkspaceDocument_Load(const char *workspacePath, BWorkspaceDocument *dest
 
         const char *const previousEntityFields[] = {"id", "name", "enabled"};
         const char *const currentEntityFields[] = {"id", "name", "enabled", "components"};
+        bool hasComponents = sourceVersion >= BWORKSPACE_COMPONENT_SCHEMA_VERSION;
 
         for (int i = 0; i < entityCount; ++i) {
             cJSON *sourceEntity = cJSON_GetArrayItem(entities, i);
@@ -1303,14 +1325,13 @@ bool BWorkspaceDocument_Load(const char *workspacePath, BWorkspaceDocument *dest
             cJSON *entityName = cJSON_GetObjectItemCaseSensitive(sourceEntity, "name");
             cJSON *enabled = cJSON_GetObjectItemCaseSensitive(sourceEntity, "enabled");
             cJSON *components = cJSON_GetObjectItemCaseSensitive(sourceEntity, "components");
-            const char *const *entityFields = sourceVersion == BWORKSPACE_SCHEMA_VERSION
-                                                  ? currentEntityFields
-                                                  : previousEntityFields;
-            size_t entityFieldCount = sourceVersion == BWORKSPACE_SCHEMA_VERSION ? 4 : 3;
+            const char *const *entityFields =
+                hasComponents ? currentEntityFields : previousEntityFields;
+            size_t entityFieldCount = hasComponents ? 4 : 3;
 
             if (!BWorkspaceDocument_HasOnlyFields(sourceEntity, entityFields, entityFieldCount) ||
                 !cJSON_IsString(id) || !cJSON_IsString(entityName) || !cJSON_IsBool(enabled) ||
-                (sourceVersion == BWORKSPACE_SCHEMA_VERSION && !cJSON_IsArray(components)) ||
+                (hasComponents && !cJSON_IsArray(components)) ||
                 strlen(id->valuestring) >= BWORKSPACE_ENTITY_ID_MAX ||
                 strlen(entityName->valuestring) >= BWORKSPACE_ENTITY_NAME_MAX) {
                 cJSON_Delete(root);
@@ -1324,7 +1345,7 @@ bool BWorkspaceDocument_Load(const char *workspacePath, BWorkspaceDocument *dest
             snprintf(destination->name, sizeof(destination->name), "%s", entityName->valuestring);
             destination->enabled = cJSON_IsTrue(enabled);
 
-            if (sourceVersion == BWORKSPACE_SCHEMA_VERSION) {
+            if (hasComponents) {
                 int componentCount = cJSON_GetArraySize(components);
 
                 if (componentCount < 0 || componentCount > BWORKSPACE_ENTITY_COMPONENT_MAX ||
@@ -1342,7 +1363,7 @@ bool BWorkspaceDocument_Load(const char *workspacePath, BWorkspaceDocument *dest
                     BWorkspaceComponent *component = &destination->components[componentIndex];
 
                     if (!BWorkspace_ParseComponent(cJSON_GetArrayItem(components, componentIndex),
-                                                   component, diagnostics)) {
+                                                   component, sourceVersion, diagnostics)) {
                         if (diagnostics != 0 && diagnostics->count > 0) {
                             BDiagnostic *diagnostic = &diagnostics->items[diagnostics->count - 1];
                             snprintf(diagnostic->entityId, sizeof(diagnostic->entityId), "%s",
@@ -1458,6 +1479,7 @@ static cJSON *BWorkspace_ComponentDataToJson(const BWorkspaceComponent *componen
     } else {
         cJSON_AddStringToObject(source, "kind", "text-sprite");
         cJSON_AddStringToObject(source, "path", renderable->textSprite.path);
+        cJSON_AddStringToObject(source, "id", renderable->textSprite.id);
     }
 
     char foreground[10];

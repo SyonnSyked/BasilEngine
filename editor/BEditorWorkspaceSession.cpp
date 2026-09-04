@@ -282,7 +282,8 @@ bool BEditorWorkspaceSession::AddGlyphEntity(char glyph, std::string &error)
     return true;
 }
 
-bool BEditorWorkspaceSession::AddTextSpriteEntity(const std::string &relativePath,
+bool BEditorWorkspaceSession::AddTextSpriteEntity(const std::string &assetId,
+                                                  const std::string &relativePath,
                                                   std::string &error)
 {
     if (!loaded_) {
@@ -301,8 +302,14 @@ bool BEditorWorkspaceSession::AddTextSpriteEntity(const std::string &relativePat
     std::size_t index = 0;
     BAsciiRenderable renderable = BAsciiRenderable_DefaultGlyph('@');
     renderable.sourceKind = BASCII_SOURCE_TEXT_SPRITE;
-    std::snprintf(renderable.textSprite.path, sizeof(renderable.textSprite), "%s",
-                  relativePath.c_str());
+    if (!BAssetRef_Set(&renderable.textSprite, assetId.c_str(), relativePath.c_str(),
+                       &diagnostics)) {
+        CancelMutation();
+        error = FirstDiagnosticMessage(diagnostics);
+
+        return false;
+    }
+
     if (!BWorkspaceDocument_AddEntity(&workspace_, name, &index, &diagnostics)) {
         CancelMutation();
         error = FirstDiagnosticMessage(diagnostics);

@@ -80,7 +80,9 @@ int main(void)
 
     BAsciiRenderable sprite = BAsciiRenderable_DefaultGlyph('?');
     sprite.sourceKind = BASCII_SOURCE_TEXT_SPRITE;
-    snprintf(sprite.textSprite.id, sizeof(sprite.textSprite), "assets/ship.txt");
+    failures +=
+        Check(BAssetRef_Set(&sprite.textSprite, "asset-ship-test", "assets/ship.txt", &diagnostics),
+              "Text sprite fixture recieves a valid AssetRef.");
     sprite.anchor = BASCII_ANCHOR_CENTER;
     sprite.layer = -2;
     sprite.background = (BAsciiColor){9, 8, 7, 6};
