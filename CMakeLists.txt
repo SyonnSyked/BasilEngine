@@ -110,7 +110,7 @@ target_include_directories(cjson PUBLIC thirdparty/cjson)
 add_library(
     BasilProject STATIC
     engine/project/BProject.c engine/project/BProjectGenerator.c engine/project/BRecentProjects.c
-    engine/project/BWorkspace.c engine/project/BAssetRegistry.c)
+    engine/project/BWorkspace.c engine/project/BAssetRegistry.c engine/project/BAssetRef.c)
 
 target_include_directories(BasilProject PUBLIC engine/project engine/core)
 

@@ -825,3 +825,55 @@ const BAssetRecord *BAssetRegistry_FindByPath(const BAssetRegistry *registry, co
 
     return NULL;
 }
+
+const BAssetRecord *BAssetRegistry_ResolveRef(const BAssetRegistry *registry,
+                                              const BAssetRef *reference,
+                                              BDiagnosticList *diagnostics)
+{
+    BDiagnosticList_Clear(diagnostics);
+
+    if (registry == NULL || reference == NULL) {
+        BDiagnosticList_Add(diagnostics, BDIAGNOSTIC_ERROR, BDIAGNOSTIC_INVALID_ARGUMENT,
+                            "Asset registry and reference are required.", NULL);
+
+        return NULL;
+    }
+
+    if (!BAssetRef_Validate(reference, diagnostics)) {
+        return NULL;
+    }
+
+    const BAssetRecord *record = BAssetRegistry_FindById(registry, reference->id);
+
+    if (record == NULL) {
+        BDiagnosticList_Add(diagnostics, BDIAGNOSTIC_ERROR, BDIAGNOSTIC_INVALID_DATA,
+                            "Asset reference stable ID does not exist in the Project registry.",
+                            reference->path);
+
+        return NULL;
+    }
+
+    return record;
+}
+
+bool BAssetRegistry_RefreshRefPath(const BAssetRegistry *registry, BAssetRef *reference,
+                                   BDiagnosticList *diagnostics)
+{
+    BDiagnosticList_Clear(diagnostics);
+
+    if (reference == NULL) {
+        BDiagnosticList_Add(diagnostics, BDIAGNOSTIC_ERROR, BDIAGNOSTIC_INVALID_ARGUMENT,
+                            "Asset reference is required.", NULL);
+
+        return false;
+    }
+
+    const BAssetRecord *record = BAssetRegistry_ResolveRef(registry, reference, diagnostics);
+
+    if (record == NULL)
+        return false;
+
+    snprintf(reference->path, sizeof(reference->path), "%s", record->path);
+
+    return true;
+}
