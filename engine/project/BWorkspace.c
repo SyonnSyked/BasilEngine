@@ -1432,8 +1432,35 @@ static void BWorkspace_FormatColor(char output[10], BAsciiColor color)
     snprintf(output, 10, "#%02X%02X%02X%02X", color.r, color.g, color.b, color.a);
 }
 
+static bool BWorkspaceDocument_HasUnresolvedAssetRefs(const BWorkspaceDocument *workspace)
+{
+    if (workspace == NULL)
+        return false;
+
+    for (size_t entityIndex = 0; entityIndex < workspace->entityCount; ++entityIndex) {
+        const BWorkspaceEntity *entity = &workspace->entities[entityIndex];
+
+        for (size_t componentIndex = 0; componentIndex < entity->componentCount; ++componentIndex) {
+            const BWorkspaceComponent *component = &entity->components[componentIndex];
+
+            if (component->kind != BWORKSPACE_COMPONENT_ASCII_RENDERABLE) {
+                continue;
+            }
+
+            const BAsciiRenderable *renderable = &component->data.asciiRenderable;
+
+            if (renderable->sourceKind == BASCII_SOURCE_TEXT_SPRITE &&
+                renderable->textSprite.id[0] == '\0') {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 static cJSON *BWorkspace_ComponentDataToJson(const BWorkspaceComponent *component,
-                                             BDiagnosticList *diagnostics)
+                                             int outputSchemaVersion, BDiagnosticList *diagnostics)
 {
     if (component->kind == BWORKSPACE_COMPONENT_UNKNOWN) {
         cJSON *data = cJSON_Parse(component->data.unknownDataJson);
@@ -1478,8 +1505,10 @@ static cJSON *BWorkspace_ComponentDataToJson(const BWorkspaceComponent *componen
         cJSON_AddStringToObject(source, "glyph", glyph);
     } else {
         cJSON_AddStringToObject(source, "kind", "text-sprite");
-        cJSON_AddStringToObject(source, "path", renderable->textSprite.path);
-        cJSON_AddStringToObject(source, "id", renderable->textSprite.id);
+        if (outputSchemaVersion >= BWORKSPACE_ASSET_REF_SCHEMA_VERSION) {
+            cJSON_AddStringToObject(source, "path", renderable->textSprite.path);
+            cJSON_AddStringToObject(source, "id", renderable->textSprite.id);
+        }
     }
 
     char foreground[10];
@@ -1499,7 +1528,8 @@ static cJSON *BWorkspace_ComponentDataToJson(const BWorkspaceComponent *componen
     return data;
 }
 
-static bool BWorkspaceDocument_WriteJson(const BWorkspaceDocument *workspace, const char *path,
+static bool BWorkspaceDocument_WriteJson(const BWorkspaceDocument *workspace,
+                                         int outputSchemaVersion, const char *path,
                                          BDiagnosticList *error)
 {
     cJSON *root = cJSON_CreateObject();
@@ -1514,7 +1544,7 @@ static bool BWorkspaceDocument_WriteJson(const BWorkspaceDocument *workspace, co
 
     char nextEntityId[32];
     snprintf(nextEntityId, sizeof(nextEntityId), "%llu", workspace->nextEntityId);
-    cJSON_AddNumberToObject(root, "schemaVersion", workspace->schemaVersion);
+    cJSON_AddNumberToObject(root, "schemaVersion", outputSchemaVersion);
     cJSON_AddStringToObject(root, "name", workspace->name);
     cJSON_AddStringToObject(root, "identifier", workspace->identifier);
     cJSON_AddStringToObject(root, "nextEntityId", nextEntityId);
@@ -1546,7 +1576,7 @@ static bool BWorkspaceDocument_WriteJson(const BWorkspaceDocument *workspace, co
         for (size_t componentIndex = 0; componentIndex < entity->componentCount; ++componentIndex) {
             const BWorkspaceComponent *component = &entity->components[componentIndex];
             cJSON *serializedComponent = cJSON_CreateObject();
-            cJSON *data = BWorkspace_ComponentDataToJson(component, error);
+            cJSON *data = BWorkspace_ComponentDataToJson(component, outputSchemaVersion, error);
 
             if (serializedComponent == 0 || data == 0) {
                 cJSON_Delete(serializedComponent);
@@ -1608,6 +1638,10 @@ bool BWorkspaceDocument_Save(const BWorkspaceDocument *workspace, const char *wo
     if (!BWorkspaceDocument_Validate(workspace, error))
         return false;
 
+    int outputSchemaVersion = BWorkspaceDocument_HasUnresolvedAssetRefs(workspace)
+                                  ? BWORKSPACE_COMPONENT_SCHEMA_VERSION
+                                  : BWORKSPACE_SCHEMA_VERSION;
+
     char temporary[BDIAGNOSTIC_PATH_MAX + 8];
     char backup[BDIAGNOSTIC_PATH_MAX + 8];
     int temporaryLength = snprintf(temporary, sizeof(temporary), "%s.tmp", workspacePath);
@@ -1621,7 +1655,7 @@ bool BWorkspaceDocument_Save(const BWorkspaceDocument *workspace, const char *wo
 
     remove(temporary);
 
-    if (!BWorkspaceDocument_WriteJson(workspace, temporary, error))
+    if (!BWorkspaceDocument_WriteJson(workspace, outputSchemaVersion, temporary, error))
         return false;
 
     FILE *existing = fopen(workspacePath, "rb");

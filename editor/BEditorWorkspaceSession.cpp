@@ -558,7 +558,8 @@ bool BEditorWorkspaceSession::RemapAssetPath(const std::string &oldPath, const s
         BWorkspaceComponent *component = BWorkspaceEntity_FindComponent(
             &workspace_.entities[index], BWORKSPACE_ASCII_RENDERABLE_TYPE);
         BAsciiRenderable updated = component->data.asciiRenderable;
-        std::snprintf(updated.textSprite.path, sizeof(updated.textSprite), "%s", newPath.c_str());
+        std::snprintf(updated.textSprite.path, sizeof(updated.textSprite.path), "%s",
+                      newPath.c_str());
         if (!BWorkspaceDocument_SetAsciiRenderable(&workspace_, index, &updated, &diagnostics)) {
             auto snapshot = std::move(undo_.back());
             undo_.pop_back();

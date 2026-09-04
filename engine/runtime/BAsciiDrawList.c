@@ -158,7 +158,7 @@ bool BWorkspaceDocument_ValidateTextSprites(const BWorkspaceDocument *document,
             continue;
         const BTextSprite *sprite = NULL;
         if (!BTextSpriteCache_Load(spriteCache, projectRoot,
-                                   component->data.asciiRenderable.textSprite.id, &sprite,
+                                   component->data.asciiRenderable.textSprite.path, &sprite,
                                    diagnostics)) {
             BAsciiDrawList_AttachContext(diagnostics, entity);
             return false;
