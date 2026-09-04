@@ -1506,9 +1506,10 @@ static cJSON *BWorkspace_ComponentDataToJson(const BWorkspaceComponent *componen
     } else {
         cJSON_AddStringToObject(source, "kind", "text-sprite");
         if (outputSchemaVersion >= BWORKSPACE_ASSET_REF_SCHEMA_VERSION) {
-            cJSON_AddStringToObject(source, "path", renderable->textSprite.path);
             cJSON_AddStringToObject(source, "id", renderable->textSprite.id);
         }
+
+        cJSON_AddStringToObject(source, "path", renderable->textSprite.path);
     }
 
     char foreground[10];
