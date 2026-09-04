@@ -162,6 +162,30 @@ static bool BWorkspace_IsRelativeAssetPath(const char *path)
     return true;
 }
 
+static bool BWorkspace_IsRenderableValidForSchema(const BAsciiRenderable *renderable,
+                                                  int sourceSchemaVersion)
+{
+    if (renderable == NULL || renderable->anchor < BASCII_ANCHOR_BOTTOM_CENTER ||
+        renderable->anchor > BASCII_ANCHOR_TOP_LEFT ||
+        renderable->sourceKind < BASCII_SOURCE_GLYPH ||
+        renderable->sourceKind > BASCII_SOURCE_TEXT_SPRITE) {
+        return false;
+    }
+
+    if (renderable->sourceKind == BASCII_SOURCE_GLYPH) {
+        return (unsigned char)renderable->glyph >= 0x20 && (unsigned char)renderable->glyph <= 0x7e;
+    }
+
+    if (sourceSchemaVersion >= BWORKSPACE_ASSET_REF_SCHEMA_VERSION) {
+        BDiagnosticList diagnostics = {0};
+
+        return BAssetRef_Validate(&renderable->textSprite, &diagnostics);
+    }
+
+    return renderable->textSprite.id[0] == '\0' &&
+           BWorkspace_IsRelativeAssetPath(renderable->textSprite.path);
+}
+
 static bool BWorkspaceDocument_IsValidIdentifier(const char *identifier)
 {
     if (identifier == 0 || identifier[0] == '\0')
@@ -469,14 +493,8 @@ bool BWorkspaceDocument_Validate(const BWorkspaceDocument *workspace, BDiagnosti
 
                 if (strcmp(component->type, BWORKSPACE_ASCII_RENDERABLE_TYPE) != 0 ||
                     component->version != 1 || renderable->anchor < BASCII_ANCHOR_BOTTOM_CENTER ||
-                    renderable->anchor > BASCII_ANCHOR_TOP_LEFT ||
-                    renderable->sourceKind < BASCII_SOURCE_GLYPH ||
-                    renderable->sourceKind > BASCII_SOURCE_TEXT_SPRITE ||
-                    (renderable->sourceKind == BASCII_SOURCE_GLYPH &&
-                     ((unsigned char)renderable->glyph < 0x20 ||
-                      (unsigned char)renderable->glyph > 0x7e)) ||
-                    (renderable->sourceKind == BASCII_SOURCE_TEXT_SPRITE &&
-                     !BWorkspace_IsRelativeAssetPath(renderable->textSpritePath))) {
+                    !BWorkspace_IsRenderableValidForSchema(renderable,
+                                                           workspace->sourceSchemaVersion)) {
                     return BWorkspaceDocument_Fail(error, BDIAGNOSTIC_INVALID_DATA,
                                                    "ASCII Renderable component data is invalid.");
                 }
@@ -866,7 +884,7 @@ bool BWorkspaceDocument_AddAsciiRenderable(BWorkspaceDocument *document, size_t 
         (renderable->sourceKind == BASCII_SOURCE_GLYPH &&
          ((unsigned char)renderable->glyph < 0x20 || (unsigned char)renderable->glyph > 0x7e)) ||
         (renderable->sourceKind == BASCII_SOURCE_TEXT_SPRITE &&
-         !BWorkspace_IsRelativeAssetPath(renderable->textSpritePath))) {
+         !BWorkspace_IsRenderableValidForSchema(renderable, renderable->sourceKind))) {
         BWorkspaceDocument_ClearError(diagnostics);
         return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
                                        "ASCII Renderable component data is invalid.");
@@ -1096,7 +1114,7 @@ static bool BWorkspace_ParseComponent(const cJSON *source, BWorkspaceComponent *
             }
 
             renderable->sourceKind = BASCII_SOURCE_TEXT_SPRITE;
-            snprintf(renderable->textSpritePath, sizeof(renderable->textSpritePath), "%s",
+            snprintf(renderable->textSprite, sizeof(renderable->textSprite), "%s",
                      path->valuestring);
         } else {
             return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
@@ -1439,7 +1457,7 @@ static cJSON *BWorkspace_ComponentDataToJson(const BWorkspaceComponent *componen
         cJSON_AddStringToObject(source, "glyph", glyph);
     } else {
         cJSON_AddStringToObject(source, "kind", "text-sprite");
-        cJSON_AddStringToObject(source, "path", renderable->textSpritePath);
+        cJSON_AddStringToObject(source, "path", renderable->textSprite);
     }
 
     char foreground[10];
