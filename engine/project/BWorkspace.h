@@ -29,11 +29,13 @@ extern "C" {
 
 #define BWORKSPACE_TRANSFORM2D_TYPE "basil.transform2d"
 #define BWORKSPACE_ASCII_RENDERABLE_TYPE "basil.ascii-renderable"
+#define BWORKSPACE_COLLIDER2D_TYPE "basil.collider2d"
 
 typedef enum BWorkspaceComponentKind {
     BWORKSPACE_COMPONENT_UNKNOWN,
     BWORKSPACE_COMPONENT_TRANSFORM2D,
-    BWORKSPACE_COMPONENT_ASCII_RENDERABLE
+    BWORKSPACE_COMPONENT_ASCII_RENDERABLE,
+    BWORKSPACE_COMPONENT_COLLIDER2D
 } BWorkspaceComponentKind;
 
 typedef enum BAsciiSourceKind { BASCII_SOURCE_GLYPH, BASCII_SOURCE_TEXT_SPRITE } BAsciiSourceKind;
@@ -48,6 +50,14 @@ typedef struct BTransform2D {
     float x;
     float y;
 } BTransform2D;
+
+typedef struct BCollider2D {
+    float offsetX;
+    float offsetY;
+    float width;
+    float height;
+    bool trigger;
+} BCollider2D;
 
 typedef struct BAsciiColor {
     unsigned char r;
@@ -76,6 +86,7 @@ typedef struct BWorkspaceComponent {
     union {
         BTransform2D transform2d;
         BAsciiRenderable asciiRenderable;
+        BCollider2D collider2d;
         char *unknownDataJson;
     } data;
 } BWorkspaceComponent;
@@ -135,11 +146,16 @@ bool BWorkspaceDocument_AddTransform2D(BWorkspaceDocument *document, size_t enti
 bool BWorkspaceDocument_AddAsciiRenderable(BWorkspaceDocument *document, size_t entityIndex,
                                            const BAsciiRenderable *renderable, bool required,
                                            BDiagnosticList *diagnostics);
+bool BWorkspaceDocument_AddCollider2D(BWorkspaceDocument *document, size_t entityIndex,
+                                      BCollider2D collider, bool required,
+                                      BDiagnosticList *diagnostics);
 bool BWorkspaceDocument_SetTransform2D(BWorkspaceDocument *document, size_t entityIndex,
                                        BTransform2D transform, BDiagnosticList *diagnostics);
 bool BWorkspaceDocument_SetAsciiRenderable(BWorkspaceDocument *document, size_t entityIndex,
                                            const BAsciiRenderable *renderable,
                                            BDiagnosticList *diagnostics);
+bool BWorkspaceDocument_SetCollider2D(BWorkspaceDocument *document, size_t entityIndex,
+                                      BCollider2D collider, BDiagnosticList *diagnostics);
 bool BWorkspaceDocument_AddCustomComponentJson(BWorkspaceDocument *document, size_t entityIndex,
                                                const char *type, int version, const char *dataJson,
                                                BDiagnosticList *diagnostics);
@@ -152,6 +168,7 @@ BWorkspaceComponent *BWorkspaceEntity_FindComponent(BWorkspaceEntity *entity, co
 const BWorkspaceComponent *BWorkspaceEntity_FindComponentConst(const BWorkspaceEntity *entity,
                                                                const char *type);
 BAsciiRenderable BAsciiRenderable_DefaultGlyph(char glyph);
+BCollider2D BCollider2D_Default(void);
 bool BWorkspaceDocument_RequiresMigration(const BWorkspaceDocument *document);
 
 #ifdef __cplusplus
