@@ -186,6 +186,13 @@ static bool BWorkspace_IsRenderableValidForSchema(const BAsciiRenderable *render
            BWorkspace_IsRelativeAssetPath(renderable->textSprite.path);
 }
 
+static bool BWorkspace_IsColliderValid(const BCollider2D *collider)
+{
+    return collider != NULL && isfinite(collider->offsetX) && isfinite(collider->offsetY) &&
+           isfinite(collider->width) && isfinite(collider->height) && collider->width > 0.0f &&
+           collider->height > 0.0f;
+}
+
 static bool BWorkspaceDocument_IsValidIdentifier(const char *identifier)
 {
     if (identifier == 0 || identifier[0] == '\0')
@@ -498,6 +505,14 @@ bool BWorkspaceDocument_Validate(const BWorkspaceDocument *workspace, BDiagnosti
                     return BWorkspaceDocument_Fail(error, BDIAGNOSTIC_INVALID_DATA,
                                                    "ASCII Renderable component data is invalid.");
                 }
+            } else if (component->kind == BWORKSPACE_COMPONENT_COLLIDER2D) {
+                const BCollider2D *collider = &component->data.collider2d;
+
+                if (strcmp(component->type, BWORKSPACE_COLLIDER2D_TYPE) != 0 ||
+                    component->version != 1 || !BWorkspace_IsColliderValid(collider)) {
+                    return BWorkspaceDocument_Fail(error, BDIAGNOSTIC_INVALID_DATA,
+                                                   "Collider2D component data is invalid.");
+                }
             } else if (component->kind == BWORKSPACE_COMPONENT_UNKNOWN) {
                 if (component->required || component->data.unknownDataJson == 0 ||
                     strlen(component->data.unknownDataJson) > BWORKSPACE_UNKNOWN_DATA_MAX) {
@@ -508,6 +523,12 @@ bool BWorkspaceDocument_Validate(const BWorkspaceDocument *workspace, BDiagnosti
             } else {
                 return BWorkspaceDocument_Fail(error, BDIAGNOSTIC_INVALID_DATA,
                                                "Workspace component kind is invalid.");
+            }
+
+            if (BWorkspaceEntity_FindComponentConst(entity, BWORKSPACE_COLLIDER2D_TYPE) != 0 &&
+                BWorkspaceEntity_FindComponentConst(entity, BWORKSPACE_TRANSFORM2D_TYPE) == 0) {
+                return BWorkspaceDocument_Fail(error, BDIAGNOSTIC_INVALID_DATA,
+                                               "Collider2D requires Transform2D.");
             }
         }
 
@@ -867,6 +888,19 @@ BAsciiRenderable BAsciiRenderable_DefaultGlyph(char glyph)
     return renderable;
 }
 
+BCollider2D BCollider2D_Default(void)
+{
+    BCollider2D collider = {0};
+
+    collider.offsetX = 0.0f;
+    collider.offsetY = 0.0f;
+    collider.width = 1.0f;
+    collider.height = 1.0f;
+    collider.trigger = false;
+
+    return collider;
+}
+
 bool BWorkspaceDocument_AddAsciiRenderable(BWorkspaceDocument *document, size_t entityIndex,
                                            const BAsciiRenderable *renderable, bool required,
                                            BDiagnosticList *diagnostics)
@@ -904,6 +938,42 @@ bool BWorkspaceDocument_AddAsciiRenderable(BWorkspaceDocument *document, size_t 
     component.required = required;
     component.kind = BWORKSPACE_COMPONENT_ASCII_RENDERABLE;
     component.data.asciiRenderable = *renderable;
+    return BWorkspaceDocument_AppendComponent(document, entityIndex, &component, diagnostics);
+}
+
+bool BWorkspaceDocument_AddCollider2D(BWorkspaceDocument *document, size_t entityIndex,
+                                      BCollider2D collider, bool required,
+                                      BDiagnosticList *diagnostics)
+{
+    BWorkspaceDocument_ClearError(diagnostics);
+
+    if (document == NULL || entityIndex >= document->entityCount) {
+        return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_ARGUMENT,
+                                       "Workspace and entity are required.");
+    }
+
+    if (!BWorkspace_IsColliderValid(&collider)) {
+        return BWorkspaceDocument_Fail(
+            diagnostics, BDIAGNOSTIC_INVALID_DATA,
+            "Collider2D bounds must be finite and have positive width and height.");
+    }
+
+    if (BWorkspaceEntity_FindComponent(&document->entities[entityIndex],
+                                       BWORKSPACE_TRANSFORM2D_TYPE) == NULL) {
+        return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
+                                       "Collider2D requires an entity with Transform2D.");
+    }
+
+    BWorkspaceComponent component = {0};
+
+    snprintf(component.type, sizeof(component.type), "%s", BWORKSPACE_COLLIDER2D_TYPE);
+
+    component.version = 1;
+    component.required = required;
+    component.kind = BWORKSPACE_COMPONENT_COLLIDER2D;
+
+    component.data.collider2d = collider;
+
     return BWorkspaceDocument_AppendComponent(document, entityIndex, &component, diagnostics);
 }
 
@@ -950,6 +1020,35 @@ bool BWorkspaceDocument_SetAsciiRenderable(BWorkspaceDocument *document, size_t 
     return true;
 }
 
+bool BWorkspaceDocument_SetCollider2D(BWorkspaceDocument *document, size_t entityIndex,
+                                      BCollider2D collider, BDiagnosticList *diagnostics)
+{
+    BWorkspaceDocument_ClearError(diagnostics);
+
+    if (document == NULL || entityIndex >= document->entityCount) {
+        return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_ARGUMENT,
+                                       "Workspace and entity are required.");
+    }
+
+    if (!BWorkspace_IsColliderValid(&collider)) {
+        return BWorkspaceDocument_Fail(
+            diagnostics, BDIAGNOSTIC_INVALID_DATA,
+            "Collider2D bounds must be finite and have positive width and height.");
+    }
+
+    BWorkspaceComponent *component = BWorkspaceEntity_FindComponent(
+        &document->entities[entityIndex], BWORKSPACE_COLLIDER2D_TYPE);
+
+    if (component == NULL || component->kind != BWORKSPACE_COMPONENT_COLLIDER2D) {
+        return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
+                                       "Entity does not contain a supported Collider2D component.");
+    }
+
+    component->data.collider2d = collider;
+
+    return true;
+}
+
 bool BWorkspaceDocument_RemoveComponent(BWorkspaceDocument *document, size_t entityIndex,
                                         const char *type, BDiagnosticList *diagnostics)
 {
@@ -965,6 +1064,12 @@ bool BWorkspaceDocument_RemoveComponent(BWorkspaceDocument *document, size_t ent
         BWorkspaceEntity_FindComponent(entity, BWORKSPACE_ASCII_RENDERABLE_TYPE) != 0) {
         return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
                                        "Remove ASCII Renderable before removing its Transform2D.");
+    }
+
+    if (strcmp(type, BWORKSPACE_TRANSFORM2D_TYPE) == 0 &&
+        BWorkspaceEntity_FindComponent(entity, BWORKSPACE_COLLIDER2D_TYPE) != NULL) {
+        return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
+                                       "Remove Collider2D before removing its Transform2D.");
     }
 
     for (size_t i = 0; i < entity->componentCount; ++i) {
@@ -1057,6 +1162,44 @@ static bool BWorkspace_ParseComponent(const cJSON *source, BWorkspaceComponent *
         destination->kind = BWORKSPACE_COMPONENT_TRANSFORM2D;
         destination->data.transform2d.x = (float)x->valuedouble;
         destination->data.transform2d.y = (float)y->valuedouble;
+        return true;
+    }
+
+    if (strcmp(destination->type, BWORKSPACE_COLLIDER2D_TYPE) == 0 && destination->version == 1) {
+        const char *const dataFields[] = {"offsetX", "offsetY", "width", "height", "trigger"};
+
+        cJSON *offsetX = cJSON_GetObjectItemCaseSensitive(data, "offsetX");
+
+        cJSON *offsetY = cJSON_GetObjectItemCaseSensitive(data, "offsetY");
+
+        cJSON *width = cJSON_GetObjectItemCaseSensitive(data, "width");
+
+        cJSON *height = cJSON_GetObjectItemCaseSensitive(data, "height");
+
+        cJSON *trigger = cJSON_GetObjectItemCaseSensitive(data, "trigger");
+
+        if (!BWorkspaceDocument_HasOnlyFields(data, dataFields, 5) || !cJSON_IsNumber(offsetX) ||
+            !cJSON_IsNumber(offsetY) || !cJSON_IsNumber(width) || !cJSON_IsNumber(height) ||
+            !cJSON_IsBool(trigger)) {
+            return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
+                                           "Collider2D component data is invalid.");
+        }
+
+        BCollider2D collider = {.offsetX = (float)offsetX->valuedouble,
+                                .offsetY = (float)offsetY->valuedouble,
+                                .width = (float)width->valuedouble,
+                                .height = (float)height->valuedouble,
+                                .trigger = cJSON_IsTrue(trigger)};
+
+        if (!BWorkspace_IsColliderValid(&collider)) {
+            return BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
+                                           "Collider2D component data is invalid.");
+        }
+
+        destination->kind = BWORKSPACE_COMPONENT_COLLIDER2D;
+
+        destination->data.collider2d = collider;
+
         return true;
     }
 
@@ -1487,6 +1630,25 @@ static cJSON *BWorkspace_ComponentDataToJson(const BWorkspaceComponent *componen
         cJSON_AddNumberToObject(data, "x", component->data.transform2d.x);
         cJSON_AddNumberToObject(data, "y", component->data.transform2d.y);
         return data;
+    }
+
+    if (component->kind == BWORKSPACE_COMPONENT_COLLIDER2D) {
+        const BCollider2D *collider = &component->data.collider2d;
+        cJSON_AddNumberToObject(data, "offsetX", collider->offsetX);
+        cJSON_AddNumberToObject(data, "offsetY", collider->offsetY);
+        cJSON_AddNumberToObject(data, "width", collider->width);
+        cJSON_AddNumberToObject(data, "height", collider->height);
+        cJSON_AddBoolToObject(data, "trigger", collider->trigger);
+        return data;
+    }
+
+    if (component->kind != BWORKSPACE_COMPONENT_ASCII_RENDERABLE) {
+        cJSON_Delete(data);
+
+        BWorkspaceDocument_Fail(diagnostics, BDIAGNOSTIC_INVALID_DATA,
+                                "Unsupported built-in Workspace component kind.");
+
+        return NULL;
     }
 
     const BAsciiRenderable *renderable = &component->data.asciiRenderable;

@@ -2,7 +2,7 @@
 	"schemaVersion":	3,
 	"name":	"Ash Basin Test Room",
 	"identifier":	"Main",
-	"nextEntityId":	"5",
+	"nextEntityId":	"6",
 	"entities":	[{
 			"id":	"entity-0000000000000001",
 			"name":	"Ash Basin",
