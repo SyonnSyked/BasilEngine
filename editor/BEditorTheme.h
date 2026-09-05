@@ -3,13 +3,13 @@
 
 #include "imgui.h"
 
-struct BEditorThemePalette
-{
+struct BEditorThemePalette {
     ImVec4 background;
     ImVec4 surface;
     ImVec4 surfaceRaised;
     ImVec4 cyan;
     ImVec4 violet;
+    ImVec4 red;
     ImVec4 text;
     ImVec4 textMuted;
     ImVec4 success;
@@ -26,8 +26,8 @@ bool BEditorTheme_Initialize(float interfaceScale);
 // repeated calls never compound sizes. This supports the planned scale presets.
 void BEditorTheme_Apply(float interfaceScale);
 
-const BEditorThemePalette& BEditorTheme_GetPalette();
-ImFont* BEditorTheme_GetRegularFont();
-ImFont* BEditorTheme_GetBoldFont();
+const BEditorThemePalette &BEditorTheme_GetPalette();
+ImFont *BEditorTheme_GetRegularFont();
+ImFont *BEditorTheme_GetBoldFont();
 
 #endif
