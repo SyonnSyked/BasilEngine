@@ -60,13 +60,19 @@ BEditorPanelFeedback DrawWorkspaceHierarchy(BEditorUIConfig &config, const BProj
         const BEditorThemePalette &palette = BEditorTheme_GetPalette();
         ImGui::TextColored(palette.violet, "ACTIVE WORKSPACE");
         ImGui::Separator();
-        ImGui::TextDisabled("SOURCE // %s", project.startupWorkspace);
+        std::string activeWorkspace = session.RelativePath();
+        bool isStartup = !activeWorkspace.empty() && activeWorkspace == project.startupWorkspace;
+
+        ImGui::TextDisabled("SOURCE // %s",
+                            activeWorkspace.empty() ? "(none)" : activeWorkspace.c_str());
+
+        ImGui::TextDisabled("STARTUP // %s", isStartup ? "YES" : "NO");
         ImGui::TextColored(session.IsDirty() ? palette.warning : palette.success,
                            session.IsDirty() ? "MODIFIED" : "SAVED");
         ImGui::Separator();
 
         if (!session.IsLoaded()) {
-            ImGui::TextColored(palette.error, "[!] STARTUP WORKSPACE UNAVAILABLE");
+            ImGui::TextColored(palette.error, "[!] CURRENT WORKSPACE UNAVAILABLE");
             ImGui::End();
             return feedback;
         }
