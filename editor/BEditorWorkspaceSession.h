@@ -22,6 +22,8 @@ class BEditorWorkspaceSession {
 
     void Reset();
 
+    bool CreateNew(const std::filesystem::path &projectRoot, const std::string &name,
+                   const std::string &identifier, std::string &error);
     bool Load(const std::filesystem::path &projectRoot, const std::string &relativePath,
               std::string &error);
     bool Reload(std::string &error);
@@ -57,6 +59,7 @@ class BEditorWorkspaceSession {
     void MarkDirty();
 
     const std::filesystem::path &Path() const;
+    std::string RelativePath() const;
     const std::filesystem::path &ProjectRoot() const;
     const BWorkspaceDocument &Workspace() const;
     BWorkspaceDocument &MutableWorkspace();
