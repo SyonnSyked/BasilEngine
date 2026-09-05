@@ -86,6 +86,17 @@ int main()
                           creationSession.RelativePath() == "workspaces/RoomTwo.basilworkspace" &&
                           std::string(creationSession.Workspace().name) == "Room Two",
                       "failed Workspace creation preserves the active session");
+    failures += Check(creationSession.Load(root, "workspaces/Main.basilworkspace", error),
+                      "session switches from a created Workspace back to Main");
+
+    failures += Check(creationSession.RelativePath() == "workspaces/Main.basilworkspace",
+                      "switch updates the active Workspace identity");
+
+    failures += Check(creationSession.Load(root, "workspaces/RoomTwo.basilworkspace", error),
+                      "session switches back to the created Workspace");
+
+    failures += Check(creationSession.RelativePath() == "workspaces/RoomTwo.basilworkspace",
+                      "second switch restores the expected active Workspace");
     failures += Check(session.AddEntity(error), "session adds entity");
     failures += Check(session.IsDirty(), "adding marks session dirty");
     failures += Check(session.SelectedEntity() != nullptr, "added entity is selected");
