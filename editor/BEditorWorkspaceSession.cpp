@@ -363,10 +363,12 @@ bool BEditorWorkspaceSession::AddGlyphEntity(char glyph, std::string &error)
     }
 
     BAsciiRenderable renderable = BAsciiRenderable_DefaultGlyph(glyph);
+    BCollider2D collider = BCollider2D_Default();
     if (!BWorkspaceDocument_AddTransform2D(&workspace_, index, BTransform2D{0.0f, 0.0f}, true,
                                            &diagnostics) ||
         !BWorkspaceDocument_AddAsciiRenderable(&workspace_, index, &renderable, true,
-                                               &diagnostics)) {
+                                               &diagnostics) ||
+        !BWorkspaceDocument_AddCollider2D(&workspace_, index, collider, false, &diagnostics)) {
         BWorkspaceDocument_RemoveEntity(&workspace_, index, nullptr);
         CancelMutation();
         error = FirstDiagnosticMessage(diagnostics);
@@ -412,10 +414,13 @@ bool BEditorWorkspaceSession::AddTextSpriteEntity(const std::string &assetId,
         error = FirstDiagnosticMessage(diagnostics);
         return false;
     }
+
+    BCollider2D collider = BCollider2D_Default();
     if (!BWorkspaceDocument_AddTransform2D(&workspace_, index, BTransform2D{0.0f, 0.0f}, true,
                                            &diagnostics) ||
         !BWorkspaceDocument_AddAsciiRenderable(&workspace_, index, &renderable, true,
-                                               &diagnostics)) {
+                                               &diagnostics) ||
+        !BWorkspaceDocument_AddCollider2D(&workspace_, index, collider, false, &diagnostics)) {
         BWorkspaceDocument_RemoveEntity(&workspace_, index, nullptr);
         CancelMutation();
         error = FirstDiagnosticMessage(diagnostics);
@@ -541,6 +546,108 @@ bool BEditorWorkspaceSession::SetSelectedRenderable(const BAsciiRenderable &rend
     }
     CommitMutation();
     error.clear();
+    return true;
+}
+
+bool BEditorWorkspaceSession::SetSelectedCollider(BCollider2D collider, std::string &error)
+{
+    if (selectedIndex_ >= workspace_.entityCount) {
+        error = "No Workspace entity is selected.";
+
+        return false;
+    }
+
+    if (!Capture(undo_, error))
+        return false;
+
+    BDiagnosticList diagnostics{};
+
+    if (!BWorkspaceDocument_SetCollider2D(&workspace_, selectedIndex_, collider, &diagnostics)) {
+        CancelMutation();
+
+        error = FirstDiagnosticMessage(diagnostics);
+
+        return false;
+    }
+
+    CommitMutation();
+
+    error.clear();
+
+    return true;
+}
+
+bool BEditorWorkspaceSession::AddSelectedCollider(std::string &error)
+{
+    if (!loaded_ || selectedIndex_ >= workspace_.entityCount) {
+        error = "No Workspace entity is selected.";
+
+        return false;
+    }
+
+    BWorkspaceEntity *entity = &workspace_.entities[selectedIndex_];
+
+    if (BWorkspaceEntity_FindComponent(entity, BWORKSPACE_COLLIDER2D_TYPE) != nullptr) {
+        error = "Entity already contains Collider2D.";
+
+        return false;
+    }
+
+    if (BWorkspaceEntity_FindComponent(entity, BWORKSPACE_TRANSFORM2D_TYPE) == nullptr) {
+        error = "Collider2D requires Transform2D.";
+
+        return false;
+    }
+
+    if (!Capture(undo_, error))
+        return false;
+
+    BDiagnosticList diagnostics{};
+
+    BCollider2D collider = BCollider2D_Default();
+
+    if (!BWorkspaceDocument_AddCollider2D(&workspace_, selectedIndex_, collider, false,
+                                          &diagnostics)) {
+        CancelMutation();
+
+        error = FirstDiagnosticMessage(diagnostics);
+
+        return false;
+    }
+
+    CommitMutation();
+
+    error.clear();
+
+    return true;
+}
+
+bool BEditorWorkspaceSession::RemoveSelectedCollider(std::string &error)
+{
+    if (!loaded_ || selectedIndex_ >= workspace_.entityCount) {
+        error = "No Workspace entity is selected.";
+
+        return false;
+    }
+
+    if (!Capture(undo_, error))
+        return false;
+
+    BDiagnosticList diagnostics{};
+
+    if (!BWorkspaceDocument_RemoveComponent(&workspace_, selectedIndex_, BWORKSPACE_COLLIDER2D_TYPE,
+                                            &diagnostics)) {
+        CancelMutation();
+
+        error = FirstDiagnosticMessage(diagnostics);
+
+        return false;
+    }
+
+    CommitMutation();
+
+    error.clear();
+
     return true;
 }
 

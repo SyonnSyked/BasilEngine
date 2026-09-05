@@ -7,8 +7,7 @@
 
 namespace fs = std::filesystem;
 
-namespace
-{
+namespace {
 constexpr float MINIMUM_SCALE = 1.0f;
 constexpr float MAXIMUM_SCALE = 1.75f;
 constexpr float BASE_FONT_SIZE = 14.0f;
@@ -19,6 +18,7 @@ BEditorThemePalette palette{
     ImVec4(0.070f, 0.090f, 0.120f, 1.0f), // raised surface
     ImVec4(0.000f, 0.900f, 0.950f, 1.0f), // electric cyan
     ImVec4(0.500f, 0.300f, 0.850f, 1.0f), // restrained violet
+    ImVec4(0.700f, 0.100f, 0.100f, 1.0f), // red
     ImVec4(0.850f, 0.925f, 0.950f, 1.0f), // text
     ImVec4(0.480f, 0.590f, 0.650f, 1.0f), // muted text
     ImVec4(0.200f, 0.850f, 0.560f, 1.0f), // success
@@ -26,18 +26,18 @@ BEditorThemePalette palette{
     ImVec4(0.950f, 0.250f, 0.300f, 1.0f)  // error
 };
 
-ImFont* regularFont = nullptr;
-ImFont* boldFont = nullptr;
+ImFont *regularFont = nullptr;
+ImFont *boldFont = nullptr;
 
-fs::path FontPath(const char* filename)
+fs::path FontPath(const char *filename)
 {
-    return fs::path(GetApplicationDirectory()) / "assets" / "editor" /
-        "fonts" / "JetBrainsMono" / filename;
+    return fs::path(GetApplicationDirectory()) / "assets" / "editor" / "fonts" / "JetBrainsMono" /
+           filename;
 }
 
-void ApplyColors(ImGuiStyle& style)
+void ApplyColors(ImGuiStyle &style)
 {
-    ImVec4* colors = style.Colors;
+    ImVec4 *colors = style.Colors;
     colors[ImGuiCol_Text] = palette.text;
     colors[ImGuiCol_TextDisabled] = palette.textMuted;
     colors[ImGuiCol_WindowBg] = palette.background;
@@ -82,12 +82,13 @@ void ApplyColors(ImGuiStyle& style)
     colors[ImGuiCol_TableHeaderBg] = palette.surfaceRaised;
     colors[ImGuiCol_TableBorderStrong] = ImVec4(0.000f, 0.420f, 0.480f, 0.65f);
     colors[ImGuiCol_TableBorderLight] = ImVec4(0.000f, 0.260f, 0.300f, 0.45f);
-    colors[ImGuiCol_TextSelectedBg] = ImVec4(palette.violet.x, palette.violet.y, palette.violet.z, 0.45f);
+    colors[ImGuiCol_TextSelectedBg] =
+        ImVec4(palette.violet.x, palette.violet.y, palette.violet.z, 0.45f);
     colors[ImGuiCol_DragDropTarget] = palette.cyan;
     colors[ImGuiCol_NavCursor] = palette.violet;
     colors[ImGuiCol_NavWindowingHighlight] = palette.cyan;
 }
-}
+} // namespace
 
 void BEditorTheme_Apply(float interfaceScale)
 {
@@ -97,7 +98,7 @@ void BEditorTheme_Apply(float interfaceScale)
     ImGui::GetStyle() = baseline;
     ImGui::StyleColorsDark();
 
-    ImGuiStyle& style = ImGui::GetStyle();
+    ImGuiStyle &style = ImGui::GetStyle();
     ApplyColors(style);
     style.WindowPadding = ImVec2(10.0f, 10.0f);
     style.FramePadding = ImVec2(8.0f, 5.0f);
@@ -125,7 +126,7 @@ void BEditorTheme_Apply(float interfaceScale)
 
 bool BEditorTheme_Initialize(float interfaceScale)
 {
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO &io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
     BEditorTheme_Apply(interfaceScale);
@@ -141,7 +142,8 @@ bool BEditorTheme_Initialize(float interfaceScale)
     if (!fs::is_regular_file(regularPath) || !fs::is_regular_file(boldPath))
         return false;
 
-    regularFont = io.Fonts->AddFontFromFileTTF(regularPath.string().c_str(), config.SizePixels, &config);
+    regularFont =
+        io.Fonts->AddFontFromFileTTF(regularPath.string().c_str(), config.SizePixels, &config);
     boldFont = io.Fonts->AddFontFromFileTTF(boldPath.string().c_str(), config.SizePixels, &config);
 
     if (regularFont != nullptr)
@@ -150,17 +152,17 @@ bool BEditorTheme_Initialize(float interfaceScale)
     return regularFont != nullptr && boldFont != nullptr;
 }
 
-const BEditorThemePalette& BEditorTheme_GetPalette()
+const BEditorThemePalette &BEditorTheme_GetPalette()
 {
     return palette;
 }
 
-ImFont* BEditorTheme_GetRegularFont()
+ImFont *BEditorTheme_GetRegularFont()
 {
     return regularFont;
 }
 
-ImFont* BEditorTheme_GetBoldFont()
+ImFont *BEditorTheme_GetBoldFont()
 {
     return boldFont;
 }

@@ -103,6 +103,7 @@ struct EditorState {
     float viewportZoom = 1.0f;
     bool viewportShowMarkers = true;
     bool viewportShowLabels = true;
+    bool viewportShowColliders = true;
 };
 
 static void ResetViewportPreview(EditorState &state)
@@ -1247,6 +1248,8 @@ static void DrawWorkspaceViewport(EditorState &state)
     ImGui::SameLine();
     ImGui::Checkbox("Markers", &state.viewportShowMarkers);
     ImGui::SameLine();
+    ImGui::Checkbox("Colliders", &state.viewportShowColliders);
+    ImGui::SameLine();
     ImGui::Checkbox("Labels", &state.viewportShowLabels);
     ImGui::SameLine();
     ImGui::SetNextItemWidth(130.0f);
@@ -1332,6 +1335,63 @@ static void DrawWorkspaceViewport(EditorState &state)
         if (selected != nullptr && std::strcmp(selected->id, item.entityId) == 0)
             draw->AddRect(position, {position.x + cellWidth, position.y + cellHeight},
                           ImGui::ColorConvertFloat4ToU32(palette.violet));
+    }
+
+    if (state.viewportShowColliders) {
+        const BWorkspaceDocument &workspace = state.workspaceSession.Workspace();
+
+        for (std::size_t i = 0; i < workspace.entityCount; ++i) {
+            const BWorkspaceEntity &entity = workspace.entities[i];
+
+            if (!entity.enabled)
+                continue;
+
+            const BWorkspaceComponent *transform =
+                BWorkspaceEntity_FindComponentConst(&entity, BWORKSPACE_TRANSFORM2D_TYPE);
+
+            const BWorkspaceComponent *collider =
+                BWorkspaceEntity_FindComponentConst(&entity, BWORKSPACE_COLLIDER2D_TYPE);
+
+            if (transform == nullptr || collider == nullptr) {
+                continue;
+            }
+
+            const BTransform2D &position = transform->data.transform2d;
+
+            const BCollider2D &bounds = collider->data.collider2d;
+
+            float centerX = origin.x + (position.x + bounds.offsetX) * cellWidth + cellWidth * 0.5f;
+
+            float centerY =
+                origin.y + (position.y + bounds.offsetY) * cellHeight + cellHeight * 0.5f;
+
+            float halfWidth = bounds.width * cellWidth * 0.5f;
+
+            float halfHeight = bounds.height * cellHeight * 0.5f;
+
+            ImVec2 minimum{centerX - halfWidth, centerY - halfHeight};
+
+            ImVec2 maximum{centerX + halfWidth, centerY + halfHeight};
+
+            bool selectedCollider =
+                selected != nullptr && std::strcmp(selected->id, entity.id) == 0;
+
+            ImVec4 colliderColor;
+
+            if (selectedCollider) {
+                colliderColor = palette.red;
+            } else if (bounds.trigger) {
+                colliderColor = palette.cyan;
+            } else {
+                colliderColor = palette.warning;
+            }
+
+            colliderColor.w = selectedCollider ? 0.95f : 0.65f;
+
+            ImU32 outline = ImGui::ColorConvertFloat4ToU32(colliderColor);
+
+            draw->AddRect(minimum, maximum, outline, 0.0f, 0, selectedCollider ? 2.5f : 1.5f);
+        }
     }
 
     if (state.viewportShowMarkers) {

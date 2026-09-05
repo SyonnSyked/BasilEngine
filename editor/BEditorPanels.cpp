@@ -222,6 +222,8 @@ BEditorPanelFeedback DrawInspector(BEditorUIConfig &config, BEditorWorkspaceSess
                 BWorkspaceEntity_FindComponent(entity, BWORKSPACE_TRANSFORM2D_TYPE);
             BWorkspaceComponent *renderComponent =
                 BWorkspaceEntity_FindComponent(entity, BWORKSPACE_ASCII_RENDERABLE_TYPE);
+            BWorkspaceComponent *colliderComponent =
+                BWorkspaceEntity_FindComponent(entity, BWORKSPACE_COLLIDER2D_TYPE);
             if (transform != nullptr) {
                 ImGui::SeparatorText("TRANSFORM2D");
                 float position[2] = {transform->data.transform2d.x, transform->data.transform2d.y};
@@ -357,6 +359,63 @@ BEditorPanelFeedback DrawInspector(BEditorUIConfig &config, BEditorWorkspaceSess
                     std::string error;
                     SetFeedback(feedback, session.SetSelectedRenderable(renderable, error),
                                 "ASCII Renderable modified.", error);
+                }
+            }
+
+            if (colliderComponent != nullptr) {
+                ImGui::SeparatorText("COLLIDER2D");
+
+                BCollider2D collider = colliderComponent->data.collider2d;
+
+                bool colliderChanged = false;
+
+                float offset[2] = {collider.offsetX, collider.offsetY};
+
+                if (ImGui::DragFloat2("Collider Offset", offset, 0.1f)) {
+                    collider.offsetX = offset[0];
+                    collider.offsetY = offset[1];
+
+                    colliderChanged = true;
+                }
+
+                float size[2] = {collider.width, collider.height};
+
+                if (ImGui::DragFloat2("Collider Size", size, 0.1f, 0.01f, 10000.0f)) {
+                    collider.width = size[0];
+                    collider.height = size[1];
+
+                    colliderChanged = true;
+                }
+
+                if (ImGui::Checkbox("Trigger", &collider.trigger)) {
+                    colliderChanged = true;
+                }
+
+                if (colliderChanged) {
+                    std::string error;
+
+                    SetFeedback(feedback, session.SetSelectedCollider(collider, error),
+                                "Collider2D modified.", error);
+                }
+
+                ImGui::Spacing();
+
+                if (ImGui::Button("REMOVE COLLIDER2D", ImVec2(-1.0f, 0.0f))) {
+                    std::string error;
+
+                    SetFeedback(feedback, session.RemoveSelectedCollider(error),
+                                "Collider2D removed.", error);
+                }
+            } else if (transform != nullptr) {
+                ImGui::SeparatorText("COLLIDER2D");
+
+                ImGui::TextDisabled("This entity has no collider.");
+
+                if (ImGui::Button("ADD COLLIDER2D", ImVec2(-1.0f, 0.0f))) {
+                    std::string error;
+
+                    SetFeedback(feedback, session.AddSelectedCollider(error), "Collider2D added.",
+                                error);
                 }
             }
 

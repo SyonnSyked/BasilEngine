@@ -7,6 +7,7 @@
 #include "BInput.h"
 #include "BLog.h"
 #include "BProjectContext.h"
+#include "BCollision2D.h"
 
 #include <raylib.h>
 #include <stdbool.h>
@@ -63,6 +64,18 @@ static BWorkspaceEntity *Runtime_Entity(BGeneratedRuntimeState *state, BGameEnti
         return NULL;
 
     return &state->document.entities[index];
+}
+
+static BGameAABB Runtime_GameAABB(BCollisionAABB bounds)
+{
+    return (BGameAABB){
+        .minX = bounds.minX, .minY = bounds.minY, .maxX = bounds.maxX, .maxY = bounds.maxY};
+}
+
+static BCollisionAABB Runtime_CollisionAABB(const BGameAABB *bounds)
+{
+    return (BCollisionAABB){
+        .minX = bounds->minX, .minY = bounds->minY, .maxX = bounds->maxX, .maxY = bounds->maxY};
 }
 
 static void Host_Log(void *context, const char *message)
@@ -122,6 +135,83 @@ static bool Host_SetPosition(void *context, BGameEntity entity, float x, float y
     state->drawDirty = true;
     return true;
 }
+
+static bool Host_GetColliderBounds(void *context, BGameEntity entity, BGameAABB *bounds,
+                                   bool *trigger)
+{
+    BGeneratedRuntimeState *state = (BGeneratedRuntimeState *)context;
+
+    if (state == NULL || bounds == NULL) {
+        return false;
+    }
+
+    BWorkspaceEntity *value = Runtime_Entity(state, entity);
+
+    if (value == NULL || !value->enabled) {
+        return false;
+    }
+
+    BCollisionAABB collisionBounds;
+    bool colliderTrigger = false;
+
+    if (!BCollision2D_EntityAABB(value, &collisionBounds, &colliderTrigger)) {
+        return false;
+    }
+
+    *bounds = Runtime_GameAABB(collisionBounds);
+
+    if (trigger != NULL) {
+        *trigger = colliderTrigger;
+    }
+
+    return true;
+}
+
+static size_t Host_QueryColliders(void *context, const BGameAABB *area, BGameEntity ignoreEntity,
+                                  BGameCollisionHit *hits, size_t hitCapacity)
+{
+    BGeneratedRuntimeState *state = (BGeneratedRuntimeState *)context;
+
+    if (state == NULL || area == NULL) {
+        return 0;
+    }
+
+    size_t ignoreIndex = BCOLLISION_ENTITY_NONE;
+
+    if (ignoreEntity.value != 0) {
+        BWorkspaceEntity *ignored = Runtime_Entity(state, ignoreEntity);
+
+        if (ignored == NULL) {
+            return 0;
+        }
+
+        ignoreIndex = (size_t)(ignored - state->document.entities);
+    }
+
+    BCollisionAABB queryArea = Runtime_CollisionAABB(area);
+
+    if (hits == NULL || hitCapacity == 0) {
+        return BCollision2D_Query(&state->document, &queryArea, ignoreIndex, NULL, 0);
+    }
+
+    BCollisionHit internalHits[BWORKSPACE_ENTITY_MAX];
+
+    size_t hitCount = BCollision2D_Query(&state->document, &queryArea, ignoreIndex, internalHits,
+                                         BWORKSPACE_ENTITY_MAX);
+
+    size_t storedCount = hitCount < hitCapacity ? hitCount : hitCapacity;
+
+    for (size_t i = 0; i < storedCount; ++i) {
+        hits[i].entity = Runtime_MakeEntityHandle(state, internalHits[i].entityIndex);
+
+        hits[i].bounds = Runtime_GameAABB(internalHits[i].bounds);
+
+        hits[i].trigger = internalHits[i].trigger;
+    }
+
+    return hitCount;
+}
+
 static const char *Host_ComponentJson(void *context, BGameEntity entity, const char *type)
 {
     BWorkspaceEntity *value = Runtime_Entity(context, entity);
@@ -372,6 +462,8 @@ static bool Runtime_LoadModule(BGeneratedRuntimeState *state, int argc, char **a
 
                                     .getPosition = Host_GetPosition,
                                     .setPosition = Host_SetPosition,
+                                    .getColliderBounds = Host_GetColliderBounds,
+                                    .queryColliders = Host_QueryColliders,
                                     .componentJson = Host_ComponentJson,
 
                                     .inputPressed = Host_InputPressed,

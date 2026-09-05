@@ -21,6 +21,19 @@ typedef struct BGameEntity {
     uint64_t value;
 } BGameEntity;
 
+typedef struct BGameAABB {
+    float minX;
+    float minY;
+    float maxX;
+    float maxY;
+} BGameAABB;
+
+typedef struct BGameCollisionHit {
+    BGameEntity entity;
+    BGameAABB bounds;
+    bool trigger;
+} BGameCollisionHit;
+
 typedef struct BGameHostAPI {
     uint32_t version;
     size_t structSize;
@@ -33,6 +46,9 @@ typedef struct BGameHostAPI {
     const char *(*entityName)(void *context, BGameEntity entity);
     bool (*getPosition)(void *context, BGameEntity entity, float *x, float *y);
     bool (*setPosition)(void *context, BGameEntity entity, float x, float y);
+    bool (*getColliderBounds)(void *context, BGameEntity entity, BGameAABB *bounds, bool *trigger);
+    size_t (*queryColliders)(void *context, const BGameAABB *area, BGameEntity ignoreEntity,
+                             BGameCollisionHit *hits, size_t hitCapacity);
     const char *(*componentJson)(void *context, BGameEntity entity, const char *type);
 
     bool (*inputPressed)(void *context, const char *action);
@@ -44,6 +60,7 @@ typedef struct BGameHostAPI {
     int (*inputBindingCode)(void *context, const char *action);
     int (*inputBindingDevice)(void *context, const char *action);
     bool (*requestWorkspace)(void *context, const char *workspacePath);
+
     uint32_t (*workspaceGeneration)(void *context);
 } BGameHostAPI;
 
