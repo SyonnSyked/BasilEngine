@@ -124,8 +124,9 @@ target_include_directories(BasilAssets PUBLIC engine/assets engine/core)
 
 basil_enable_warnings(BasilAssets)
 
-add_library(BasilRuntimeWorkspace STATIC engine/runtime/BAsciiDrawList.c
-                                         engine/runtime/BProjectContext.c)
+add_library(
+    BasilRuntimeWorkspace STATIC engine/runtime/BAsciiDrawList.c engine/runtime/BCollision2D.c
+                                 engine/runtime/BProjectContext.c)
 
 target_include_directories(BasilRuntimeWorkspace PUBLIC engine/runtime)
 
