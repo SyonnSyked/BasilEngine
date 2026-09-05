@@ -95,6 +95,103 @@ void BEditorWorkspaceSession::Reset()
     ++revision_;
 }
 
+bool BEditorWorkspaceSession::CreateNew(const std::filesystem::path &projectRoot,
+                                        const std::string &name, const std::string &identifier,
+                                        std::string &error)
+{
+    error.clear();
+
+    std::error_code pathError;
+    std::filesystem::path normalizedRoot =
+        std::filesystem::absolute(projectRoot, pathError).lexically_normal();
+
+    if (pathError) {
+        error = "Could not resolve the Project root: " + pathError.message();
+
+        return false;
+    }
+
+    if (!std::filesystem::is_directory(normalizedRoot, pathError)) {
+        error = pathError ? "Could not inspect the Project root: " + pathError.message()
+                          : "Project root is not a directory.";
+
+        return false;
+    }
+
+    BWorkspaceDocument created{};
+    BDiagnosticList diagnostics{};
+
+    if (!BWorkspaceDocument_CreateDefault(&created, name.c_str(), identifier.c_str(),
+                                          &diagnostics)) {
+        error = FirstDiagnosticMessage(diagnostics);
+        return false;
+    }
+
+    std::filesystem::path workspaceDirectory = normalizedRoot / "workspaces";
+
+    pathError.clear();
+
+    std::filesystem::create_directories(workspaceDirectory, pathError);
+
+    if (pathError) {
+        BWorkspaceDocument_Destroy(&created);
+
+        error = "Could not create the Workspace directory: " + pathError.message();
+
+        return false;
+    }
+
+    std::filesystem::path candidate = workspaceDirectory / (identifier + ".basilworkspace");
+
+    pathError.clear();
+
+    bool alreadyExists = std::filesystem::exists(candidate, pathError);
+
+    if (pathError) {
+        BWorkspaceDocument_Destroy(&created);
+
+        error = "Could not inspect the Workspace destination: " + pathError.message();
+
+        return false;
+    }
+
+    if (alreadyExists) {
+        BWorkspaceDocument_Destroy(&created);
+
+        error = "A Workspace with that identifier already exists.";
+
+        return false;
+    }
+
+    if (!BWorkspaceDocument_Save(&created, candidate.string().c_str(), &diagnostics)) {
+        BWorkspaceDocument_Destroy(&created);
+
+        error = FirstDiagnosticMessage(diagnostics);
+        return false;
+    }
+
+    BWorkspaceDocument_Swap(&workspace_, &created);
+
+    BWorkspaceDocument_Destroy(&created);
+
+    projectRoot_ = normalizedRoot;
+    path_ = candidate;
+    selectedIndex_ = NoSelection;
+
+    loaded_ = true;
+    dirty_ = false;
+
+    undo_.clear();
+    redo_.clear();
+
+    stateId_ = 1;
+    savedStateId_ = 1;
+
+    ++revision_;
+
+    return true;
+}
+
 bool BEditorWorkspaceSession::Load(const std::filesystem::path &projectRoot,
                                    const std::string &relativePath, std::string &error)
 {
@@ -642,6 +739,28 @@ const std::filesystem::path &BEditorWorkspaceSession::Path() const
 {
     return path_;
 }
+
+std::string BEditorWorkspaceSession::RelativePath() const
+{
+    if (!loaded_ || path_.empty() || projectRoot_.empty()) {
+        return {};
+    }
+
+    std::filesystem::path relative = path_.lexically_relative(projectRoot_);
+
+    if (relative.empty()) {
+        return {};
+    }
+
+    auto first = relative.begin();
+
+    if (first != relative.end() && *first == "..") {
+        return {};
+    }
+
+    return relative.generic_string();
+}
+
 const std::filesystem::path &BEditorWorkspaceSession::ProjectRoot() const
 {
     return projectRoot_;

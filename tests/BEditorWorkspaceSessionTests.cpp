@@ -51,10 +51,41 @@ int main()
     failures += Check(session.Load(root, "workspaces/Main.basilworkspace", error),
                       "session loads Workspace");
     failures += Check(session.IsLoaded() && !session.IsDirty(), "loaded session starts clean");
+    failures += Check(session.RelativePath() == "workspaces/Main.basilworkspace",
+                      "session exposes the active Project-relative Workspace path");
     failures += Check(!session.Load(root, "workspaces/Missing.basilworkspace", error),
                       "failed replacement load is reported");
     failures += Check(session.IsLoaded() && session.Workspace().identifier[0] != '\0',
                       "failed replacement load preserves the active Workspace");
+    BEditorWorkspaceSession creationSession;
+
+    failures += Check(creationSession.CreateNew(root, "Room Two", "RoomTwo", error),
+                      "session creates a new Workspace");
+
+    fs::path roomTwoPath = root / "workspaces" / "RoomTwo.basilworkspace";
+
+    failures += Check(fs::is_regular_file(roomTwoPath),
+                      "new Workspace is written inside the Project workspaces directory");
+
+    failures += Check(creationSession.IsLoaded() && !creationSession.IsDirty() &&
+                          std::string(creationSession.Workspace().name) == "Room Two" &&
+                          std::string(creationSession.Workspace().identifier) == "RoomTwo",
+                      "new Workspace becomes the clean active session");
+
+    failures += Check(creationSession.RelativePath() == "workspaces/RoomTwo.basilworkspace",
+                      "new Workspace exposes its Project-relative path");
+
+    failures +=
+        Check(creationSession.Workspace().schemaVersion == BWORKSPACE_SCHEMA_VERSION &&
+                  creationSession.Workspace().sourceSchemaVersion == BWORKSPACE_SCHEMA_VERSION,
+              "new Workspace uses the current schema");
+    failures += Check(!creationSession.CreateNew(root, "Replacement Room", "RoomTwo", error),
+                      "Workspace creation refuses to overwrite an existing Workspace");
+
+    failures += Check(creationSession.IsLoaded() &&
+                          creationSession.RelativePath() == "workspaces/RoomTwo.basilworkspace" &&
+                          std::string(creationSession.Workspace().name) == "Room Two",
+                      "failed Workspace creation preserves the active session");
     failures += Check(session.AddEntity(error), "session adds entity");
     failures += Check(session.IsDirty(), "adding marks session dirty");
     failures += Check(session.SelectedEntity() != nullptr, "added entity is selected");
