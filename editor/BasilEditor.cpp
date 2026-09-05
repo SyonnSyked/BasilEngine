@@ -44,6 +44,11 @@ struct EditorState {
     char projectName[BPROJECT_NAME_MAX] = "My Basil Game";
     char identifier[BPROJECT_IDENTIFIER_MAX] = "MyBasilGame";
     char parentDirectory[BPROJECT_PATH_MAX]{};
+    char newWorkspaceName[BWORKSPACE_NAME_MAX] = "New Workspace";
+    char newWorkspaceIdentifier[BWORKSPACE_IDENTIFIER_MAX] = "NewWorkspace";
+    bool showNewWorkspace = false;
+    bool confirmWorkspaceReplacement = false;
+    bool pendingWorkspaceCreate = false;
     int languageMode = static_cast<int>(BPROJECT_LANGUAGE_MIXED);
     int cStandardIndex = 2;
     int cppStandardIndex = 6;
@@ -545,6 +550,41 @@ static void DrawProjectBrowser(EditorState &state)
     ImGui::PopStyleVar();
 }
 
+static bool CreateWorkspace(EditorState &state)
+{
+    std::string error;
+
+    bool succeeded =
+        state.workspaceSession.CreateNew(state.manifestPath.parent_path(), state.newWorkspaceName,
+                                         state.newWorkspaceIdentifier, error);
+
+    if (!succeeded) {
+        SetMessage(state, error.c_str(), true);
+        return false;
+    }
+
+    ResetViewportPreview(state);
+
+    state.recoveryObservedRevision = state.workspaceSession.Revision();
+
+    state.recoveryDueTime = 0.0;
+
+    SetMessage(state, "Workspace created and opened.", false);
+
+    return true;
+}
+
+static void RequestWorkspaceCreate(EditorState &state)
+{
+    if (state.workspaceSession.IsDirty()) {
+        state.pendingWorkspaceCreate = true;
+        state.confirmWorkspaceReplacement = true;
+        return;
+    }
+
+    CreateWorkspace(state);
+}
+
 static void ReturnToProjectBrowser(EditorState &state)
 {
     if (state.buildService.IsBusy()) {
@@ -681,9 +721,11 @@ static void DrawEditorMenuBar(EditorState &state)
     }
 
     if (ImGui::BeginMenu("Workspace")) {
+        if (ImGui::MenuItem("NewWorkspace"))
+            state.showNewWorkspace = true;
+
         ImGui::BeginDisabled();
-        ImGui::MenuItem("New Workspace");
-        ImGui::MenuItem("Open Workspace...");
+        ImGui::MenuItem("OpenWorkspace...");
         ImGui::EndDisabled();
 
         ImGui::BeginDisabled(!state.workspaceSession.IsLoaded());
@@ -1631,6 +1673,99 @@ static void DrawEditorShell(EditorState &state)
             }
         }
         ImGui::End();
+    }
+
+    if (state.showNewWorkspace)
+        ImGui::OpenPopup("NEW WORKSPACE");
+
+    if (ImGui::BeginPopupModal("NEW WORKSPACE", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("Create a new Workspace in this Project.");
+
+        ImGui::TextDisabled("The Project startup Workspace will not be changed.");
+
+        ImGui::Spacing();
+
+        ImGui::SetNextItemWidth(320.0f);
+        ImGui::InputText("Display name", state.newWorkspaceName, sizeof(state.newWorkspaceName));
+
+        ImGui::SetNextItemWidth(320.0f);
+        ImGui::InputText("Code identifier", state.newWorkspaceIdentifier,
+                         sizeof(state.newWorkspaceIdentifier));
+
+        ImGui::Spacing();
+
+        if (ImGui::Button("CREATE", ImVec2(140.0f, 0.0f))) {
+            state.showNewWorkspace = false;
+
+            RequestWorkspaceCreate(state);
+
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("CANCEL", ImVec2(100.0f, 0.0f))) {
+            state.showNewWorkspace = false;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    if (state.confirmWorkspaceReplacement)
+        ImGui::OpenPopup("UNSAVED WORKSPACE CHANGES");
+
+    if (ImGui::BeginPopupModal("UNSAVED WORKSPACE CHANGES", nullptr,
+                               ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("The current Workspace has unsaved changes.");
+
+        ImGui::TextDisabled("Save it before switching, discard its changes, or cancel.");
+
+        ImGui::Spacing();
+
+        if (ImGui::Button("SAVE + CONTINUE", ImVec2(170.0f, 0.0f))) {
+            std::string error;
+
+            if (state.workspaceSession.Save(error)) {
+                state.confirmWorkspaceReplacement = false;
+
+                if (state.pendingWorkspaceCreate)
+                    CreateWorkspace(state);
+
+                state.pendingWorkspaceCreate = false;
+
+                ImGui::CloseCurrentPopup();
+            } else {
+                SetMessage(state, error.c_str(), true);
+            }
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("DISCARD + CONTINUE", ImVec2(180.0f, 0.0f))) {
+            std::string ignored;
+            state.workspaceSession.DiscardRecovery(ignored);
+
+            state.confirmWorkspaceReplacement = false;
+
+            if (state.pendingWorkspaceCreate)
+                CreateWorkspace(state);
+
+            state.pendingWorkspaceCreate = false;
+
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("CANCEL", ImVec2(100.0f, 0.0f))) {
+            state.pendingWorkspaceCreate = false;
+            state.confirmWorkspaceReplacement = false;
+
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
     }
 
     if (state.confirmProjectClose)
