@@ -51,7 +51,6 @@ struct EditorState {
     bool showNewWorkspace = false;
     bool showOpenWorkspace = false;
     bool confirmWorkspaceReplacement = false;
-    bool pendingWorkspaceCreate = false;
 
     PendingWorkspaceOperation pendingWorkspaceOperation = PendingWorkspaceOperation::None;
     std::string pendingWorkspacePath;
@@ -1921,10 +1920,7 @@ static void DrawEditorShell(EditorState &state)
             if (state.workspaceSession.Save(error)) {
                 state.confirmWorkspaceReplacement = false;
 
-                if (state.pendingWorkspaceCreate)
-                    CreateWorkspace(state);
-
-                state.pendingWorkspaceCreate = false;
+                ContinuePendingWorkspaceOperation(state);
 
                 ImGui::CloseCurrentPopup();
             } else {
