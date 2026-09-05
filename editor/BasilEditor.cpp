@@ -616,6 +616,55 @@ static bool OpenWorkspace(EditorState &state, const std::string &relativePath)
     return true;
 }
 
+static bool SetCurrentWorkspaceAsStartup(EditorState &state)
+{
+    if (!state.workspaceSession.IsLoaded()) {
+        SetMessage(state, "No Workspace is currently open.", true);
+
+        return false;
+    }
+
+    std::string currentWorkspace = state.workspaceSession.RelativePath();
+
+    if (currentWorkspace.empty()) {
+        SetMessage(state, "Could not determine the current Workspace path.", true);
+
+        return false;
+    }
+
+    if (currentWorkspace == state.project.startupWorkspace) {
+        SetMessage(state, "The current Workspace is already the startup Workspace.", false);
+
+        return true;
+    }
+
+    if (currentWorkspace.size() >= sizeof(state.project.startupWorkspace)) {
+        SetMessage(state, "The Workspace path is too long to store in the Project manifest.", true);
+
+        return false;
+    }
+
+    std::string previousStartup = state.project.startupWorkspace;
+
+    std::snprintf(state.project.startupWorkspace, sizeof(state.project.startupWorkspace), "%s",
+                  currentWorkspace.c_str());
+
+    BProjectError error{};
+
+    if (!BProject_Save(&state.project, state.manifestPath.string().c_str(), &error)) {
+        std::snprintf(state.project.startupWorkspace, sizeof(state.project.startupWorkspace), "%s",
+                      previousStartup.c_str());
+
+        SetMessage(state, error.message, true);
+
+        return false;
+    }
+
+    SetMessage(state, "Current Workspace set as Project startup Workspace.", false);
+
+    return true;
+}
+
 static bool RefreshWorkspaceChoices(EditorState &state)
 {
     state.workspaceChoices.clear();
@@ -871,8 +920,23 @@ static void DrawEditorMenuBar(EditorState &state)
                 state.showOpenWorkspace = true;
         }
 
-        ImGui::BeginDisabled();
+        ImGui::Separator();
+
+        std::string currentWorkspace = state.workspaceSession.RelativePath();
+
+        bool currentIsStartup = state.workspaceSession.IsLoaded() && !currentWorkspace.empty() &&
+                                currentWorkspace == state.project.startupWorkspace;
+
+        ImGui::BeginDisabled(!state.workspaceSession.IsLoaded() || currentIsStartup);
+
+        if (ImGui::MenuItem(currentIsStartup ? "Current Workspace is Startup"
+                                             : "Set Current as Startup")) {
+            SetCurrentWorkspaceAsStartup(state);
+        }
+
         ImGui::EndDisabled();
+
+        ImGui::Separator();
 
         ImGui::BeginDisabled(!state.workspaceSession.IsLoaded());
 
@@ -1113,8 +1177,17 @@ static void DrawProjectDetails(EditorState &state)
     ImGui::SeparatorText("IDENTITY");
     ImGui::TextDisabled("CODE IDENTIFIER");
     ImGui::TextUnformatted(state.project.identifier);
+    std::string currentWorkspace = state.workspaceSession.RelativePath();
+
+    ImGui::TextDisabled("CURRENT WORKSPACE");
+    ImGui::TextWrapped("%s", currentWorkspace.empty() ? "(none)" : currentWorkspace.c_str());
+
     ImGui::TextDisabled("STARTUP WORKSPACE");
     ImGui::TextWrapped("%s", state.project.startupWorkspace);
+
+    if (!currentWorkspace.empty() && currentWorkspace == state.project.startupWorkspace) {
+        ImGui::TextColored(palette.success, "CURRENT WORKSPACE IS STARTUP");
+    }
     ImGui::TextDisabled("LANGUAGE MODE");
     ImGui::TextUnformatted(BProject_LanguageModeToString(state.project.languageMode));
     ImGui::TextDisabled("LANGUAGE STANDARDS");
@@ -1921,7 +1994,6 @@ static void DrawEditorShell(EditorState &state)
                 state.confirmWorkspaceReplacement = false;
 
                 ContinuePendingWorkspaceOperation(state);
-
                 ImGui::CloseCurrentPopup();
             } else {
                 SetMessage(state, error.c_str(), true);
