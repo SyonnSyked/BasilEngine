@@ -2,7 +2,7 @@
 	"schemaVersion":	3,
 	"name":	"Ash Basin Test Room",
 	"identifier":	"Main",
-	"nextEntityId":	"6",
+	"nextEntityId":	"7",
 	"entities":	[{
 			"id":	"entity-0000000000000001",
 			"name":	"Ash Basin",
@@ -112,6 +112,46 @@
 					"data":	{
 						"x":	-8,
 						"y":	4
+					}
+				}]
+		}, {
+			"id":	"entity-0000000000000006",
+			"name":	"Seamus",
+			"enabled":	true,
+			"components":	[{
+					"type":	"basil.transform2d",
+					"version":	1,
+					"required":	true,
+					"data":	{
+						"x":	7.8000001907348633,
+						"y":	1.1000000238418579
+					}
+				}, {
+					"type":	"basil.ascii-renderable",
+					"version":	1,
+					"required":	true,
+					"data":	{
+						"source":	{
+							"kind":	"glyph",
+							"glyph":	"0"
+						},
+						"foreground":	"#00FD03FF",
+						"background":	"#00000000",
+						"layer":	0,
+						"anchor":	"bottom-center",
+						"visible":	true,
+						"transparentSpaces":	true
+					}
+				}, {
+					"type":	"basil.collider2d",
+					"version":	1,
+					"required":	false,
+					"data":	{
+						"offsetX":	0,
+						"offsetY":	0,
+						"width":	1,
+						"height":	1,
+						"trigger":	false
 					}
 				}]
 		}]

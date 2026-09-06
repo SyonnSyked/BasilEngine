@@ -54,6 +54,19 @@ typedef struct BGameHostAPI {
     uint32_t (*workspaceGeneration)(void *context);
 } BGameHostAPI;
 
+static inline bool BGame_RequestWorkspace(const BGameHostAPI *host, const char *workspacePath)
+{
+    return host != NULL && host->requestWorkspace != NULL &&
+           host->requestWorkspace(host->context, workspacePath);
+}
+
+static inline uint32_t BGame_WorkspaceGeneration(const BGameHostAPI *host)
+{
+    return host != NULL && host->workspaceGeneration != NULL
+               ? host->workspaceGeneration(host->context)
+               : 0;
+}
+
 bool BasilGame_Initialize(const BGameHostAPI *host, void **gameState);
 void BasilGame_Update(void *gameState, float deltaTime);
 void BasilGame_Render(void *gameState);

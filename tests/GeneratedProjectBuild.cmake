@@ -117,6 +117,8 @@ foreach(language_mode IN ITEMS mixed c cpp)
     (void)workspaceGenerationFn;
     (void)getColliderBoundsFn;
     (void)queryCollidersFn;
+    (void)BGame_RequestWorkspace(host, "workspaces/Next.basilworkspace");
+    (void)BGame_WorkspaceGeneration(host);
 ]=])
 
     set(initialize_marker "    *gameState = &state;\n")

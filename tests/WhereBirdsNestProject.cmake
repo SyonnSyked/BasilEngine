@@ -53,7 +53,7 @@ execute_process(
     WORKING_DIRECTORY "${REFERENCE_PROJECT}"
     RESULT_VARIABLE explicit_result OUTPUT_VARIABLE explicit_output ERROR_VARIABLE explicit_error
 )
-if(NOT explicit_result EQUAL 0 OR NOT explicit_output MATCHES "project=WhereBirdsNest.*items=1163")
+if(NOT explicit_result EQUAL 0 OR NOT explicit_output MATCHES "project=WhereBirdsNest.*items=1164")
     message(FATAL_ERROR "In-place Where Birds Nest validation failed:\n${explicit_output}\n${explicit_error}")
 endif()
 execute_process(
@@ -61,6 +61,6 @@ execute_process(
     WORKING_DIRECTORY "${build_directory}"
     RESULT_VARIABLE relocated_result OUTPUT_VARIABLE relocated_output ERROR_VARIABLE relocated_error
 )
-if(NOT relocated_result EQUAL 0 OR NOT relocated_output MATCHES "project=WhereBirdsNest.*items=1163")
+if(NOT relocated_result EQUAL 0 OR NOT relocated_output MATCHES "project=WhereBirdsNest.*items=1164")
     message(FATAL_ERROR "Relocated Where Birds Nest validation failed:\n${relocated_output}\n${relocated_error}")
 endif()

@@ -8,6 +8,7 @@
 #include "BLog.h"
 #include "BProjectContext.h"
 #include "BCollision2D.h"
+#include "BWorkspaceReplacement.h"
 
 #include <raylib.h>
 #include <stdbool.h>
@@ -19,8 +20,7 @@ typedef struct BGeneratedRuntimeState {
     BProjectContext context;
     BWorkspaceDocument document;
     uint32_t workspaceGeneration;
-    bool workspaceRequestPending;
-    char requestedWorkspace[BPROJECT_PATH_MAX];
+    BWorkspaceReplacementRequest workspaceRequest;
     BTextSpriteCache cache;
     BAsciiDrawList drawList;
     BDiagnosticList diagnostics;
@@ -269,95 +269,6 @@ static int Host_InputBindingDevice(void *context, const char *action)
     return (int)BInput_GetActionDevice(action);
 }
 
-static bool Runtime_ProcessWorkspaceRequest(BGeneratedRuntimeState *state)
-{
-    if (state == NULL || !state->workspaceRequestPending) {
-        return true;
-    }
-
-    char requestedWorkspace[BPROJECT_PATH_MAX];
-
-    snprintf(requestedWorkspace, sizeof(requestedWorkspace), "%s", state->requestedWorkspace);
-
-    state->workspaceRequestPending = false;
-    state->requestedWorkspace[0] = '\0';
-
-    if (state->workspaceGeneration == UINT32_MAX) {
-        BLog_Error("Workspace generation limit reached; "
-                   "Workspace replacement was rejected.");
-
-        return false;
-    }
-
-    char resolvedPath[BPROJECT_PATH_MAX];
-    BDiagnosticList diagnostics = {0};
-
-    if (!BProjectContext_ResolvePath(&state->context, requestedWorkspace, resolvedPath,
-                                     sizeof(resolvedPath), &diagnostics)) {
-
-        const BDiagnostic *error = BDiagnosticList_FirstError(&diagnostics);
-
-        BLog_Error(error != NULL && error->message[0] != '\0'
-                       ? error->message
-                       : "Workspace path resolution failed.");
-
-        return false;
-    }
-
-    BWorkspaceDocument replacementDocument;
-    BWorkspaceDocument_Init(&replacementDocument);
-
-    BAsciiDrawList replacementDrawList;
-    BAsciiDrawList_Init(&replacementDrawList);
-
-    bool succeeded = false;
-
-    if (!BWorkspaceDocument_Load(resolvedPath, &replacementDocument, &diagnostics)) {
-
-        const BDiagnostic *error = BDiagnosticList_FirstError(&diagnostics);
-
-        BLog_Error(error != NULL && error->message[0] != '\0' ? error->message
-                                                              : "Workspace loading failed.");
-
-        goto cleanup;
-    }
-
-    if (!BAsciiDrawList_Build(&replacementDocument, state->context.projectRoot, &state->cache,
-                              &replacementDrawList, &diagnostics)) {
-
-        const BDiagnostic *error = BDiagnosticList_FirstError(&diagnostics);
-
-        BLog_Error(error != NULL && error->message[0] != '\0'
-                       ? error->message
-                       : "Workspace draw-list construction failed.");
-
-        goto cleanup;
-    }
-
-    BWorkspaceDocument_Swap(&state->document, &replacementDocument);
-
-    BAsciiDrawList_Swap(&state->drawList, &replacementDrawList);
-
-    snprintf(state->context.workspacePath, sizeof(state->context.workspacePath), "%s",
-             resolvedPath);
-
-    ++state->workspaceGeneration;
-
-    state->drawDirty = false;
-
-    BLog_Info("Workspace replacement completed.");
-
-    succeeded = true;
-
-cleanup:
-
-    BAsciiDrawList_Destroy(&replacementDrawList);
-
-    BWorkspaceDocument_Destroy(&replacementDocument);
-
-    return succeeded;
-}
-
 static bool Runtime_ModulePath(int argumentCount, char **arguments, const char *identifier,
                                char *output, size_t outputSize)
 {
@@ -392,23 +303,8 @@ static bool Host_RequestWorkspace(void *context, const char *workspacePath)
 {
     BGeneratedRuntimeState *state = (BGeneratedRuntimeState *)context;
 
-    if (state == NULL || workspacePath == NULL || workspacePath[0] == '\0') {
-        return false;
-    }
-
-    if (state->workspaceRequestPending)
-        return false;
-
-    size_t length = strlen(workspacePath);
-
-    if (length >= sizeof(state->requestedWorkspace))
-        return false;
-
-    memcpy(state->requestedWorkspace, workspacePath, length + 1);
-
-    state->workspaceRequestPending = true;
-
-    return true;
+    return state != NULL &&
+           BWorkspaceReplacement_Request(&state->workspaceRequest, workspacePath);
 }
 
 static uint32_t Host_WorkspaceGeneration(void *context)
@@ -545,8 +441,18 @@ static void Runtime_OnUpdate(void *userData, BEngine *engine, float deltaTime)
     if (state->moduleInitialized && state->gameModule.onUpdate)
         state->gameModule.onUpdate(state->gameState, deltaTime);
 
-    if (state->workspaceRequestPending)
-        Runtime_ProcessWorkspaceRequest(state);
+    if (state->workspaceRequest.pending) {
+        char message[BDIAGNOSTIC_MESSAGE_MAX];
+        BWorkspaceReplacementResult result = BWorkspaceReplacement_Process(
+            &state->workspaceRequest, &state->context, &state->document, &state->cache,
+            &state->drawList, &state->workspaceGeneration, message, sizeof(message));
+        if (result == BWORKSPACE_REPLACEMENT_SUCCEEDED) {
+            state->drawDirty = false;
+            BLog_Info(message);
+        } else if (result == BWORKSPACE_REPLACEMENT_FAILED) {
+            BLog_Error(message);
+        }
+    }
 
     if (state->drawDirty) {
         BAsciiDrawList replacement;
