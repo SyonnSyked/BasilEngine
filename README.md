@@ -8,8 +8,8 @@ integrations that require it, such as Dear ImGui.
 is a dark-fantasy action RPG that combines text-art presentation with smooth,
 Diablo-like movement and combat.
 
-The project is experimental. Its runtime and ASCII gameplay feasibility work is
-now established; development is turning toward the project system and editor.
+The project is experimental. The Project/editor workflow and pre-audio runtime
+services are established; bounded audio is the next Stage 6 service.
 See the [project charter](docs/PROJECT_CHARTER.md), [roadmap](docs/ROADMAP.md),
 [architecture notes](docs/ARCHITECTURE.md), and
 [project-system specification](docs/PROJECT_SYSTEM.md) for the current direction.
@@ -18,10 +18,10 @@ The authoritative visual and interaction plan is recorded in the
 editor visual-foundation pass and its verification evidence are summarized in
 the [visual-foundation closeout](docs/EDITOR_VISUAL_FOUNDATION.md). The current
 capabilities, roadmap alignment, risks, scope guardrails, and next bounded slice
-are tracked in the [scope and course audit](docs/SCOPE_STATUS.md). The proposed
-technical contract for that next slice is the
-[Runtime Workspace Bridge design](docs/RUNTIME_WORKSPACE_BRIDGE.md), followed by
-the implemented [game-module and Project-component boundary](docs/GAME_MODULE_AND_COMPONENTS.md).
+are tracked in the [scope and course audit](docs/SCOPE_STATUS.md). The
+[Runtime Workspace Bridge](docs/RUNTIME_WORKSPACE_BRIDGE.md) is a historical
+implementation closeout, followed by the implemented
+[game-module and Project-component boundary](docs/GAME_MODULE_AND_COMPONENTS.md).
 The integrated edit/build/diagnose/run loop is specified and checked in the
 [programming workflow closeout](docs/INTEGRATED_PROGRAMMING_WORKFLOW.md).
 The requirements and measurable completion boundary for the current final
@@ -32,15 +32,14 @@ stretch are defined in the [Alpha Product Contract](docs/ALPHA_PRODUCT_CONTRACT.
 - Application and engine lifecycle
 - raylib window and frame management
 - Time and frame tracking
-- Named keyboard input actions
 - Named keyboard/mouse input actions with runtime rebinding
 - In-memory logging and an interactive developer console
 - Layered ASCII rendering with per-cell foreground/background colors
 - Plain-text ASCII asset loading and runtime glyph editing
 - Smooth world-space movement, camera tracking, and collision
-- A small `WhereBirdsNest` combat feasibility arena
-- An editor-openable Where Birds Nest reference Project with a Workspace-authored
-  layered test room, Text Sprite environment/player, glyph enemy, and empty marker
+- A canonical Where Birds Nest Project integrating movement, Collider2D room
+  bounds, trigger interaction, HUD/dialogue, safe Workspace replacement, and
+  generation-safe entity-handle reacquisition
 - Versioned JSON Project and empty-Workspace formats with a headless generator
 - A graphical BasilEditor project browser with New, Open, and Recent workflows
 - A centralized cyberpunk editor theme with bundled JetBrains Mono typography
@@ -90,45 +89,46 @@ stretch are defined in the [Alpha Product Contract](docs/ALPHA_PRODUCT_CONTRACT.
   Workspace, including generation-safe entity handles
 - Screen-space ASCII labels, panels, anchored HUDs, and keyboard/mouse choices
   through the public C/C++ game API
-- Headless project, generated-build, input, canvas, and combat tests
+- Headless Project, generated-build, input, draw-list, runtime-service, and WBN tests
 
 ## Reference demo
 
-`WhereBirdsNest` currently provides a small movement and combat arena:
+`projects/wherebirdsnest` is the canonical reference Project:
 
 - Move with `WASD`.
-- Attack the `D` target with `Space` when in range.
-- Open the developer console with the backtick/grave key.
-- Enter `help` in the console to list commands.
+- Approach Seamus and press Enter to open dialogue.
+- Use `W`/`S` or the mouse to select a response; movement is suppressed while
+  dialogue is open.
+- Choose Yes to transition safely to Testing1; the game observes the generation
+  change, reacquires Wayfinder, and continues moving.
 
-The separate editor-authored reference Project can be opened from
-`projects/wherebirdsnest/WhereBirdsNest.basilproject`. It intentionally coexists
-with the combat spike until gameplay is migrated onto the reusable runtime model.
+The older `WBNCombat` code remains as a separately tested feasibility spike; it
+is not the canonical demo or build path.
 
 ## Building on the current Windows development machine
 
 Prerequisites:
 
-- CMake 3.20 or newer
+- CMake 3.25 or newer
 - Ninja
-- UCRT64 GCC
+- A C11/C++17 toolchain (UCRT64 GCC is the currently verified Windows setup)
 - raylib
-- BasilsTools
 - Local Dear ImGui docking-branch and rlImGui source trees only when editor
   dependencies are enabled
 
 Configure dependency locations once in a machine-local preset. Copy
-`CMakeUserPresets.json.example` to `CMakeUserPresets.json`, update the two paths,
+`CMakeUserPresets.json.example` to `CMakeUserPresets.json`, update the toolchain
+and raylib paths,
 and keep that local file uncommitted. BasilEngine first looks for installed
 CMake packages, then pkg-config for raylib, and finally searches the supplied
 roots for headers and libraries.
 
 ```powershell
 Copy-Item CMakeUserPresets.json.example CMakeUserPresets.json
-# Edit BASIL_RAYLIB_ROOT and BASIL_TOOLS_ROOT once, then:
-cmake --preset local-ucrt64-debug
-cmake --build --preset local-ucrt64-debug
-ctest --preset local-ucrt64-debug
+# Edit CMAKE_TOOLCHAIN_FILE and BASIL_RAYLIB_ROOT once, then:
+cmake --preset local-headless-debug
+cmake --build --preset local-headless-debug
+ctest --preset local-headless-debug
 ```
 
 On macOS or Linux, use any preferred generator and provide the same cache hints
@@ -136,8 +136,7 @@ when the dependencies are not installed system-wide:
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug \
-  -DBASIL_RAYLIB_ROOT=/path/to/raylib \
-  -DBASIL_TOOLS_ROOT=/path/to/BasilsTools
+  -DBASIL_RAYLIB_ROOT=/path/to/raylib
 cmake --build build
 ctest --test-dir build --output-on-failure
 ```
@@ -147,20 +146,20 @@ BasilEditor requires the official ImGui `docking` branch; configuration stops
 with an actionable error if a master-branch checkout is supplied:
 
 ```powershell
-cmake --preset local-ucrt64-editor-debug
-cmake --build --preset local-ucrt64-editor-debug
-ctest --preset local-ucrt64-editor-debug
-.\build\editor-debug\BasilEditor.exe
+cmake --preset local-dev
+cmake --build --preset local-dev
+ctest --preset local-dev
+.\build\dev\BasilEditor.exe
 ```
 
 BasilEditor opens to its project browser. It can also open a project directly:
 
 ```powershell
-.\build\editor-debug\BasilEditor.exe C:\Projects\MyGame\MyGame.basilproject
+.\build\dev\BasilEditor.exe C:\Projects\MyGame\MyGame.basilproject
 ```
 
-The editor build also produces the reference demo at
-`build/editor-debug/WhereBirdsNest.exe`.
+Where Birds Nest has one build definition in its Project directory and can be
+built through BasilEditor or its editable `projects/wherebirdsnest/CMakeLists.txt`.
 
 ## Creating an empty project
 
@@ -190,8 +189,7 @@ source location and the same dependency hints used by BasilEngine:
 ```powershell
 cmake -S C:\Projects\MyGame -B C:\Projects\MyGame\build `
     -DBASIL_ENGINE_ROOT=C:\path\to\BasilEngine `
-    -DBASIL_RAYLIB_ROOT=C:\path\to\raylib `
-    -DBASIL_TOOLS_ROOT=C:\path\to\BasilsTools
+    -DBASIL_RAYLIB_ROOT=C:\path\to\raylib
 cmake --build C:\Projects\MyGame\build
 ```
 

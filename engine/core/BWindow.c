@@ -10,18 +10,18 @@ bool BWindow_Init(BWindowConfig config) {
     return true;
 }
 
-void BWindow_Shutdown() {
+void BWindow_Shutdown(void) {
     CloseWindow();
 }
 
-bool BWindow_ShouldClose() {
+bool BWindow_ShouldClose(void) {
     return WindowShouldClose();
 }
 
-void BWindow_BeginFrame() {
+void BWindow_BeginFrame(void) {
     BeginDrawing();
 }
 
-void BWindow_EndFrame() {
+void BWindow_EndFrame(void) {
     EndDrawing();
 }

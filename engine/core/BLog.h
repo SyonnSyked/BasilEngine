@@ -29,9 +29,9 @@ void BLog_WarningF(const char* message, ...);
 void BLog_ErrorF(const char* message, ...);
 void BLog_DebugF(const char* message, ...);
 
-const BLogEntry* BLog_GetEntries();
-size_t BLog_GetEntryCount();
+const BLogEntry* BLog_GetEntries(void);
+size_t BLog_GetEntryCount(void);
 
-void BLog_Clear();
+void BLog_Clear(void);
 
 #endif

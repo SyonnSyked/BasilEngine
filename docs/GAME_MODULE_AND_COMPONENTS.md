@@ -18,6 +18,9 @@ engine-owned Workspace objects. The current public host table exposes logging, t
 entity enumeration and identity, position access, collision queries, named
 input, safe Workspace replacement/generation, transient screen-space UI, and
 read-only custom-component JSON. C++ uses the same ABI and ownership rules as C.
+Thin `BGame_*` helpers in `BGame.h` are the normal call surface; they consistently
+forward the host context and provide safe null defaults without changing the
+versioned callback-table layout.
 
 At startup, the host loads `<ProjectIdentifier>.game.dll` on Windows (or the
 corresponding `.so`/`.dylib` later), resolves the query function, and checks both

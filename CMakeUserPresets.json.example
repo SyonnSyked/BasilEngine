@@ -2,43 +2,37 @@
   "version": 6,
   "configurePresets": [
     {
-      "name": "local-ucrt64-debug",
-      "displayName": "Local BasilEngine Runtime",
-      "inherits": "ucrt64-debug",
+      "name": "local-dev",
+      "displayName": "Local BasilEngine Editor Debug",
+      "inherits": "dev",
       "cacheVariables": {
-        "BASIL_RAYLIB_ROOT": "C:/path/to/raylib",
-        "BASIL_TOOLS_ROOT": "C:/path/to/BasilsTools"
+        "CMAKE_TOOLCHAIN_FILE": "C:/path/to/toolchain.cmake",
+        "BASIL_RAYLIB_ROOT": "C:/path/to/raylib"
       }
     },
     {
-      "name": "local-ucrt64-editor-debug",
-      "displayName": "Local BasilEditor",
-      "inherits": "ucrt64-editor-debug",
+      "name": "local-headless-debug",
+      "displayName": "Local BasilEngine Headless Debug",
+      "inherits": "headless-debug",
       "cacheVariables": {
-        "BASIL_RAYLIB_ROOT": "C:/path/to/raylib",
-        "BASIL_TOOLS_ROOT": "C:/path/to/BasilsTools"
+        "CMAKE_TOOLCHAIN_FILE": "C:/path/to/toolchain.cmake",
+        "BASIL_RAYLIB_ROOT": "C:/path/to/raylib"
       }
     }
   ],
   "buildPresets": [
-    {
-      "name": "local-ucrt64-debug",
-      "configurePreset": "local-ucrt64-debug"
-    },
-    {
-      "name": "local-ucrt64-editor-debug",
-      "configurePreset": "local-ucrt64-editor-debug"
-    }
+    { "name": "local-dev", "configurePreset": "local-dev" },
+    { "name": "local-headless-debug", "configurePreset": "local-headless-debug" }
   ],
   "testPresets": [
     {
-      "name": "local-ucrt64-debug",
-      "configurePreset": "local-ucrt64-debug",
+      "name": "local-dev",
+      "configurePreset": "local-dev",
       "output": { "outputOnFailure": true }
     },
     {
-      "name": "local-ucrt64-editor-debug",
-      "configurePreset": "local-ucrt64-editor-debug",
+      "name": "local-headless-debug",
+      "configurePreset": "local-headless-debug",
       "output": { "outputOnFailure": true }
     }
   ]

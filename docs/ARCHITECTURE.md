@@ -3,7 +3,7 @@
 ## System boundary
 
 BasilEngine provides reusable mechanisms: application lifecycle, platform
-services, input, time, rendering, audio, assets, Workspaces, serialization, project
+services, input, time, rendering, assets, Workspaces, serialization, project
 loading, and diagnostics.
 
 Game projects provide policy and content: characters, enemies, abilities,
@@ -84,19 +84,20 @@ The exact alpha boundary and supported field types are defined in
 ## Current generated-Project runtime flow
 
 ```text
-Project host main
+Basil-owned Project host main
   -> discover Project and load startup Workspace
   -> load and validate <identifier>.game native module
   -> module initialize through versioned host function table
   -> BApplication_Init
      -> BEngine_Init
-        -> window, console, input
+        -> window and input
   -> BApplication_Run
-     -> time and console update
+     -> time update
      -> module update
      -> begin frame
-     -> Workspace ASCII render and module render contribution
-     -> console overlay
+     -> Project render callback queues transient UI
+     -> Workspace ASCII draw-list render
+     -> screen-space UI overlay
      -> end frame
   -> module shutdown and unload
   -> BEngine_Shutdown

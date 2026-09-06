@@ -29,7 +29,7 @@ static bool Register(const char *name, BInputDevice device, int code)
     action->code = code;
     return true;
 }
-void BInput_Init()
+void BInput_Init(void)
 {
     g_ActionCount = 0;
     g_FocusSuppressed = false;
@@ -37,13 +37,13 @@ void BInput_Init()
     if (!BInput_SetDefaultActions())
         BLog_Error("Input defaults failed setup.");
 }
-void BInput_Shutdown()
+void BInput_Shutdown(void)
 {
     g_ActionCount = 0;
     g_FocusSuppressed = false;
     BLog_Info("Input system shutdown.");
 }
-bool BInput_SetDefaultActions()
+bool BInput_SetDefaultActions(void)
 {
     bool ok = true;
     ok = BInput_RegisterAction("move_up", KEY_W) && ok;
@@ -123,7 +123,7 @@ BInputDevice BInput_GetActionDevice(const char *name)
     int i = Find(name);
     return i < 0 ? BINPUT_DEVICE_KEYBOARD : (BInputDevice)g_Actions[i].device;
 }
-int BInput_GetActionCount()
+int BInput_GetActionCount(void)
 {
     return g_ActionCount;
 }
@@ -131,7 +131,7 @@ void BInput_SetFocusSuppressed(bool value)
 {
     g_FocusSuppressed = value;
 }
-bool BInput_IsFocusSuppressed()
+bool BInput_IsFocusSuppressed(void)
 {
     return g_FocusSuppressed;
 }
