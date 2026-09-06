@@ -7,8 +7,8 @@ endif()
 file(READ "${ENGINE_SOURCE_DIR}/engine/runtime/BGameModule.h" game_module_header)
 string(REGEX MATCH "#define BGAME_API_VERSION ([0-9]+)u" api_version_match
        "${game_module_header}")
-if(NOT api_version_match OR NOT CMAKE_MATCH_1 EQUAL 2)
-    message(FATAL_ERROR "The current expanded game host ABI must be version 2")
+if(NOT api_version_match)
+    message(FATAL_ERROR "Could not discover the current game host ABI version")
 endif()
 set(current_api_version "${CMAKE_MATCH_1}")
 math(EXPR incompatible_api_version "${current_api_version} + 1")
@@ -58,9 +58,8 @@ foreach(language_mode IN ITEMS mixed c cpp)
     set(configure_command
         "${CMAKE_COMMAND}" -S "${source_directory}" -B "${build_directory}" -G "${TEST_GENERATOR}"
         "-DBASIL_ENGINE_ROOT=${ENGINE_SOURCE_DIR}" "-DBASIL_RAYLIB_ROOT=${RAYLIB_ROOT}"
-        "-DBASIL_TOOLS_ROOT=${TOOLS_ROOT}" "-DBASIL_RAYLIB_INCLUDE_DIR=${RAYLIB_INCLUDE_DIR}"
-        "-DBASIL_RAYLIB_LIBRARY=${RAYLIB_LIBRARY}" "-DBASIL_TOOLS_INCLUDE_DIR=${TOOLS_INCLUDE_DIR}"
-        "-DBASIL_TOOLS_LIBRARY=${TOOLS_LIBRARY}" "-DCMAKE_C_COMPILER=${TEST_C_COMPILER}"
+        "-DBASIL_RAYLIB_INCLUDE_DIR=${RAYLIB_INCLUDE_DIR}"
+        "-DBASIL_RAYLIB_LIBRARY=${RAYLIB_LIBRARY}" "-DCMAKE_C_COMPILER=${TEST_C_COMPILER}"
         "-DCMAKE_CXX_COMPILER=${TEST_CXX_COMPILER}")
     if(TEST_TOOLCHAIN_FILE)
         list(APPEND configure_command "-DCMAKE_TOOLCHAIN_FILE=${TEST_TOOLCHAIN_FILE}")
@@ -96,36 +95,28 @@ foreach(language_mode IN ITEMS mixed c cpp)
 
     set(input_api_smoke
         [=[
-    bool (*inputPressedFn)(void*, const char*) = host->inputPressed;
-    bool (*inputDownFn)(void*, const char*) = host->inputDown;
-    bool (*inputReleasedFn)(void*, const char*) = host->inputReleased;
-    bool (*inputRebindKeyboardFn)(void*, const char*, int) = host->inputRebindKeyboard;
-    bool (*inputRebindMouseFn)(void*, const char*, int) = host->inputRebindMouse;
-    bool (*inputHasActionFn)(void*, const char*) = host->inputHasAction;
-    int (*inputBindingCodeFn)(void*, const char*) = host->inputBindingCode;
-    int (*inputBindingDeviceFn)(void*, const char*) = host->inputBindingDevice;
-
-    bool (*requestWorkspaceFn)(void*, const char*) =
-    host->requestWorkspace;
-    uint32_t (*workspaceGenerationFn)(void*) =
-    host->workspaceGeneration;
-    bool (*getColliderBoundsFn)(void*, BGameEntity, BGameAABB*, bool*) =
-    host->getColliderBounds;
-    size_t (*queryCollidersFn)(void*, const BGameAABB*, BGameEntity,
-                               BGameCollisionHit*, size_t) = host->queryColliders;
-
-    (void)inputPressedFn;
-    (void)inputDownFn;
-    (void)inputReleasedFn;
-    (void)inputRebindKeyboardFn;
-    (void)inputRebindMouseFn;
-    (void)inputHasActionFn;
-    (void)inputBindingCodeFn;
-    (void)inputBindingDeviceFn;
-    (void)requestWorkspaceFn;
-    (void)workspaceGenerationFn;
-    (void)getColliderBoundsFn;
-    (void)queryCollidersFn;
+    BGame_Log(host, "Public API smoke");
+    (void)BGame_ProjectRoot(host);
+    (void)BGame_EntityCount(host);
+    BGameEntity smokeEntity = BGame_EntityAt(host, 0);
+    (void)BGame_EntityId(host, smokeEntity);
+    (void)BGame_EntityName(host, smokeEntity);
+    float smokeX = 0.0f;
+    float smokeY = 0.0f;
+    (void)BGame_GetPosition(host, smokeEntity, &smokeX, &smokeY);
+    (void)BGame_SetPosition(host, smokeEntity, smokeX, smokeY);
+    BGameAABB smokeBounds = {0};
+    (void)BGame_GetColliderBounds(host, smokeEntity, &smokeBounds, 0);
+    (void)BGame_QueryColliders(host, &smokeBounds, smokeEntity, 0, 0);
+    (void)BGame_ComponentJson(host, smokeEntity, "example.component");
+    (void)BGame_InputPressed(host, "confirm");
+    (void)BGame_InputDown(host, "move_up");
+    (void)BGame_InputReleased(host, "confirm");
+    (void)BGame_InputRebindKeyboard(host, "missing", 0);
+    (void)BGame_InputRebindMouse(host, "missing", 0);
+    (void)BGame_InputHasAction(host, "confirm");
+    (void)BGame_InputBindingCode(host, "confirm");
+    (void)BGame_InputBindingDevice(host, "confirm");
     (void)BGame_RequestWorkspace(host, "workspaces/Next.basilworkspace");
     (void)BGame_WorkspaceGeneration(host);
     int uiSelection = 0;
@@ -172,9 +163,8 @@ foreach(language_mode IN ITEMS mixed c cpp)
     set(configure_command
         "${CMAKE_COMMAND}" -S "${source_directory}" -B "${build_directory}" -G "${TEST_GENERATOR}"
         "-DBASIL_ENGINE_ROOT=${ENGINE_SOURCE_DIR}" "-DBASIL_RAYLIB_ROOT=${RAYLIB_ROOT}"
-        "-DBASIL_TOOLS_ROOT=${TOOLS_ROOT}" "-DBASIL_RAYLIB_INCLUDE_DIR=${RAYLIB_INCLUDE_DIR}"
-        "-DBASIL_RAYLIB_LIBRARY=${RAYLIB_LIBRARY}" "-DBASIL_TOOLS_INCLUDE_DIR=${TOOLS_INCLUDE_DIR}"
-        "-DBASIL_TOOLS_LIBRARY=${TOOLS_LIBRARY}" "-DCMAKE_C_COMPILER=${TEST_C_COMPILER}"
+        "-DBASIL_RAYLIB_INCLUDE_DIR=${RAYLIB_INCLUDE_DIR}"
+        "-DBASIL_RAYLIB_LIBRARY=${RAYLIB_LIBRARY}" "-DCMAKE_C_COMPILER=${TEST_C_COMPILER}"
         "-DCMAKE_CXX_COMPILER=${TEST_CXX_COMPILER}")
 
     if(TEST_TOOLCHAIN_FILE)

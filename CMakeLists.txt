@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.25)
 
 project(BasilEngine C)
 
@@ -23,9 +23,6 @@ endfunction()
 set(BASIL_RAYLIB_ROOT
     ""
     CACHE PATH "Optional root directory of a raylib installation or source tree")
-set(BASIL_TOOLS_ROOT
-    ""
-    CACHE PATH "Optional root directory of a BasilsTools source tree")
 
 # Prefer packages that provide proper transitive platform dependencies. The explicit root hints
 # support local source builds without baking one machine's directory layout into the project.
@@ -71,37 +68,6 @@ else()
     endif()
 endif()
 
-find_package(BasilsTools CONFIG QUIET)
-
-if(TARGET BasilsTools)
-    set(BASIL_TOOLS_TARGET BasilsTools)
-elseif(TARGET BasilsTools::BasilsTools)
-    set(BASIL_TOOLS_TARGET BasilsTools::BasilsTools)
-else()
-    find_path(
-        BASIL_TOOLS_INCLUDE_DIR
-        NAMES BGrid.h BTile.h
-        HINTS "${BASIL_TOOLS_ROOT}" "${BTOOL_INCLUDE_PATH}"
-        PATH_SUFFIXES include Include)
-
-    find_library(
-        BASIL_TOOLS_LIBRARY
-        NAMES BasilsTools libBasilsTools
-        HINTS "${BASIL_TOOLS_ROOT}" "${BTOOL_LIB_PATH}"
-        PATH_SUFFIXES lib build)
-
-    if(NOT BASIL_TOOLS_INCLUDE_DIR OR NOT BASIL_TOOLS_LIBRARY)
-        message(FATAL_ERROR "BasilsTools was not found. Install its CMake package or set "
-                            "BASIL_TOOLS_ROOT to its source directory.")
-    endif()
-
-    add_library(BasilToolsDependency UNKNOWN IMPORTED)
-    set_target_properties(
-        BasilToolsDependency PROPERTIES IMPORTED_LOCATION "${BASIL_TOOLS_LIBRARY}"
-                                        INTERFACE_INCLUDE_DIRECTORIES "${BASIL_TOOLS_INCLUDE_DIR}")
-    set(BASIL_TOOLS_TARGET BasilToolsDependency)
-endif()
-
 add_library(cjson STATIC thirdparty/cjson/cJSON.c)
 
 target_include_directories(cjson PUBLIC thirdparty/cjson)
@@ -139,7 +105,6 @@ add_library(
     BasilEngine STATIC
     engine/core/BEngine.c
     engine/core/BApplication.c
-    engine/rendering/AsciiCanvas.c
     engine/core/BWindow.c
     engine/core/BTime.c
     engine/core/BLog.c
@@ -154,7 +119,7 @@ target_include_directories(BasilEngine PUBLIC engine/core engine/rendering engin
                                               engine/input engine/runtime)
 
 target_link_libraries(BasilEngine PUBLIC BasilRuntimeWorkspace ${BASIL_RAYLIB_TARGET}
-                                         ${BASIL_TOOLS_TARGET} ${CMAKE_DL_LIBS})
+                                         ${CMAKE_DL_LIBS})
 target_link_libraries(BasilEngine PRIVATE cjson)
 
 # A raw static archive does not carry raylib's platform link requirements. Proper CMake and
@@ -258,6 +223,12 @@ if(BUILD_TESTING)
     basil_enable_warnings(BGameUITests)
     add_test(NAME BGameUITests COMMAND BGameUITests)
 
+    add_executable(BGameModuleGlueTests tests/BGameModuleGlueTests.c
+                                            engine/runtime/BGameModuleGlue.c)
+    target_link_libraries(BGameModuleGlueTests PRIVATE BasilGameAPI)
+    basil_enable_warnings(BGameModuleGlueTests)
+    add_test(NAME BGameModuleGlueTests COMMAND BGameModuleGlueTests)
+
     add_executable(BWorkspaceReplacementTests tests/BWorkspaceReplacementTests.c)
     target_link_libraries(BWorkspaceReplacementTests PRIVATE BasilRuntimeWorkspace)
     basil_enable_warnings(BWorkspaceReplacementTests)
@@ -292,10 +263,8 @@ if(BUILD_TESTING)
                 -DTEST_GENERATOR=${CMAKE_GENERATOR} -DTEST_C_COMPILER=${CMAKE_C_COMPILER}
                 -DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                 -DTEST_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} -DRAYLIB_ROOT=${BASIL_RAYLIB_ROOT}
-                -DTOOLS_ROOT=${BASIL_TOOLS_ROOT} -DRAYLIB_INCLUDE_DIR=${BASIL_RAYLIB_INCLUDE_DIR}
-                -DRAYLIB_LIBRARY=${BASIL_RAYLIB_LIBRARY}
-                -DTOOLS_INCLUDE_DIR=${BASIL_TOOLS_INCLUDE_DIR}
-                -DTOOLS_LIBRARY=${BASIL_TOOLS_LIBRARY} -P
+                -DRAYLIB_INCLUDE_DIR=${BASIL_RAYLIB_INCLUDE_DIR}
+                -DRAYLIB_LIBRARY=${BASIL_RAYLIB_LIBRARY} -P
                 ${CMAKE_CURRENT_SOURCE_DIR}/tests/GeneratedProjectBuild.cmake)
     endif()
 
@@ -307,10 +276,9 @@ if(BUILD_TESTING)
             -DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/where-birds-nest-project-test
             -DTEST_GENERATOR=${CMAKE_GENERATOR} -DTEST_C_COMPILER=${CMAKE_C_COMPILER}
             -DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DTEST_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
-            -DRAYLIB_ROOT=${BASIL_RAYLIB_ROOT} -DTOOLS_ROOT=${BASIL_TOOLS_ROOT}
+            -DRAYLIB_ROOT=${BASIL_RAYLIB_ROOT}
             -DRAYLIB_INCLUDE_DIR=${BASIL_RAYLIB_INCLUDE_DIR}
-            -DRAYLIB_LIBRARY=${BASIL_RAYLIB_LIBRARY} -DTOOLS_INCLUDE_DIR=${BASIL_TOOLS_INCLUDE_DIR}
-            -DTOOLS_LIBRARY=${BASIL_TOOLS_LIBRARY} -P
+            -DRAYLIB_LIBRARY=${BASIL_RAYLIB_LIBRARY} -P
             ${CMAKE_CURRENT_SOURCE_DIR}/tests/WhereBirdsNestProject.cmake)
 
     add_executable(WBNCombatTests tests/WBNCombatTests.c projects/wherebirdsnest/WBNCombat.c)
@@ -332,16 +300,6 @@ if(BUILD_TESTING)
                                                                engine/runtime)
     basil_enable_warnings(WBNGameIntegrationTests)
     add_test(NAME WBNGameIntegrationTests COMMAND WBNGameIntegrationTests)
-
-    add_executable(AsciiCanvasTests tests/AsciiCanvasTests.c)
-
-    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/assets/wherebirdsnest")
-    configure_file(projects/wherebirdsnest/assets/arena.txt
-                   "${CMAKE_CURRENT_BINARY_DIR}/assets/wherebirdsnest/arena.txt" COPYONLY)
-
-    target_link_libraries(AsciiCanvasTests PRIVATE BasilEngine)
-
-    add_test(NAME AsciiCanvasTests COMMAND AsciiCanvasTests)
 
     add_executable(BInputTests tests/BInputTests.c)
 

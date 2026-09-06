@@ -51,12 +51,24 @@ int main(void)
     failures += Check(BGameUIContext_End(&ui) && selection == 1 && !yes && no,
                       "next and confirm activate the selected choice and consume input");
 
-    BGameUIContext_BeginFrame(&ui, 20, 10, 3, 2);
+    selection = 0;
+    BGameUIContext_BeginFrame(&ui, 20, 10, 3, 3);
     BGameUIContext_Begin(&ui, &selection, (BGameUIInput){.pointerActivate = true});
     yes = BGameUIContext_Choice(&ui, (BGameUIPosition){BGAME_UI_TOP_LEFT, 2, 2}, "Yes");
     no = BGameUIContext_Choice(&ui, (BGameUIPosition){BGAME_UI_TOP_LEFT, 2, 3}, "No");
-    failures += Check(BGameUIContext_End(&ui) && selection == 0 && yes && !no,
-                      "mouse hover selects and click activates");
+    int markerCount = 0;
+    int selectedStyleCount = 0;
+    for (size_t i = 0; i < ui.commandCount; ++i) {
+        if (ui.commands[i].glyph == '>')
+            ++markerCount;
+        if (ui.commands[i].foreground.r == 0 && ui.commands[i].foreground.g == 229 &&
+            ui.commands[i].foreground.b == 255)
+            ++selectedStyleCount;
+    }
+    failures += Check(BGameUIContext_End(&ui) && selection == 1 && !yes && no,
+                      "mouse hover selects and click activates the later choice");
+    failures += Check(markerCount == 1 && selectedStyleCount == 4,
+                      "pointer selection leaves one marker and styles only the current choice");
 
     BGameUIContext_BeginFrame(&ui, 80, 30, -1, -1);
     BGameUIContext_Begin(&ui, NULL, (BGameUIInput){0});

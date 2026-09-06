@@ -16,11 +16,11 @@ typedef struct BInputAction
 
 typedef enum BInputDevice { BINPUT_DEVICE_KEYBOARD, BINPUT_DEVICE_MOUSE } BInputDevice;
 
-void BInput_Init();
-void BInput_Shutdown();
+void BInput_Init(void);
+void BInput_Shutdown(void);
 
 
-bool BInput_SetDefaultActions();
+bool BInput_SetDefaultActions(void);
 bool BInput_RegisterAction(const char* actionName, int key);
 bool BInput_RegisterMouseAction(const char* actionName, int button);
 bool BInput_RebindAction(const char* actionName, int newKey);
@@ -34,9 +34,9 @@ bool BInput_IsActionReleased(const char* actionName);
 int BInput_GetActionKey(const char* actionName);
 int BInput_GetActionCode(const char* actionName);
 BInputDevice BInput_GetActionDevice(const char* actionName);
-int BInput_GetActionCount();
+int BInput_GetActionCount(void);
 void BInput_SetFocusSuppressed(bool suppressed);
-bool BInput_IsFocusSuppressed();
+bool BInput_IsFocusSuppressed(void);
 bool BInput_LoadActionMap(const char* path, char* error, size_t errorSize);
 
 #endif

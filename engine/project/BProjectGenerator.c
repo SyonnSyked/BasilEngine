@@ -191,7 +191,7 @@ static bool BProjectGenerator_WriteGame(const BProject *project, const char *pat
     const char *extension =
         project->languageMode == BPROJECT_LANGUAGE_MIXED ? "#include \"ProjectExtension.h\"\n" : "";
     const char *extensionCall = project->languageMode == BPROJECT_LANGUAGE_MIXED
-                                    ? "    host->log(host->context, BasilProject_GetTitle());\n"
+                                    ? "    BGame_Log(host, BasilProject_GetTitle());\n"
                                     : "";
     fprintf(file,
             "#include \"BGame.h\"\n"
@@ -207,7 +207,7 @@ static bool BProjectGenerator_WriteGame(const BProject *project, const char *pat
             "    state.host = host;\n"
             "    *gameState = &state;\n"
             "\n"
-            "    host->log(host->context, \"%s game module initialized.\");\n"
+            "    BGame_Log(host, \"%s game module initialized.\");\n"
             "%s"
             "    return true;\n"
             "}\n\n"

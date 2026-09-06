@@ -6,7 +6,7 @@
 
 static bool g_QuitRequested = false;
 
-BEngineConfig BEngineConfig_Default()
+BEngineConfig BEngineConfig_Default(void)
 {
     BEngineConfig config;
 
@@ -83,12 +83,12 @@ void BEngine_Shutdown(BEngine *engine)
     BWindow_Shutdown();
 }
 
-void BEngine_RequestQuit()
+void BEngine_RequestQuit(void)
 {
     g_QuitRequested = true;
 }
 
-bool BEngine_IsQuitRequested()
+bool BEngine_IsQuitRequested(void)
 {
     return g_QuitRequested;
 }

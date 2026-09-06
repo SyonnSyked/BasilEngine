@@ -455,7 +455,6 @@ public:
         AddCacheArgument(arguments, "CMAKE_CXX_COMPILER", BEDITOR_CXX_COMPILER);
         AddCacheArgument(arguments, "BASIL_ENGINE_ROOT", BEDITOR_ENGINE_SOURCE_DIR);
         AddCacheArgument(arguments, "BASIL_RAYLIB_ROOT", BEDITOR_RAYLIB_ROOT);
-        AddCacheArgument(arguments, "BASIL_TOOLS_ROOT", BEDITOR_TOOLS_ROOT);
 
         if (!process.Start(arguments, projectRoot, error))
         {

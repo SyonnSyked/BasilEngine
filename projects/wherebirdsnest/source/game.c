@@ -17,10 +17,10 @@ typedef struct GameState {
 
 static BGameEntity FindEntityByName(const BGameHostAPI *host, const char *name)
 {
-    const size_t count = host->entityCount(host->context);
+    const size_t count = BGame_EntityCount(host);
     for (size_t i = 0; i < count; ++i) {
-        BGameEntity entity = host->entityAt(host->context, i);
-        const char *entityName = host->entityName(host->context, entity);
+        BGameEntity entity = BGame_EntityAt(host, i);
+        const char *entityName = BGame_EntityName(host, entity);
         if (entityName != NULL && strcmp(entityName, name) == 0)
             return entity;
     }
@@ -45,11 +45,11 @@ bool BasilGame_Initialize(const BGameHostAPI *host, void **gameState)
     state.health = 8;
     state.workspaceGeneration = BGame_WorkspaceGeneration(host);
     if (!ReacquireWorkspaceEntities(&state)) {
-        host->log(host->context, "Could not find Wayfinder entity.");
+        BGame_Log(host, "Could not find Wayfinder entity.");
         return false;
     }
     *gameState = &state;
-    host->log(host->context, "Where Birds Nest game initialized.");
+    BGame_Log(host, "Where Birds Nest game initialized.");
     return true;
 }
 
@@ -63,14 +63,14 @@ void BasilGame_Update(void *gameState, float deltaTime)
     if (generation != state->workspaceGeneration) {
         state->workspaceGeneration = generation;
         if (!ReacquireWorkspaceEntities(state)) {
-            host->log(host->context, "Workspace replacement has no Wayfinder entity.");
+            BGame_Log(host, "Workspace replacement has no Wayfinder entity.");
             return;
         }
-        host->log(host->context, "Workspace generation changed; game entities reacquired.");
+        BGame_Log(host, "Workspace generation changed; game entities reacquired.");
     }
     if (state->dialogueOpen)
         return;
-    if (state->seamus.value != 0 && host->inputPressed(host->context, "confirm") &&
+    if (state->seamus.value != 0 && BGame_InputPressed(host, "confirm") &&
         WBN_IsTriggerOverlapping(host, state->player, state->seamus)) {
         state->dialogueOpen = true;
         state->dialogueOpenedThisFrame = true;
@@ -79,13 +79,13 @@ void BasilGame_Update(void *gameState, float deltaTime)
     }
     float moveX = 0.0f;
     float moveY = 0.0f;
-    if (host->inputDown(host->context, "move_up"))
+    if (BGame_InputDown(host, "move_up"))
         moveY -= 1.0f;
-    if (host->inputDown(host->context, "move_down"))
+    if (BGame_InputDown(host, "move_down"))
         moveY += 1.0f;
-    if (host->inputDown(host->context, "move_left"))
+    if (BGame_InputDown(host, "move_left"))
         moveX -= 1.0f;
-    if (host->inputDown(host->context, "move_right"))
+    if (BGame_InputDown(host, "move_right"))
         moveX += 1.0f;
     const float speed = 8.0f;
     (void)WBN_MoveWithCollision(host, state->player, moveX * speed * deltaTime,
@@ -100,11 +100,11 @@ void BasilGame_Render(void *gameState)
     const BGameHostAPI *host = state->host;
     BGameUIInput input = {0};
     if (state->dialogueOpen) {
-        input.previous = host->inputPressed(host->context, "move_up");
-        input.next = host->inputPressed(host->context, "move_down");
+        input.previous = BGame_InputPressed(host, "move_up");
+        input.next = BGame_InputPressed(host, "move_down");
         input.confirm = !state->dialogueOpenedThisFrame &&
-                        host->inputPressed(host->context, "confirm");
-        input.pointerActivate = host->inputPressed(host->context, "primary_action");
+                        BGame_InputPressed(host, "confirm");
+        input.pointerActivate = BGame_InputPressed(host, "primary_action");
     }
     BGameUI_Begin(host, &state->dialogueSelection, input);
     char health[32];

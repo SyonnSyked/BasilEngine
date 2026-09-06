@@ -22,8 +22,8 @@ void BEngine_EndFrame(BEngine* engine);
 bool BEngine_ShouldClose(const BEngine* engine);
 void BEngine_Shutdown(BEngine* engine);
 
-void BEngine_RequestQuit();
-bool BEngine_IsQuitRequested();
+void BEngine_RequestQuit(void);
+bool BEngine_IsQuitRequested(void);
 
 #ifdef __cplusplus
 }

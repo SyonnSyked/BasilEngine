@@ -149,8 +149,11 @@ bool BGameUIContext_Choice(BGameUIContext *ui, BGameUIPosition position, const c
     if (hovered && ui->selection != NULL) {
         if (*ui->selection != index) {
             for (size_t i = 0; i < ui->commandCount; ++i)
-                if (ColorEquals(ui->commands[i].foreground, kSelected))
+                if (ColorEquals(ui->commands[i].foreground, kSelected)) {
                     ui->commands[i].foreground = kForeground;
+                    if (ui->commands[i].glyph == '>')
+                        ui->commands[i].glyph = ' ';
+                }
         }
         *ui->selection = index;
     }
