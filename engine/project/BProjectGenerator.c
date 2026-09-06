@@ -108,8 +108,6 @@ static bool BProjectGenerator_WriteCMake(const BProject *project, const char *pa
     const char *languages = project->languageMode == BPROJECT_LANGUAGE_C     ? "C"
                             : project->languageMode == BPROJECT_LANGUAGE_CPP ? "CXX"
                                                                              : "C CXX";
-    const char *mainSource =
-        project->languageMode == BPROJECT_LANGUAGE_CPP ? "source/main.cpp" : "source/main.c";
     const char *gameSource =
         project->languageMode == BPROJECT_LANGUAGE_CPP ? "source/game.cpp" : "source/game.c";
 
@@ -143,9 +141,10 @@ static bool BProjectGenerator_WriteCMake(const BProject *project, const char *pa
             "set(BASIL_BUILD_PROJECT_TOOL OFF CACHE BOOL \"\" FORCE)\n"
             "set(BUILD_TESTING OFF CACHE BOOL \"\" FORCE)\n"
             "add_subdirectory(\"${BASIL_ENGINE_ROOT}\" \"${CMAKE_BINARY_DIR}/_basilengine\")\n\n"
-            "add_executable(%s %s)\n"
-            "add_library(%sGame MODULE %s\n",
-            project->identifier, mainSource, project->identifier, gameSource);
+            "add_executable(%s \"${BASIL_ENGINE_ROOT}/engine/runtime/BGeneratedRuntimeMain.c\")\n"
+            "add_library(%sGame MODULE %s\n"
+            "    \"${BASIL_ENGINE_ROOT}/engine/runtime/BGameModuleGlue.c\"\n",
+            project->identifier, project->identifier, gameSource);
 
     if (project->languageMode == BPROJECT_LANGUAGE_MIXED)
         fprintf(file, "    source/ProjectExtension.cpp\n");
@@ -164,6 +163,15 @@ static bool BProjectGenerator_WriteCMake(const BProject *project, const char *pa
             project->identifier, project->identifier, project->identifier, project->identifier,
             project->identifier, project->identifier, project->identifier, project->identifier,
             project->identifier, project->identifier);
+
+    if (project->languageMode == BPROJECT_LANGUAGE_CPP) {
+        fprintf(file,
+                "set_source_files_properties(\n"
+                "    \"${BASIL_ENGINE_ROOT}/engine/runtime/BGeneratedRuntimeMain.c\"\n"
+                "    \"${BASIL_ENGINE_ROOT}/engine/runtime/BGameModuleGlue.c\"\n"
+                "    PROPERTIES LANGUAGE CXX\n"
+                ")\n");
+    }
 
     bool succeeded = ferror(file) == 0 && fclose(file) == 0;
 
@@ -187,14 +195,13 @@ static bool BProjectGenerator_WriteGame(const BProject *project, const char *pat
                                     ? "    host->log(host->context, BasilProject_GetTitle());\n"
                                     : "";
     fprintf(file,
-            "#include \"BGameModule.h\"\n"
-            "#include <string.h>\n"
+            "#include \"BGame.h\"\n"
             "%s\n"
             "typedef struct GameState\n"
             "{\n"
             "    const BGameHostAPI* host;\n"
             "} GameState;\n\n"
-            "static bool Game_Initialize(const BGameHostAPI* host, void** gameState)\n"
+            "bool BasilGame_Initialize(const BGameHostAPI* host, void** gameState)\n"
             "{\n"
             "    static GameState state = {0};\n"
             "\n"
@@ -205,55 +212,15 @@ static bool BProjectGenerator_WriteGame(const BProject *project, const char *pat
             "%s"
             "    return true;\n"
             "}\n\n"
-            "static void Game_Update(void* gameState, float deltaTime) { (void)gameState; "
+            "void BasilGame_Update(void* gameState, float deltaTime) { (void)gameState; "
             "(void)deltaTime; }\n"
-            "static void Game_Render(void* gameState) { (void)gameState; }\n"
-            "static void Game_Shutdown(void* gameState) { (void)gameState; }\n\n"
-            "BGAME_MODULE_EXPORT bool BasilGame_Query(uint32_t hostVersion, BGameModule* module)\n"
-            "{\n"
-            "    if (hostVersion != BGAME_API_VERSION || module == 0) return false;\n"
-            "    memset(module, 0, sizeof(*module));\n"
-            "    module->version = BGAME_API_VERSION;\n"
-            "    module->structSize = sizeof(*module);\n"
-            "    module->name = \"%s\";\n"
-            "    module->onInitialize = Game_Initialize;\n"
-            "    module->onUpdate = Game_Update;\n"
-            "    module->onRender = Game_Render;\n"
-            "    module->onShutdown = Game_Shutdown;\n"
-            "    return true;\n"
-            "}\n",
-            extension, project->identifier, extensionCall, project->identifier);
+            "void BasilGame_Render(void* gameState) { (void)gameState; }\n"
+            "void BasilGame_Shutdown(void* gameState) { (void)gameState; }\n",
+            extension, project->identifier, extensionCall);
     bool succeeded = ferror(file) == 0 && fclose(file) == 0;
     return succeeded ? true
                      : BProjectGenerator_Fail(error, BPROJECT_ERROR_IO,
                                               "Could not write generated game module.");
-}
-
-static bool BProjectGenerator_WriteMain(const BProject *project, const char *path,
-                                        BProjectError *error)
-{
-    FILE *file = fopen(path, "wb");
-
-    if (file == 0)
-        return BProjectGenerator_Fail(error, BPROJECT_ERROR_IO,
-                                      "Could not create generated entry point.");
-
-    fprintf(file,
-            "#include \"BGeneratedRuntime.h\"\n"
-            "\n"
-            "int main(int argc, char** argv)\n"
-            "{\n"
-            "    return BGeneratedRuntime_Run(argc, argv, \"%s\");\n"
-            "}\n",
-            project->identifier);
-
-    bool succeeded = ferror(file) == 0 && fclose(file) == 0;
-
-    if (!succeeded)
-        return BProjectGenerator_Fail(error, BPROJECT_ERROR_IO,
-                                      "Could not write generated entry point.");
-
-    return true;
 }
 
 bool BProjectGenerator_Create(const BProject *project, const char *parentDirectory,
@@ -366,14 +333,6 @@ bool BProjectGenerator_Create(const BProject *project, const char *parentDirecto
 
     if (!BProjectGenerator_Path(path, sizeof(path), root, "CMakeLists.txt", error) ||
         !BProjectGenerator_WriteCMake(project, path, error)) {
-        return false;
-    }
-
-    const char *mainFile =
-        project->languageMode == BPROJECT_LANGUAGE_CPP ? "source/main.cpp" : "source/main.c";
-
-    if (!BProjectGenerator_Path(path, sizeof(path), root, mainFile, error) ||
-        !BProjectGenerator_WriteMain(project, path, error)) {
         return false;
     }
 

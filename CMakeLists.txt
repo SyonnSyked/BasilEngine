@@ -263,6 +263,11 @@ if(BUILD_TESTING)
 
     add_test(NAME BAsciiDrawListTests COMMAND BAsciiDrawListTests)
 
+    add_executable(BCollision2DTests tests/BCollision2DTests.c)
+    target_link_libraries(BCollision2DTests PRIVATE BasilRuntimeWorkspace)
+    basil_enable_warnings(BCollision2DTests)
+    add_test(NAME BCollision2DTests COMMAND BCollision2DTests)
+
     add_executable(BRecentProjectsTests tests/BRecentProjectsTests.c)
 
     target_link_libraries(BRecentProjectsTests PRIVATE BasilProject)

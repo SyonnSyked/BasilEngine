@@ -36,19 +36,6 @@ int main()
     );
 
     fs::path projectRoot = parent / project.identifier;
-    {
-        std::ofstream source(projectRoot / "source" / "main.c", std::ios::binary);
-        source <<
-            "#ifdef _WIN32\n"
-            "#include <windows.h>\n"
-            "int main(void) { Sleep(30000); return 0; }\n"
-            "#else\n"
-            "#include <unistd.h>\n"
-            "int main(void) { sleep(30); return 0; }\n"
-            "#endif\n";
-        failures += Check(source.good(), "headless run fixture is written");
-    }
-
     BEditorBuildService service;
     std::string error;
     failures += Check(service.StartBuild(projectRoot, projectRoot / (std::string(project.identifier) + ".basilproject"), project, false, error), "asynchronous build starts");
@@ -97,8 +84,8 @@ int main()
     failures += Check(service.State() == BEditorBuildState::Completed, "stop state is reported");
 
     {
-        std::ofstream source(projectRoot / "source" / "main.c", std::ios::binary);
-        source << "int main(void) { this_will_not_compile return 0; }\n";
+        std::ofstream source(projectRoot / "source" / "game.c", std::ios::binary | std::ios::app);
+        source << "\nthis intentionally does not compile\n";
     }
 
     failures += Check(service.StartBuild(projectRoot, projectRoot / (std::string(project.identifier) + ".basilproject"), project, false, error), "failing build starts");

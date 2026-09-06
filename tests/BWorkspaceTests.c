@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -330,6 +331,68 @@ int main(void)
                                                  BWORKSPACE_ASCII_RENDERABLE_TYPE, &diagnostics) &&
                   mutations.componentCount == 1,
               "component can be removed with totals repaired");
+
+    BCollider2D defaultCollider = BCollider2D_Default();
+    failures += Check(defaultCollider.offsetX == 0.0f && defaultCollider.offsetY == 0.0f &&
+                          defaultCollider.width == 1.0f && defaultCollider.height == 1.0f &&
+                          !defaultCollider.trigger,
+                      "Collider2D has valid gameplay defaults");
+    BCollider2D editedCollider = {2.5f, -1.25f, 3.5f, 4.5f, true};
+    failures += Check(BWorkspaceDocument_AddCollider2D(&mutations, mutationEntity,
+                                                       editedCollider, false, &diagnostics) &&
+                          mutations.componentCount == 2 &&
+                          mutations.entities[mutationEntity].componentCount == 2,
+                      "Collider2D adds with component invariants repaired");
+    failures += Check(!BWorkspaceDocument_AddCollider2D(&mutations, mutationEntity,
+                                                        defaultCollider, false, &diagnostics),
+                      "duplicate Collider2D is rejected");
+    BCollider2D invalidCollider = editedCollider;
+    invalidCollider.height = 0.0f;
+    failures += Check(!BWorkspaceDocument_SetCollider2D(&mutations, mutationEntity,
+                                                        invalidCollider, &diagnostics),
+                      "invalid Collider2D dimensions are rejected");
+    invalidCollider.height = NAN;
+    failures += Check(!BWorkspaceDocument_SetCollider2D(&mutations, mutationEntity,
+                                                        invalidCollider, &diagnostics),
+                      "non-finite Collider2D dimensions are rejected");
+    size_t colliderDuplicate = 0;
+    failures += Check(BWorkspaceDocument_DuplicateEntity(&mutations, mutationEntity,
+                                                         &colliderDuplicate, &diagnostics),
+                      "entity with Collider2D duplicates");
+    const BWorkspaceComponent *duplicatedCollider = BWorkspaceEntity_FindComponentConst(
+        &mutations.entities[colliderDuplicate], BWORKSPACE_COLLIDER2D_TYPE);
+    failures += Check(duplicatedCollider != NULL &&
+                          duplicatedCollider->data.collider2d.offsetX == editedCollider.offsetX &&
+                          duplicatedCollider->data.collider2d.offsetY == editedCollider.offsetY &&
+                          duplicatedCollider->data.collider2d.width == editedCollider.width &&
+                          duplicatedCollider->data.collider2d.height == editedCollider.height &&
+                          duplicatedCollider->data.collider2d.trigger,
+                      "duplicate preserves all Collider2D fields");
+    char colliderPath[BPROJECT_PATH_MAX];
+    snprintf(colliderPath, sizeof(colliderPath), "Collider_%ld_%d.basilworkspace", (long)time(0),
+             (int)GET_PROCESS_ID());
+    failures += Check(BWorkspaceDocument_Save(&mutations, colliderPath, &diagnostics),
+                      "Collider2D Workspace saves");
+    BWorkspaceDocument colliderReload;
+    BWorkspaceDocument_Init(&colliderReload);
+    failures += Check(BWorkspaceDocument_Load(colliderPath, &colliderReload, &diagnostics),
+                      "Collider2D Workspace reloads");
+    const BWorkspaceComponent *reloadedCollider = BWorkspaceEntity_FindComponentConst(
+        &colliderReload.entities[mutationEntity], BWORKSPACE_COLLIDER2D_TYPE);
+    failures += Check(reloadedCollider != NULL &&
+                          reloadedCollider->data.collider2d.offsetX == editedCollider.offsetX &&
+                          reloadedCollider->data.collider2d.offsetY == editedCollider.offsetY &&
+                          reloadedCollider->data.collider2d.width == editedCollider.width &&
+                          reloadedCollider->data.collider2d.height == editedCollider.height &&
+                          reloadedCollider->data.collider2d.trigger,
+                      "Collider2D fields persist through save and reload");
+    failures += Check(BWorkspaceDocument_RemoveComponent(&mutations, mutationEntity,
+                                                         BWORKSPACE_COLLIDER2D_TYPE, &diagnostics) &&
+                          mutations.componentCount == 3 &&
+                          mutations.entities[mutationEntity].componentCount == 1,
+                      "Collider2D removal repairs component counts");
+    remove(colliderPath);
+    BWorkspaceDocument_Destroy(&colliderReload);
 
     BWorkspaceDocument componentsV4;
     BWorkspaceDocument_Init(&componentsV4);
