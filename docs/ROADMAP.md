@@ -155,8 +155,9 @@ encounter and exposes the next set of engine requirements.
 
 ## Milestone 8: Windows alpha export and independent proof
 
-- Complete the reliability, asset, custom-component, input, Workspace-switching,
-  minimal UI/dialogue, and audio requirements in `ALPHA_PRODUCT_CONTRACT.md`.
+- Complete the remaining reliability, asset, programming, audio, and export
+  requirements in `ALPHA_PRODUCT_CONTRACT.md`; custom components, input,
+  Workspace switching, collision queries, and minimal UI/dialogue are present.
 - Export Development and Release packages from BasilEditor.
 - Build the bounded Where Birds Nest alpha proof through supported workflows.
 - Run its Release package in a clean-machine-style Windows environment.

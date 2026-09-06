@@ -33,6 +33,7 @@ stretch are defined in the [Alpha Product Contract](docs/ALPHA_PRODUCT_CONTRACT.
 - raylib window and frame management
 - Time and frame tracking
 - Named keyboard input actions
+- Named keyboard/mouse input actions with runtime rebinding
 - In-memory logging and an interactive developer console
 - Layered ASCII rendering with per-cell foreground/background colors
 - Plain-text ASCII asset loading and runtime glyph editing
@@ -51,8 +52,9 @@ stretch are defined in the [Alpha Product Contract](docs/ALPHA_PRODUCT_CONTRACT.
   changes, dirty-state protection, and backup-assisted saves
 - Lifecycle-managed Workspace documents with transactional load/clone and
   structured diagnostics
-- Workspace schema v3 with versioned Transform2D/ASCII Renderable components,
-  safe legacy migration, and preservation of unknown optional component data
+- Workspace schema v4 with stable AssetRefs, versioned Transform2D/ASCII
+  Renderable/Collider2D components, schema v3 migration, and preservation of
+  unknown optional component data
 - A bounded, project-root-contained Text Sprite decoder with transparent-space
   grids, structured diagnostics, and last-known-good cache replacement
 - Deterministic host-neutral ASCII draw-list interpretation with shared anchor,
@@ -84,6 +86,10 @@ stretch are defined in the [Alpha Product Contract](docs/ALPHA_PRODUCT_CONTRACT.
   with compatibility checks and last-valid artifact preservation
 - Strict Project component metadata and human-readable custom Workspace data,
   inspected without executing Project code
+- Public collision queries and safe transactional replacement of the one active
+  Workspace, including generation-safe entity handles
+- Screen-space ASCII labels, panels, anchored HUDs, and keyboard/mouse choices
+  through the public C/C++ game API
 - Headless project, generated-build, input, canvas, and combat tests
 
 ## Reference demo

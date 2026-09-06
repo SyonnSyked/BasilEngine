@@ -119,6 +119,12 @@ foreach(language_mode IN ITEMS mixed c cpp)
     (void)queryCollidersFn;
     (void)BGame_RequestWorkspace(host, "workspaces/Next.basilworkspace");
     (void)BGame_WorkspaceGeneration(host);
+    int uiSelection = 0;
+    BGameUI_Begin(host, &uiSelection);
+    BGameUI_Label(host, (BGameUIPosition){BGAME_UI_TOP_LEFT, 1, 1}, "HUD");
+    BGameUI_Box(host, (BGameUIRect){BGAME_UI_BOTTOM, 0, -1, 20, 5});
+    (void)BGameUI_Choice(host, (BGameUIPosition){BGAME_UI_BOTTOM, -8, -3}, "Continue");
+    (void)BGameUI_End(host);
 ]=])
 
     set(initialize_marker "    *gameState = &state;\n")
