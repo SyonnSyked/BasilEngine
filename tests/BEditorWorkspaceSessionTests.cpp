@@ -101,12 +101,40 @@ int main()
     failures += Check(session.IsDirty(), "adding marks session dirty");
     failures += Check(session.SelectedEntity() != nullptr, "added entity is selected");
     failures +=
-        Check(session.SelectedEntity()->componentCount == 2 &&
+        Check(session.SelectedEntity()->componentCount == 3 &&
                   BWorkspaceEntity_FindComponentConst(session.SelectedEntity(),
                                                       BWORKSPACE_TRANSFORM2D_TYPE) != nullptr &&
                   BWorkspaceEntity_FindComponentConst(session.SelectedEntity(),
-                                                      BWORKSPACE_ASCII_RENDERABLE_TYPE) != nullptr,
-              "normal entity is immediately visible with Transform2D and ASCII Renderable");
+                                                      BWORKSPACE_ASCII_RENDERABLE_TYPE) != nullptr &&
+                  BWorkspaceEntity_FindComponentConst(session.SelectedEntity(),
+                                                      BWORKSPACE_COLLIDER2D_TYPE) != nullptr,
+              "normal entity is immediately visible with gameplay components");
+    failures += Check(session.RemoveSelectedCollider(error),
+                      "generated default Collider2D removes through session");
+    failures += Check(session.AddSelectedCollider(error), "selected entity adds Collider2D");
+    failures += Check(session.IsDirty() && session.CanUndo(),
+                      "Collider2D addition marks dirty and records history");
+    failures += Check(!session.AddSelectedCollider(error), "duplicate Collider2D is rejected");
+    BCollider2D editedCollider = {1.25f, -2.5f, 3.75f, 4.5f, true};
+    failures += Check(session.SetSelectedCollider(editedCollider, error),
+                      "Collider2D fields update through the session");
+    failures += Check(session.Undo(error), "Collider2D update can be undone");
+    const BWorkspaceComponent *sessionCollider = BWorkspaceEntity_FindComponentConst(
+        session.SelectedEntity(), BWORKSPACE_COLLIDER2D_TYPE);
+    failures += Check(sessionCollider != nullptr &&
+                          sessionCollider->data.collider2d.width == 1.0f,
+                      "undo restores default Collider2D");
+    failures += Check(session.Redo(error), "Collider2D update can be redone");
+    sessionCollider = BWorkspaceEntity_FindComponentConst(session.SelectedEntity(),
+                                                          BWORKSPACE_COLLIDER2D_TYPE);
+    failures += Check(sessionCollider != nullptr && sessionCollider->data.collider2d.offsetX == 1.25f &&
+                          sessionCollider->data.collider2d.offsetY == -2.5f &&
+                          sessionCollider->data.collider2d.width == 3.75f &&
+                          sessionCollider->data.collider2d.height == 4.5f &&
+                          sessionCollider->data.collider2d.trigger,
+                      "redo restores all Collider2D fields");
+    failures += Check(session.RemoveSelectedCollider(error), "Collider2D removes through session");
+    failures += Check(session.Undo(error), "Collider2D removal can be undone");
     failures += Check(session.DuplicateSelectedEntity(error), "selected entity duplicates");
     failures += Check(session.Workspace().entityCount == 2 && session.SelectedIndex() == 1,
                       "duplicate has a new selected entity");
@@ -156,8 +184,23 @@ int main()
     failures += Check(session.Reload(error), "session reloads saved Workspace");
     failures += Check(session.Workspace().entityCount == 1 &&
                           std::string(session.Workspace().entities[0].name) == "Edited Entity" &&
-                          !session.Workspace().entities[0].enabled,
-                      "saved entity and component edits round trip");
+                          !session.Workspace().entities[0].enabled &&
+                          BWorkspaceEntity_FindComponentConst(&session.Workspace().entities[0],
+                                                              BWORKSPACE_COLLIDER2D_TYPE) != nullptr,
+                      "saved entity and Collider2D edits round trip");
+
+    BEditorWorkspaceSession colliderRequirementSession;
+    failures += Check(colliderRequirementSession.Load(root, "workspaces/Main.basilworkspace", error) &&
+                          colliderRequirementSession.AddEmptyEntity(error),
+                      "Collider2D requirement fixture is created");
+    BDiagnosticList colliderRequirementDiagnostics{};
+    failures += Check(BWorkspaceDocument_RemoveComponent(
+                          &colliderRequirementSession.MutableWorkspace(),
+                          colliderRequirementSession.SelectedIndex(), BWORKSPACE_TRANSFORM2D_TYPE,
+                          &colliderRequirementDiagnostics),
+                      "fixture removes Transform2D");
+    failures += Check(!colliderRequirementSession.AddSelectedCollider(error),
+                      "Collider2D addition requires Transform2D");
 
     session.Select(0);
     failures += Check(session.RemoveSelectedEntity(error), "session removes selected entity");

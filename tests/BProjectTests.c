@@ -109,7 +109,7 @@ int main(void)
 
     failures += Check(FileExists(manifestPath), "generator writes manifest");
     failures += Check(FileExists(cmakePath), "generator writes editable CMake file");
-    failures += Check(FileExists(mainPath), "generator writes C entry point");
+    failures += Check(!FileExists(mainPath), "generator keeps bootstrap out of developer source");
     failures += Check(FileExists(gamePath), "generator writes native game module");
     failures += Check(FileExists(componentsPath), "generator writes versioned component metadata");
     failures += Check(FileExists(inputPath), "generator writes versioned input action map");

@@ -34,6 +34,57 @@ foreach(language_mode IN ITEMS mixed c cpp)
 
     file(READ "${game_source}" generated_game_source)
 
+    if(EXISTS "${source_directory}/source/main.c"
+       OR EXISTS "${source_directory}/source/main.cpp")
+        message(FATAL_ERROR "${language_mode} generated developer source contains a bootstrap main")
+    endif()
+    foreach(internal_symbol IN ITEMS BasilGame_Query BGAME_API_VERSION BGameModule
+                                     BGAME_MODULE_EXPORT structSize)
+        if(generated_game_source MATCHES "${internal_symbol}")
+            message(FATAL_ERROR
+                    "${language_mode} generated game source leaks ${internal_symbol}")
+        endif()
+    endforeach()
+
+    set(configure_command
+        "${CMAKE_COMMAND}" -S "${source_directory}" -B "${build_directory}" -G "${TEST_GENERATOR}"
+        "-DBASIL_ENGINE_ROOT=${ENGINE_SOURCE_DIR}" "-DBASIL_RAYLIB_ROOT=${RAYLIB_ROOT}"
+        "-DBASIL_TOOLS_ROOT=${TOOLS_ROOT}" "-DBASIL_RAYLIB_INCLUDE_DIR=${RAYLIB_INCLUDE_DIR}"
+        "-DBASIL_RAYLIB_LIBRARY=${RAYLIB_LIBRARY}" "-DBASIL_TOOLS_INCLUDE_DIR=${TOOLS_INCLUDE_DIR}"
+        "-DBASIL_TOOLS_LIBRARY=${TOOLS_LIBRARY}" "-DCMAKE_C_COMPILER=${TEST_C_COMPILER}"
+        "-DCMAKE_CXX_COMPILER=${TEST_CXX_COMPILER}")
+    if(TEST_TOOLCHAIN_FILE)
+        list(APPEND configure_command "-DCMAKE_TOOLCHAIN_FILE=${TEST_TOOLCHAIN_FILE}")
+    endif()
+    execute_process(COMMAND ${configure_command} RESULT_VARIABLE untouched_configure_result
+                    OUTPUT_VARIABLE untouched_configure_output ERROR_VARIABLE untouched_configure_error)
+    if(NOT untouched_configure_result EQUAL 0)
+        message(FATAL_ERROR
+                "${language_mode} untouched project configuration failed:\n${untouched_configure_output}\n${untouched_configure_error}")
+    endif()
+    execute_process(COMMAND "${CMAKE_COMMAND}" --build "${build_directory}"
+                    RESULT_VARIABLE untouched_build_result OUTPUT_VARIABLE untouched_build_output
+                    ERROR_VARIABLE untouched_build_error)
+    if(NOT untouched_build_result EQUAL 0)
+        message(FATAL_ERROR
+                "${language_mode} untouched project build failed:\n${untouched_build_output}\n${untouched_build_error}")
+    endif()
+    if(WIN32)
+        set(untouched_executable "${build_directory}/${identifier}.exe")
+    else()
+        set(untouched_executable "${build_directory}/${identifier}")
+    endif()
+    execute_process(COMMAND "${untouched_executable}" --basil-validate --project
+                            "${source_directory}/${identifier}.basilproject"
+                    WORKING_DIRECTORY "${source_directory}"
+                    RESULT_VARIABLE untouched_validate_result
+                    OUTPUT_VARIABLE untouched_validate_output ERROR_VARIABLE untouched_validate_error)
+    if(NOT untouched_validate_result EQUAL 0 OR
+       NOT untouched_validate_output MATCHES "BASIL_RUNTIME_READY.*items=0")
+        message(FATAL_ERROR
+                "${language_mode} untouched runtime validation failed:\n${untouched_validate_output}\n${untouched_validate_error}")
+    endif()
+
     set(input_api_smoke
         [=[
     bool (*inputPressedFn)(void*, const char*) = host->inputPressed;
@@ -49,6 +100,10 @@ foreach(language_mode IN ITEMS mixed c cpp)
     host->requestWorkspace;
     uint32_t (*workspaceGenerationFn)(void*) =
     host->workspaceGeneration;
+    bool (*getColliderBoundsFn)(void*, BGameEntity, BGameAABB*, bool*) =
+    host->getColliderBounds;
+    size_t (*queryCollidersFn)(void*, const BGameAABB*, BGameEntity,
+                               BGameCollisionHit*, size_t) = host->queryColliders;
 
     (void)inputPressedFn;
     (void)inputDownFn;
@@ -60,6 +115,8 @@ foreach(language_mode IN ITEMS mixed c cpp)
     (void)inputBindingDeviceFn;
     (void)requestWorkspaceFn;
     (void)workspaceGenerationFn;
+    (void)getColliderBoundsFn;
+    (void)queryCollidersFn;
 ]=])
 
     set(initialize_marker "    *gameState = &state;\n")
@@ -80,7 +137,7 @@ foreach(language_mode IN ITEMS mixed c cpp)
     file(
         WRITE "${source_directory}/workspaces/Main.basilworkspace"
         "{\n"
-        "  \"schemaVersion\": 3,\n"
+        "  \"schemaVersion\": 4,\n"
         "  \"name\": \"Main Workspace\",\n"
         "  \"identifier\": \"Main\",\n"
         "  \"nextEntityId\": \"3\",\n"
@@ -91,7 +148,7 @@ foreach(language_mode IN ITEMS mixed c cpp)
         "    ] },\n"
         "    { \"id\": \"entity-0000000000000002\", \"name\": \"Ship\", \"enabled\": true, \"components\": [\n"
         "      { \"type\": \"basil.transform2d\", \"version\": 1, \"required\": true, \"data\": { \"x\": 3.5, \"y\": -2 } },\n"
-        "      { \"type\": \"basil.ascii-renderable\", \"version\": 1, \"required\": true, \"data\": { \"source\": { \"kind\": \"text-sprite\", \"path\": \"assets/ship.txt\" }, \"foreground\": \"#E6EDF3FF\", \"background\": \"#120C1FFF\", \"layer\": 0, \"anchor\": \"center\", \"visible\": true, \"transparentSpaces\": true } }\n"
+        "      { \"type\": \"basil.ascii-renderable\", \"version\": 1, \"required\": true, \"data\": { \"source\": { \"kind\": \"text-sprite\", \"id\": \"asset-generated-ship\", \"path\": \"assets/ship.txt\" }, \"foreground\": \"#E6EDF3FF\", \"background\": \"#120C1FFF\", \"layer\": 0, \"anchor\": \"center\", \"visible\": true, \"transparentSpaces\": true } }\n"
         "    ] }\n"
         "  ]\n"
         "}\n")
@@ -159,10 +216,33 @@ foreach(language_mode IN ITEMS mixed c cpp)
         message(FATAL_ERROR "${language_mode} failed build did not preserve the last valid module")
     endif()
 
-    string(REPLACE "module->version = BGAME_API_VERSION;"
-                   "module->version = BGAME_API_VERSION + 1;" incompatible_game_source
-                   "${valid_game_source}")
-    file(WRITE "${game_source}" "${incompatible_game_source}")
+    file(WRITE "${game_source}" "${valid_game_source}")
+    if(language_mode STREQUAL "cpp")
+        set(incompatible_glue "${source_directory}/test-internal/IncompatibleGameModule.cpp")
+    else()
+        set(incompatible_glue "${source_directory}/test-internal/IncompatibleGameModule.c")
+    endif()
+    file(MAKE_DIRECTORY "${source_directory}/test-internal")
+    file(WRITE "${incompatible_glue}"
+        "#include \"BGameModule.h\"\n"
+        "#include <string.h>\n"
+        "BGAME_MODULE_EXPORT bool BasilGame_Query(uint32_t hostVersion, BGameModule *module)\n"
+        "{\n"
+        "    if (hostVersion != BGAME_API_VERSION || module == 0) return false;\n"
+        "    memset(module, 0, sizeof(*module));\n"
+        "    module->version = BGAME_API_VERSION + 1;\n"
+        "    module->structSize = sizeof(*module);\n"
+        "    return true;\n"
+        "}\n")
+    set(project_cmake "${source_directory}/CMakeLists.txt")
+    file(READ "${project_cmake}" valid_project_cmake)
+    string(REPLACE
+           [=["${BASIL_ENGINE_ROOT}/engine/runtime/BGameModuleGlue.c"]=]
+           "\"${incompatible_glue}\""
+           incompatible_project_cmake "${valid_project_cmake}")
+    file(WRITE "${project_cmake}" "${incompatible_project_cmake}")
+    execute_process(COMMAND ${configure_command} RESULT_VARIABLE incompatible_configure_result
+                    OUTPUT_QUIET ERROR_QUIET)
     execute_process(
         COMMAND "${CMAKE_COMMAND}" --build "${build_directory}" --target "${identifier}Game"
         RESULT_VARIABLE incompatible_build_result
@@ -173,7 +253,8 @@ foreach(language_mode IN ITEMS mixed c cpp)
         RESULT_VARIABLE incompatible_result
         OUTPUT_VARIABLE incompatible_output
         ERROR_VARIABLE incompatible_error)
-    if(NOT incompatible_build_result EQUAL 0
+    if(NOT incompatible_configure_result EQUAL 0
+       OR NOT incompatible_build_result EQUAL 0
        OR incompatible_result EQUAL 0
        OR NOT incompatible_error MATCHES "API mismatch: host requires 1, module provided 2")
         message(
@@ -181,12 +262,14 @@ foreach(language_mode IN ITEMS mixed c cpp)
                 "${language_mode} incompatible module was not rejected clearly:\n${incompatible_output}\n${incompatible_error}"
         )
     endif()
-    file(WRITE "${game_source}" "${valid_game_source}")
+    file(WRITE "${project_cmake}" "${valid_project_cmake}")
+    execute_process(COMMAND ${configure_command} RESULT_VARIABLE restore_configure_result
+                    OUTPUT_QUIET ERROR_QUIET)
     execute_process(
         COMMAND "${CMAKE_COMMAND}" --build "${build_directory}" --target "${identifier}Game"
         RESULT_VARIABLE restore_build_result
         OUTPUT_QUIET ERROR_QUIET)
-    if(NOT restore_build_result EQUAL 0)
+    if(NOT restore_configure_result EQUAL 0 OR NOT restore_build_result EQUAL 0)
         message(FATAL_ERROR "${language_mode} valid module restoration failed")
     endif()
 
