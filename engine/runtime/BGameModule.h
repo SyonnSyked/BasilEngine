@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-#define BGAME_API_VERSION 1u
+#define BGAME_API_VERSION 2u
 
 typedef struct BGameModule {
     uint32_t version;

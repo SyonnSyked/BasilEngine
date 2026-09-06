@@ -27,16 +27,16 @@ typedef struct BGameUIContext {
     bool mousePressed;
     bool consumed;
     bool active;
+    bool overflowed;
     size_t commandCount;
     BGameUIGlyphCommand commands[BGAME_UI_COMMAND_CAPACITY];
 } BGameUIContext;
 
 void BGameUIContext_Init(BGameUIContext *ui);
-void BGameUIContext_BeginFrame(BGameUIContext *ui, int columns, int rows, int mouseX, int mouseY,
-                               bool movePrevious, bool moveNext, bool confirm, bool mousePressed);
-void BGameUIContext_Begin(BGameUIContext *ui, int *selection);
+void BGameUIContext_BeginFrame(BGameUIContext *ui, int columns, int rows, int mouseX, int mouseY);
+void BGameUIContext_Begin(BGameUIContext *ui, int *selection, BGameUIInput input);
 void BGameUIContext_Label(BGameUIContext *ui, BGameUIPosition position, const char *text);
-void BGameUIContext_Box(BGameUIContext *ui, BGameUIRect rect);
+BGameUICell BGameUIContext_Box(BGameUIContext *ui, BGameUIRect rect);
 bool BGameUIContext_Choice(BGameUIContext *ui, BGameUIPosition position, const char *text);
 bool BGameUIContext_End(BGameUIContext *ui);
 BGameUICell BGameUI_ResolveAnchor(BGameUIAnchor anchor, int offsetX, int offsetY, int width,

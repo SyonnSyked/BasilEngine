@@ -6,21 +6,25 @@ Project code, and editor-readable component data.
 ## Native game module
 
 Every generated C, C++, or mixed Project builds two artifacts: a small runtime
-host executable and one platform-native game module. The module exports the
-C-linkage `BasilGame_Query` function declared by `BGameModule.h`. Version 1
-provides initialize, update, render-contribution, and shutdown callbacks.
+host executable and one platform-native game module. Developer source includes
+`BGame.h` and implements the four `BasilGame_Initialize`, `BasilGame_Update`,
+`BasilGame_Render`, and `BasilGame_Shutdown` callbacks. Basil owns the executable
+entry point and internal `BasilGame_Query`/`BGameModule.h` registration glue.
+The current internal ABI is version 2.
 
 The host owns engine state. Project code receives a versioned function table,
 opaque entity handles, and bounded values; it does not receive pointers to
-engine-owned Workspace objects. Version 1 exposes logging, the Project root,
-entity enumeration and identity, position access, and read-only custom-component
-JSON. C++ uses the same ABI and ownership rules as C.
+engine-owned Workspace objects. The current public host table exposes logging, the Project root,
+entity enumeration and identity, position access, collision queries, named
+input, safe Workspace replacement/generation, transient screen-space UI, and
+read-only custom-component JSON. C++ uses the same ABI and ownership rules as C.
 
 At startup, the host loads `<ProjectIdentifier>.game.dll` on Windows (or the
 corresponding `.so`/`.dylib` later), resolves the query function, and checks both
 the API version and structure size before calling Project code. An incompatibility
-is fatal and reports the expected and provided versions. Live replacement and
-state migration remain deferred.
+is fatal and reports the expected and provided versions. Live code-module
+replacement and state migration remain deferred; transactional replacement of
+the one runtime-active Workspace is implemented.
 
 The editable Project CMake file links a candidate module first. Only a successful
 link runs the post-build promotion into the canonical `.game` artifact. Thus a
@@ -54,10 +58,10 @@ while unknown required data remains a load error.
 
 ## Stage 4 manual exit check (Windows)
 
-**Result (2026-09-02): Passed.** Fresh C, C++, and mixed Projects built and
+**Historical result (2026-09-02): Passed against ABI v1.** Fresh C, C++, and mixed Projects built and
 launched; their canonical modules were present. Inspector attachment survived
 save/reopen. A real compile failure preserved the prior module hash, and an
-API-v2 module was rejected by the API-v1 host with both versions reported. The
+an API-v2 module was rejected by the then-API-v1 host with both versions reported. The
 valid source/module was restored after the destructive-path checks.
 
 1. Create one C, one C++, and one mixed Project and build/run each.

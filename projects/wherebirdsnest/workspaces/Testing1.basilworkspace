@@ -1,7 +1,60 @@
 {
-	"schemaVersion":	4,
-	"name":	"Testing_1",
-	"identifier":	"Testing1",
-	"nextEntityId":	"1",
-	"entities":	[]
+  "schemaVersion": 4,
+  "name": "North Road Test Room",
+  "identifier": "Testing1",
+  "nextEntityId": "8",
+  "entities": [
+    {
+      "id": "entity-0000000000000001", "name": "North Road", "enabled": true,
+      "components": [
+        { "type": "basil.transform2d", "version": 1, "required": true, "data": { "x": -24, "y": -12 } },
+        { "type": "basil.ascii-renderable", "version": 1, "required": true, "data": {
+          "source": { "kind": "text-sprite", "id": "asset-4cd22aaa66b511e0", "path": "assets/arena.txt" },
+          "foreground": "#8B7355FF", "background": "#05090EFF", "layer": -10,
+          "anchor": "top-left", "visible": true, "transparentSpaces": true
+        } }
+      ]
+    },
+    {
+      "id": "entity-0000000000000002", "name": "Wayfinder", "enabled": true,
+      "components": [
+        { "type": "basil.transform2d", "version": 1, "required": true, "data": { "x": -10, "y": 0 } },
+        { "type": "basil.ascii-renderable", "version": 1, "required": true, "data": {
+          "source": { "kind": "text-sprite", "id": "asset-37c7d02565c20340", "path": "assets/player.txt" },
+          "foreground": "#00E5FFFF", "background": "#00000000", "layer": 10,
+          "anchor": "bottom-center", "visible": true, "transparentSpaces": true
+        } },
+        { "type": "basil.collider2d", "version": 1, "required": true, "data": {
+          "offsetX": 0, "offsetY": 0, "width": 1, "height": 1, "trigger": false
+        } }
+      ]
+    },
+    {
+      "id": "entity-0000000000000003", "name": "North Road Marker", "enabled": true,
+      "components": [
+        { "type": "basil.transform2d", "version": 1, "required": true, "data": { "x": 8, "y": 0 } },
+        { "type": "basil.ascii-renderable", "version": 1, "required": true, "data": {
+          "source": { "kind": "glyph", "glyph": "N" }, "foreground": "#FFD166FF",
+          "background": "#120C1FFF", "layer": 5, "anchor": "center", "visible": true,
+          "transparentSpaces": true
+        } }
+      ]
+    },
+    { "id": "entity-0000000000000004", "name": "North Wall", "enabled": true, "components": [
+      { "type": "basil.transform2d", "version": 1, "required": true, "data": { "x": -0.5, "y": -12 } },
+      { "type": "basil.collider2d", "version": 1, "required": true, "data": { "offsetX": 0, "offsetY": 0, "width": 48, "height": 1, "trigger": false } }
+    ] },
+    { "id": "entity-0000000000000005", "name": "South Wall", "enabled": true, "components": [
+      { "type": "basil.transform2d", "version": 1, "required": true, "data": { "x": -0.5, "y": 11 } },
+      { "type": "basil.collider2d", "version": 1, "required": true, "data": { "offsetX": 0, "offsetY": 0, "width": 48, "height": 1, "trigger": false } }
+    ] },
+    { "id": "entity-0000000000000006", "name": "West Wall", "enabled": true, "components": [
+      { "type": "basil.transform2d", "version": 1, "required": true, "data": { "x": -24, "y": -0.5 } },
+      { "type": "basil.collider2d", "version": 1, "required": true, "data": { "offsetX": 0, "offsetY": 0, "width": 1, "height": 24, "trigger": false } }
+    ] },
+    { "id": "entity-0000000000000007", "name": "East Wall", "enabled": true, "components": [
+      { "type": "basil.transform2d", "version": 1, "required": true, "data": { "x": 23, "y": -0.5 } },
+      { "type": "basil.collider2d", "version": 1, "required": true, "data": { "offsetX": 0, "offsetY": 0, "width": 1, "height": 24, "trigger": false } }
+    ] }
+  ]
 }

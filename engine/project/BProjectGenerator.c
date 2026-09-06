@@ -137,7 +137,6 @@ static bool BProjectGenerator_WriteCMake(const BProject *project, const char *pa
             "if(NOT BASIL_ENGINE_ROOT)\n"
             "    message(FATAL_ERROR \"Set BASIL_ENGINE_ROOT to the BasilEngine source tree.\")\n"
             "endif()\n\n"
-            "set(BASIL_BUILD_REFERENCE_GAME OFF CACHE BOOL \"\" FORCE)\n"
             "set(BASIL_BUILD_PROJECT_TOOL OFF CACHE BOOL \"\" FORCE)\n"
             "set(BUILD_TESTING OFF CACHE BOOL \"\" FORCE)\n"
             "add_subdirectory(\"${BASIL_ENGINE_ROOT}\" \"${CMAKE_BINARY_DIR}/_basilengine\")\n\n"

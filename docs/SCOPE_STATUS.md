@@ -37,17 +37,17 @@ review.
 
 | Intended outcome | Current evidence | Status | Remaining gap |
 | --- | --- | --- | --- |
-| BasilEngine is reusable; Where Birds Nest is its proving project | Engine and game code remain separate; Where Birds Nest now also has a Workspace-authored reference room using only reusable engine data/APIs | Aligned and proven for static authoring | Migrate gameplay only after the reusable gameplay/module boundary is intentionally designed |
+| BasilEngine is reusable; Where Birds Nest is its proving project | WBN uses `BGame.h` with Basil-owned bootstrap/glue and integrates collision, input, UI, and Workspace replacement | Aligned through the pre-audio runtime gate | Complete bounded audio and later alpha proof work |
 | ASCII and text art are first-class | Strict decoding/cache, stable asset registry, change detection, bounded Text Sprite editor, deterministic interpretation, standalone rendering, and reference room exist | Shared authoring/runtime foundation proven | Exercise the visible Stage 3 checklist and later export relocation |
 | Smooth real-time action-RPG play | Delta-time movement, camera, collision, input routing, a target, attack cooldown, damage, and death exist | Feasibility spike complete in breadth; feel unvalidated | Conduct play-feel validation before treating combat APIs as stable |
-| C-first runtime with narrow C++ use | Runtime and public-facing systems are C11; BasilEditor uses C++ for ImGui integration | Aligned | Preserve the C boundary when component and future game-module APIs are introduced |
+| C-first runtime with narrow C++ use | Runtime and `BGame.h` are C11-compatible; generated C, C++, and mixed Projects build through the same boundary | Aligned | Preserve the C boundary as remaining services are introduced |
 | Windows, macOS, and Linux | Cross-platform code paths and CMake structure exist | Not fully verified | Windows is the active verified platform; macOS/Linux need native configure, build, test, and process-control verification |
 | Medium-ambition, practical editor | Browser, dock shell, glyph/Text Sprite/empty entity authoring, component Inspector, shared-data Viewport preview, build/run controls, diagnostics, and preferences exist | Strong foundation | Development-play hosting and later code workflow remain |
 | New empty Projects work without manual engine setup | Generator creates manifests, editable CMake, source, assets, and a starter Workspace; editor authors, previews, validates, saves, builds, and runs them | End-to-end foundation proven | Native platform/toolchain packaging remains before a public-quality workflow |
-| Editor and runtime use the same data and APIs | Project, Workspace, Text Sprite, and draw-list services are shared by generated runtimes, editor preview, and the Where Birds Nest room | Aligned for the completed slice | Gameplay hosting remains deliberately later |
+| Editor and runtime use the same data and APIs | Project, Workspace, Text Sprite, draw-list, collision, and replacement services are shared; WBN consumes the public runtime API | Aligned for the pre-audio slice | Audio remains the next runtime service |
 | Built-in coding and terminal workflow, with Neovim first-class | Build Output and Problems plumbing exist; terminal and code-editor panels are planned | Deliberately deferred | Implement only after the runtime/project boundary is stable; avoid building an IDE or terminal emulator prematurely |
 | Mature NetRunner visual identity | Central theme, electric-cyan/restrained-violet palette, bundled JetBrains Mono, scale preferences, dock layout, and application icon exist | Aligned | Apply the system consistently to future functional panels; avoid decorative expansion |
-| Hot-loadable game development | Architecture records a future versioned C module boundary and failure recovery | Deliberately deferred | Requires stable runtime ownership, handles, serialization, and module lifecycle first |
+| Hot-loadable game development | Versioned native modules and last-valid artifact preservation exist; hot reload/state migration do not | Deliberately deferred | Not an alpha requirement |
 
 ## Current functional inventory
 
@@ -77,8 +77,9 @@ review.
   all wall sides.
 - A damageable target, range-checked basic attack, cooldown, visual feedback,
   health, and death state in Where Birds Nest.
-- An editor-openable Where Birds Nest Project whose schema-3 room exercises a
-  layered environment, player Text Sprite, enemy glyph, and empty marker.
+- An editor-openable Where Birds Nest Project whose schema-4 rooms integrate
+  stable AssetRefs, Collider2D walls/trigger interaction, modal HUD/dialogue,
+  safe Workspace replacement, generation detection, and handle reacquisition.
 
 ### Project and persistence foundation
 

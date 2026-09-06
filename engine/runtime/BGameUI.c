@@ -15,8 +15,11 @@ static void Put(BGameUIContext *ui, int x, int y, char glyph, BGameUIColor foreg
                 BGameUIColor background)
 {
     if (ui == NULL || x < 0 || y < 0 || x >= ui->columns || y >= ui->rows ||
-        ui->commandCount >= BGAME_UI_COMMAND_CAPACITY)
+        ui->commandCount >= BGAME_UI_COMMAND_CAPACITY) {
+        if (ui != NULL && x >= 0 && y >= 0 && x < ui->columns && y < ui->rows)
+            ui->overflowed = true;
         return;
+    }
     ui->commands[ui->commandCount++] =
         (BGameUIGlyphCommand){x, y, glyph, foreground, background};
 }
@@ -51,8 +54,7 @@ void BGameUIContext_Init(BGameUIContext *ui)
         memset(ui, 0, sizeof(*ui));
 }
 
-void BGameUIContext_BeginFrame(BGameUIContext *ui, int columns, int rows, int mouseX, int mouseY,
-                               bool movePrevious, bool moveNext, bool confirm, bool mousePressed)
+void BGameUIContext_BeginFrame(BGameUIContext *ui, int columns, int rows, int mouseX, int mouseY)
 {
     if (ui == NULL)
         return;
@@ -60,22 +62,27 @@ void BGameUIContext_BeginFrame(BGameUIContext *ui, int columns, int rows, int mo
     ui->rows = rows > 0 ? rows : 0;
     ui->mouseX = mouseX;
     ui->mouseY = mouseY;
-    ui->movePrevious = movePrevious;
-    ui->moveNext = moveNext;
-    ui->confirm = confirm;
-    ui->mousePressed = mousePressed;
+    ui->movePrevious = false;
+    ui->moveNext = false;
+    ui->confirm = false;
+    ui->mousePressed = false;
     ui->consumed = false;
     ui->active = false;
+    ui->overflowed = false;
     ui->commandCount = 0;
     ui->selectableCount = 0;
 }
 
-void BGameUIContext_Begin(BGameUIContext *ui, int *selection)
+void BGameUIContext_Begin(BGameUIContext *ui, int *selection, BGameUIInput input)
 {
     if (ui == NULL || ui->active)
         return;
     ui->active = true;
     ui->selection = selection;
+    ui->movePrevious = input.previous;
+    ui->moveNext = input.next;
+    ui->confirm = input.confirm;
+    ui->mousePressed = input.pointerActivate;
     if (selection == NULL)
         return;
     int count = ui->previousSelectableCount;
@@ -104,14 +111,19 @@ void BGameUIContext_Label(BGameUIContext *ui, BGameUIPosition position, const ch
         Put(ui, cell.x + i, cell.y, text[i], kForeground, (BGameUIColor){0, 0, 0, 0});
 }
 
-void BGameUIContext_Box(BGameUIContext *ui, BGameUIRect rect)
+BGameUICell BGameUIContext_Box(BGameUIContext *ui, BGameUIRect rect)
 {
+    BGameUICell cell = {0, 0};
     if (ui == NULL || !ui->active || rect.width < 2 || rect.height < 2)
-        return;
-    BGameUICell cell = BGameUI_ResolveAnchor(rect.anchor, rect.x, rect.y, rect.width, rect.height,
-                                             ui->columns, ui->rows);
-    for (int y = 0; y < rect.height; ++y) {
-        for (int x = 0; x < rect.width; ++x) {
+        return cell;
+    cell = BGameUI_ResolveAnchor(rect.anchor, rect.x, rect.y, rect.width, rect.height, ui->columns,
+                                 ui->rows);
+    int firstX = cell.x < 0 ? -cell.x : 0;
+    int firstY = cell.y < 0 ? -cell.y : 0;
+    int lastX = rect.width < ui->columns - cell.x ? rect.width : ui->columns - cell.x;
+    int lastY = rect.height < ui->rows - cell.y ? rect.height : ui->rows - cell.y;
+    for (int y = firstY; y < lastY; ++y) {
+        for (int x = firstX; x < lastX; ++x) {
             char glyph = ' ';
             if ((x == 0 || x == rect.width - 1) && (y == 0 || y == rect.height - 1))
                 glyph = '+';
@@ -122,6 +134,7 @@ void BGameUIContext_Box(BGameUIContext *ui, BGameUIRect rect)
             Put(ui, cell.x + x, cell.y + y, glyph, kForeground, kBackground);
         }
     }
+    return cell;
 }
 
 bool BGameUIContext_Choice(BGameUIContext *ui, BGameUIPosition position, const char *text)

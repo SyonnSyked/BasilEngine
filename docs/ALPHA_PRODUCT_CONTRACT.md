@@ -290,9 +290,10 @@ manual review, documentation updates, and a reviewable commit.
 
 ### Stage 6: Playable runtime services
 
-**Implementation status:** In progress; named input/rebinding, custom components,
-Collider2D queries, safe single-Workspace replacement, and minimal screen-space
-ASCII HUD/dialogue are implemented. Bounded audio remains outstanding.
+**Implementation status:** Pre-audio gate implemented; named input/rebinding,
+custom components, Collider2D queries, safe single-Workspace replacement with
+generation-safe handles, and minimal screen-space ASCII HUD/dialogue are
+integrated in Where Birds Nest. Bounded audio remains outstanding.
 
 - A test Project proves input rebinding, collision-facing behavior, custom
   components, safe Workspace replacement, UI/dialogue, and audio.

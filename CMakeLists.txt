@@ -11,7 +11,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BASIL_BUILD_EDITOR_DEPS "Build BasilEditor and its ImGui dependencies" OFF)
 option(BASIL_BUILD_PROJECT_TOOL "Build the headless BasilEngine project tool" ON)
-option(BASIL_BUILD_REFERENCE_GAME "Build the Where Birds Nest reference game" ON)
 
 function(basil_enable_warnings target)
     if(MSVC)
@@ -183,17 +182,6 @@ if(BASIL_BUILD_PROJECT_TOOL)
     basil_enable_warnings(BasilProjectTool)
 endif()
 
-if(BASIL_BUILD_REFERENCE_GAME)
-    add_executable(WhereBirdsNest projects/wherebirdsnest/source/main.c
-                                  projects/wherebirdsnest/WBNCombat.c)
-
-    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/assets/wherebirdsnest")
-    configure_file(projects/wherebirdsnest/assets/arena.txt
-                   "${CMAKE_CURRENT_BINARY_DIR}/assets/wherebirdsnest/arena.txt" COPYONLY)
-
-    target_link_libraries(WhereBirdsNest PRIVATE BasilEngine)
-endif()
-
 if(BUILD_TESTING)
     add_executable(BProjectTests tests/BProjectTests.c)
 
@@ -331,7 +319,25 @@ if(BUILD_TESTING)
 
     add_test(NAME WBNCombatTests COMMAND WBNCombatTests)
 
+    add_executable(WBNGameplayTests tests/WBNGameplayTests.c
+                                    projects/wherebirdsnest/source/WBNGameplay.c)
+    target_include_directories(WBNGameplayTests PRIVATE projects/wherebirdsnest/source
+                                                       engine/runtime)
+    basil_enable_warnings(WBNGameplayTests)
+    add_test(NAME WBNGameplayTests COMMAND WBNGameplayTests)
+
+    add_executable(WBNGameIntegrationTests tests/WBNGameIntegrationTests.c
+        projects/wherebirdsnest/source/game.c projects/wherebirdsnest/source/WBNGameplay.c)
+    target_include_directories(WBNGameIntegrationTests PRIVATE projects/wherebirdsnest/source
+                                                               engine/runtime)
+    basil_enable_warnings(WBNGameIntegrationTests)
+    add_test(NAME WBNGameIntegrationTests COMMAND WBNGameIntegrationTests)
+
     add_executable(AsciiCanvasTests tests/AsciiCanvasTests.c)
+
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/assets/wherebirdsnest")
+    configure_file(projects/wherebirdsnest/assets/arena.txt
+                   "${CMAKE_CURRENT_BINARY_DIR}/assets/wherebirdsnest/arena.txt" COPYONLY)
 
     target_link_libraries(AsciiCanvasTests PRIVATE BasilEngine)
 

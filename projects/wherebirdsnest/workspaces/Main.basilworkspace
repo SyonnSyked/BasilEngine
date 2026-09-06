@@ -1,8 +1,8 @@
 {
-	"schemaVersion":	3,
+	"schemaVersion":	4,
 	"name":	"Ash Basin Test Room",
 	"identifier":	"Main",
-	"nextEntityId":	"7",
+	"nextEntityId":	"11",
 	"entities":	[{
 			"id":	"entity-0000000000000001",
 			"name":	"Ash Basin",
@@ -22,6 +22,7 @@
 					"data":	{
 						"source":	{
 							"kind":	"text-sprite",
+							"id":	"asset-4cd22aaa66b511e0",
 							"path":	"assets/arena.txt"
 						},
 						"foreground":	"#536B72FF",
@@ -51,6 +52,7 @@
 					"data":	{
 						"source":	{
 							"kind":	"text-sprite",
+							"id":	"asset-37c7d02565c20340",
 							"path":	"assets/player.txt"
 						},
 						"foreground":	"#00E5FFFF",
@@ -149,10 +151,34 @@
 					"data":	{
 						"offsetX":	0,
 						"offsetY":	0,
-						"width":	1,
-						"height":	1,
-						"trigger":	false
+						"width":	5,
+						"height":	5,
+						"trigger":	true
 					}
 				}]
+		}, {
+			"id": "entity-0000000000000007", "name": "North Wall", "enabled": true,
+			"components": [
+				{ "type": "basil.transform2d", "version": 1, "required": true, "data": { "x": -0.5, "y": -12 } },
+				{ "type": "basil.collider2d", "version": 1, "required": true, "data": { "offsetX": 0, "offsetY": 0, "width": 48, "height": 1, "trigger": false } }
+			]
+		}, {
+			"id": "entity-0000000000000008", "name": "South Wall", "enabled": true,
+			"components": [
+				{ "type": "basil.transform2d", "version": 1, "required": true, "data": { "x": -0.5, "y": 11 } },
+				{ "type": "basil.collider2d", "version": 1, "required": true, "data": { "offsetX": 0, "offsetY": 0, "width": 48, "height": 1, "trigger": false } }
+			]
+		}, {
+			"id": "entity-0000000000000009", "name": "West Wall", "enabled": true,
+			"components": [
+				{ "type": "basil.transform2d", "version": 1, "required": true, "data": { "x": -24, "y": -0.5 } },
+				{ "type": "basil.collider2d", "version": 1, "required": true, "data": { "offsetX": 0, "offsetY": 0, "width": 1, "height": 24, "trigger": false } }
+			]
+		}, {
+			"id": "entity-0000000000000010", "name": "East Wall", "enabled": true,
+			"components": [
+				{ "type": "basil.transform2d", "version": 1, "required": true, "data": { "x": 23, "y": -0.5 } },
+				{ "type": "basil.collider2d", "version": 1, "required": true, "data": { "offsetX": 0, "offsetY": 0, "width": 1, "height": 24, "trigger": false } }
+			]
 		}]
 }
