@@ -182,7 +182,7 @@ if(BASIL_BUILD_PROJECT_TOOL)
 endif()
 
 if(BASIL_BUILD_REFERENCE_GAME)
-    add_executable(WhereBirdsNest projects/wherebirdsnest/main.c
+    add_executable(WhereBirdsNest projects/wherebirdsnest/source/main.c
                                   projects/wherebirdsnest/WBNCombat.c)
 
     file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/assets/wherebirdsnest")
