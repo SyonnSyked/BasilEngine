@@ -126,6 +126,7 @@ basil_enable_warnings(BasilAssets)
 
 add_library(
     BasilRuntimeWorkspace STATIC engine/runtime/BAsciiDrawList.c engine/runtime/BCollision2D.c
+                                 engine/runtime/BGameUI.c
                                  engine/runtime/BProjectContext.c
                                  engine/runtime/BWorkspaceReplacement.c)
 
@@ -263,6 +264,11 @@ if(BUILD_TESTING)
     target_link_libraries(BAsciiDrawListTests PRIVATE BasilRuntimeWorkspace)
 
     add_test(NAME BAsciiDrawListTests COMMAND BAsciiDrawListTests)
+
+    add_executable(BGameUITests tests/BGameUITests.c)
+    target_link_libraries(BGameUITests PRIVATE BasilRuntimeWorkspace)
+    basil_enable_warnings(BGameUITests)
+    add_test(NAME BGameUITests COMMAND BGameUITests)
 
     add_executable(BWorkspaceReplacementTests tests/BWorkspaceReplacementTests.c)
     target_link_libraries(BWorkspaceReplacementTests PRIVATE BasilRuntimeWorkspace)

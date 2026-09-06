@@ -1,10 +1,15 @@
 #include "BGameModule.h"
 
 #include <string.h>
+#include <stdio.h>
 
 typedef struct GameState {
     const BGameHostAPI *host;
     BGameEntity player;
+    int dialogueSelection;
+    int health;
+    const char *dialogueResult;
+    bool uiConsumed;
 } GameState;
 
 static BGameEntity FindEntityByName(const BGameHostAPI *host, const char *name)
@@ -28,6 +33,10 @@ static bool Game_Initialize(const BGameHostAPI *host, void **gameState)
 
     state.host = host;
     state.player = FindEntityByName(host, "Wayfinder");
+    state.dialogueSelection = 0;
+    state.health = 8;
+    state.dialogueResult = "Choose a reply.";
+    state.uiConsumed = false;
 
     if (state.player.value == 0) {
         host->log(host->context, "Could not find Wayfinder entity.");
@@ -89,7 +98,28 @@ static void Game_Update(void *gameState, float deltaTime)
 
 static void Game_Render(void *gameState)
 {
-    (void)gameState;
+    GameState *state = (GameState *)gameState;
+    if (state == NULL || state->host == NULL)
+        return;
+
+    char health[32];
+    snprintf(health, sizeof(health), "HP: %d / 10", state->health);
+
+    BGameUI_Begin(state->host, &state->dialogueSelection);
+    BGameUI_Box(state->host, (BGameUIRect){BGAME_UI_TOP_LEFT, 1, 1, 18, 3});
+    BGameUI_Label(state->host, (BGameUIPosition){BGAME_UI_TOP_LEFT, 3, 2}, health);
+
+    BGameUI_Box(state->host, (BGameUIRect){BGAME_UI_BOTTOM, 0, -1, 34, 8});
+    BGameUI_Label(state->host, (BGameUIPosition){BGAME_UI_BOTTOM, -14, -7}, "Stranger");
+    BGameUI_Label(state->host, (BGameUIPosition){BGAME_UI_BOTTOM, -14, -6},
+                  "Are you headed north?");
+    if (BGameUI_Choice(state->host, (BGameUIPosition){BGAME_UI_BOTTOM, -14, -4}, "Yes"))
+        state->dialogueResult = "Then travel safely.";
+    if (BGameUI_Choice(state->host, (BGameUIPosition){BGAME_UI_BOTTOM, -14, -3}, "No"))
+        state->dialogueResult = "The road will wait.";
+    BGameUI_Label(state->host, (BGameUIPosition){BGAME_UI_BOTTOM, -14, -2},
+                  state->dialogueResult);
+    state->uiConsumed = BGameUI_End(state->host);
 }
 static void Game_Shutdown(void *gameState)
 {

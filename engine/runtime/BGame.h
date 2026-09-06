@@ -26,6 +26,16 @@ typedef struct BGameCollisionHit {
     bool trigger;
 } BGameCollisionHit;
 
+typedef struct BGameUIColor { unsigned char r, g, b, a; } BGameUIColor;
+typedef struct BGameUICell { int x, y; } BGameUICell;
+typedef enum BGameUIAnchor {
+    BGAME_UI_TOP_LEFT, BGAME_UI_TOP, BGAME_UI_TOP_RIGHT,
+    BGAME_UI_LEFT, BGAME_UI_CENTER, BGAME_UI_RIGHT,
+    BGAME_UI_BOTTOM_LEFT, BGAME_UI_BOTTOM, BGAME_UI_BOTTOM_RIGHT
+} BGameUIAnchor;
+typedef struct BGameUIPosition { BGameUIAnchor anchor; int x, y; } BGameUIPosition;
+typedef struct BGameUIRect { BGameUIAnchor anchor; int x, y, width, height; } BGameUIRect;
+
 typedef struct BGameHostAPI {
     uint32_t version;
     size_t structSize;
@@ -52,6 +62,11 @@ typedef struct BGameHostAPI {
     int (*inputBindingDevice)(void *context, const char *action);
     bool (*requestWorkspace)(void *context, const char *workspacePath);
     uint32_t (*workspaceGeneration)(void *context);
+    void (*uiBegin)(void *context, int *selection);
+    void (*uiLabel)(void *context, BGameUIPosition position, const char *text);
+    void (*uiBox)(void *context, BGameUIRect rect);
+    bool (*uiChoice)(void *context, BGameUIPosition position, const char *text);
+    bool (*uiEnd)(void *context);
 } BGameHostAPI;
 
 static inline bool BGame_RequestWorkspace(const BGameHostAPI *host, const char *workspacePath)
@@ -66,6 +81,19 @@ static inline uint32_t BGame_WorkspaceGeneration(const BGameHostAPI *host)
                ? host->workspaceGeneration(host->context)
                : 0;
 }
+
+static inline void BGameUI_Begin(const BGameHostAPI *host, int *selection)
+{ if (host && host->uiBegin) host->uiBegin(host->context, selection); }
+static inline void BGameUI_Label(const BGameHostAPI *host, BGameUIPosition position,
+                                 const char *text)
+{ if (host && host->uiLabel) host->uiLabel(host->context, position, text); }
+static inline void BGameUI_Box(const BGameHostAPI *host, BGameUIRect rect)
+{ if (host && host->uiBox) host->uiBox(host->context, rect); }
+static inline bool BGameUI_Choice(const BGameHostAPI *host, BGameUIPosition position,
+                                  const char *text)
+{ return host && host->uiChoice && host->uiChoice(host->context, position, text); }
+static inline bool BGameUI_End(const BGameHostAPI *host)
+{ return host && host->uiEnd && host->uiEnd(host->context); }
 
 bool BasilGame_Initialize(const BGameHostAPI *host, void **gameState);
 void BasilGame_Update(void *gameState, float deltaTime);

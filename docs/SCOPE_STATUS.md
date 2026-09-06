@@ -140,9 +140,9 @@ order merely because a button or panel exists.
    development machine, but clean-checkout and cross-platform provisioning need
    a deliberate policy before Milestone 0 can be considered fully closed.
 3. **Asset identity has a deliberate bridge boundary.** The Project registry is
-   authoritative while Workspace schema 3 retains readable path hints. Move
-   repair is transactional, but later component schemas should store IDs
-   directly once custom-component metadata proves the representation.
+   authoritative and Workspace schema 4 stores stable AssetRefs. Schema 3
+   remains readable as the legacy path-reference format; move repair is
+   transactional.
 4. **Prototype limits may be mistaken for permanent architecture.** The flat
    512-entity Workspace is a useful bounded first format, not a reason to build
    a general ECS now and not a promise of final scale.
@@ -170,10 +170,9 @@ order merely because a button or panel exists.
 
 ### Immediate next work
 
-- Complete the interactive checklists in `EDITOR_RELIABILITY.md` and
-  `ASSET_FOUNDATION.md`, plus the Stage 4 checklist in
-  `GAME_MODULE_AND_COMPONENTS.md`.
-- Begin Stage 5 with the integrated programming workflow.
+- Complete remaining interactive verification checklists and continue the
+  bounded Stage 6 runtime services after input, collision, Workspace
+  replacement, and minimal ASCII UI.
 
 ### Later
 

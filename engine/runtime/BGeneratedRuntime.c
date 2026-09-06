@@ -4,6 +4,7 @@
 #include "BAsciiDrawList.h"
 #include "BDynamicLibrary.h"
 #include "BGameModule.h"
+#include "BGameUI.h"
 #include "BInput.h"
 #include "BLog.h"
 #include "BProjectContext.h"
@@ -29,6 +30,7 @@ typedef struct BGeneratedRuntimeState {
     BDynamicLibrary library;
     BGameHostAPI hostAPI;
     BGameModule gameModule;
+    BGameUIContext ui;
     void *gameState;
     bool moduleInitialized;
     char errorMessage[BDIAGNOSTIC_MESSAGE_MAX];
@@ -269,6 +271,27 @@ static int Host_InputBindingDevice(void *context, const char *action)
     return (int)BInput_GetActionDevice(action);
 }
 
+static void Host_UIBegin(void *context, int *selection)
+{
+    BGameUIContext_Begin(&((BGeneratedRuntimeState *)context)->ui, selection);
+}
+static void Host_UILabel(void *context, BGameUIPosition position, const char *text)
+{
+    BGameUIContext_Label(&((BGeneratedRuntimeState *)context)->ui, position, text);
+}
+static void Host_UIBox(void *context, BGameUIRect rect)
+{
+    BGameUIContext_Box(&((BGeneratedRuntimeState *)context)->ui, rect);
+}
+static bool Host_UIChoice(void *context, BGameUIPosition position, const char *text)
+{
+    return BGameUIContext_Choice(&((BGeneratedRuntimeState *)context)->ui, position, text);
+}
+static bool Host_UIEnd(void *context)
+{
+    return BGameUIContext_End(&((BGeneratedRuntimeState *)context)->ui);
+}
+
 static bool Runtime_ModulePath(int argumentCount, char **arguments, const char *identifier,
                                char *output, size_t outputSize)
 {
@@ -373,12 +396,22 @@ static bool Runtime_LoadModule(BGeneratedRuntimeState *state, int argc, char **a
                                     .inputBindingCode = Host_InputBindingCode,
                                     .inputBindingDevice = Host_InputBindingDevice,
                                     .requestWorkspace = Host_RequestWorkspace,
-                                    .workspaceGeneration = Host_WorkspaceGeneration};
+                                    .workspaceGeneration = Host_WorkspaceGeneration,
+                                    .uiBegin = Host_UIBegin,
+                                    .uiLabel = Host_UILabel,
+                                    .uiBox = Host_UIBox,
+                                    .uiChoice = Host_UIChoice,
+                                    .uiEnd = Host_UIEnd};
 
     return true;
 }
 
 static Color Runtime_Color(BAsciiColor color)
+{
+    return (Color){color.r, color.g, color.b, color.a};
+}
+
+static Color Runtime_UIColor(BGameUIColor color)
 {
     return (Color){color.r, color.g, color.b, color.a};
 }
@@ -475,6 +508,17 @@ static void Runtime_OnRender(void *userData, BEngine *engine)
     const Color cyan = {0, 229, 255, 255};
     const Color muted = {119, 142, 153, 255};
     ClearBackground(background);
+    const int cellWidth = 16;
+    const int cellHeight = 24;
+    Vector2 mouse = GetMousePosition();
+    int mouseCellX = mouse.x >= 0.0f ? (int)mouse.x / cellWidth : -1;
+    int mouseCellY = mouse.y >= 0.0f ? (int)mouse.y / cellHeight : -1;
+    BGameUIContext_BeginFrame(&state->ui, GetScreenWidth() / cellWidth,
+                              GetScreenHeight() / cellHeight, mouseCellX, mouseCellY,
+                              BInput_IsActionPressed("move_up"),
+                              BInput_IsActionPressed("move_down"),
+                              BInput_IsActionPressed("confirm"),
+                              BInput_IsActionPressed("primary_action"));
     if (state->moduleInitialized && state->gameModule.onRender)
         state->gameModule.onRender(state->gameState);
 
@@ -482,29 +526,33 @@ static void Runtime_OnRender(void *userData, BEngine *engine)
         DrawText("PROJECT LOAD FAILED", 32, 32, 24, (Color){255, 82, 122, 255});
         DrawText(state->errorMessage, 32, 72, 18, RAYWHITE);
         DrawText("Close this window after reviewing the diagnostic.", 32, 108, 16, muted);
-        return;
-    }
-
-    if (state->drawList.count == 0) {
+    } else if (state->drawList.count == 0) {
         DrawText("WORKSPACE ONLINE", 32, 32, 24, cyan);
         DrawText(state->context.project.startupWorkspace, 32, 70, 18, RAYWHITE);
         DrawText("0 renderable entities", 32, 100, 16, muted);
-        return;
+    } else {
+        const float originX = (float)GetScreenWidth() * 0.5f;
+        const float originY = (float)GetScreenHeight() * 0.5f;
+        for (size_t i = 0; i < state->drawList.count; ++i) {
+            const BAsciiDrawItem *item = &state->drawList.items[i];
+            int x = (int)(originX + item->x * (float)cellWidth);
+            int y = (int)(originY + item->y * (float)cellHeight);
+            Color cellBackground = Runtime_Color(item->background);
+            if (cellBackground.a > 0)
+                DrawRectangle(x, y, cellWidth, cellHeight, cellBackground);
+            char text[2] = {item->glyph, '\0'};
+            DrawText(text, x, y, 24, Runtime_Color(item->foreground));
+        }
     }
-
-    const int cellWidth = 16;
-    const int cellHeight = 24;
-    const float originX = (float)GetScreenWidth() * 0.5f;
-    const float originY = (float)GetScreenHeight() * 0.5f;
-    for (size_t i = 0; i < state->drawList.count; ++i) {
-        const BAsciiDrawItem *item = &state->drawList.items[i];
-        int x = (int)(originX + item->x * (float)cellWidth);
-        int y = (int)(originY + item->y * (float)cellHeight);
-        Color cellBackground = Runtime_Color(item->background);
+    for (size_t i = 0; i < state->ui.commandCount; ++i) {
+        const BGameUIGlyphCommand *item = &state->ui.commands[i];
+        int x = item->x * cellWidth;
+        int y = item->y * cellHeight;
+        Color cellBackground = Runtime_UIColor(item->background);
         if (cellBackground.a > 0)
             DrawRectangle(x, y, cellWidth, cellHeight, cellBackground);
         char text[2] = {item->glyph, '\0'};
-        DrawText(text, x, y, 24, Runtime_Color(item->foreground));
+        DrawText(text, x, y, 24, Runtime_UIColor(item->foreground));
     }
 }
 
@@ -534,6 +582,7 @@ int BGeneratedRuntime_Run(int argumentCount, char **arguments, const char *fallb
     state.workspaceGeneration = 1;
     BTextSpriteCache_Init(&state.cache);
     BAsciiDrawList_Init(&state.drawList);
+    BGameUIContext_Init(&state.ui);
 
     state.loaded =
         BProjectContext_Discover(argumentCount, arguments, &state.context, &state.diagnostics) &&

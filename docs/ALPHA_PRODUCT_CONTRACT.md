@@ -290,7 +290,9 @@ manual review, documentation updates, and a reviewable commit.
 
 ### Stage 6: Playable runtime services
 
-**Implementation status:** In progress; Project-owned input foundation underway.
+**Implementation status:** In progress; named input/rebinding, custom components,
+Collider2D queries, safe single-Workspace replacement, and minimal screen-space
+ASCII HUD/dialogue are implemented. Bounded audio remains outstanding.
 
 - A test Project proves input rebinding, collision-facing behavior, custom
   components, safe Workspace replacement, UI/dialogue, and audio.
@@ -325,7 +327,7 @@ by passing automated evidence and a recorded manual verification checklist.
 > **AlphaSprintWork update:** This document records the Stage 3 asset
 > foundation as originally closed. The current alpha integrity work promotes
 > the asset registry into shared Project infrastructure and makes stable asset
-> IDs the canonical identity model. Workspace schema 3 remains supported as
-> the legacy path-reference format while the planned schema 4 AssetRef work
-> replaces the path-only persistence model. The historical behavior below is
+> IDs the canonical identity model. Workspace schema 4 now stores AssetRefs;
+> schema 3 remains supported as the legacy path-reference format. The
+> historical behavior below is
 > retained to document the Stage 3 implementation.
