@@ -15,6 +15,21 @@ foreach(project_entry IN LISTS project_entries)
         file(COPY "${REFERENCE_PROJECT}/${project_entry}" DESTINATION "${relocated}")
     endif()
 endforeach()
+file(READ "${relocated}/source/game.c" game_source)
+foreach(forbidden IN ITEMS BGameModule.h BasilGame_Query BGAME_API_VERSION BGAME_MODULE_EXPORT)
+    if(game_source MATCHES "${forbidden}")
+        message(FATAL_ERROR "Where Birds Nest developer source leaks ${forbidden}")
+    endif()
+endforeach()
+if(EXISTS "${relocated}/source/main.c")
+    message(FATAL_ERROR "Where Birds Nest still owns an executable bootstrap")
+endif()
+file(READ "${relocated}/workspaces/Main.basilworkspace" main_workspace)
+file(READ "${relocated}/workspaces/Testing1.basilworkspace" testing_workspace)
+if(NOT main_workspace MATCHES "\"schemaVersion\"[ \t]*:[ \t]*4" OR
+   NOT testing_workspace MATCHES "\"schemaVersion\"[ \t]*:[ \t]*4")
+    message(FATAL_ERROR "Where Birds Nest maintained Workspaces must use schema 4")
+endif()
 set(build_directory "${relocated}/build")
 set(configure_command
     "${CMAKE_COMMAND}" -S "${relocated}" -B "${build_directory}"
@@ -56,6 +71,16 @@ execute_process(
 if(NOT explicit_result EQUAL 0 OR NOT explicit_output MATCHES "project=WhereBirdsNest.*items=1164")
     message(FATAL_ERROR "In-place Where Birds Nest validation failed:\n${explicit_output}\n${explicit_error}")
 endif()
+if(WIN32)
+    set(game_module "${build_directory}/WhereBirdsNest.game.dll")
+elseif(APPLE)
+    set(game_module "${build_directory}/WhereBirdsNest.game.dylib")
+else()
+    set(game_module "${build_directory}/WhereBirdsNest.game.so")
+endif()
+if(NOT EXISTS "${game_module}")
+    message(FATAL_ERROR "Where Birds Nest promoted game module is missing")
+endif()
 execute_process(
     COMMAND "${executable}" --basil-validate
     WORKING_DIRECTORY "${build_directory}"
@@ -63,4 +88,17 @@ execute_process(
 )
 if(NOT relocated_result EQUAL 0 OR NOT relocated_output MATCHES "project=WhereBirdsNest.*items=1164")
     message(FATAL_ERROR "Relocated Where Birds Nest validation failed:\n${relocated_output}\n${relocated_error}")
+endif()
+
+file(READ "${relocated}/WhereBirdsNest.basilproject" testing_manifest)
+string(REPLACE "workspaces/Main.basilworkspace" "workspaces/Testing1.basilworkspace"
+       testing_manifest "${testing_manifest}")
+file(WRITE "${relocated}/Testing1.basilproject" "${testing_manifest}")
+execute_process(
+    COMMAND "${executable}" --basil-validate --project "${relocated}/Testing1.basilproject"
+    WORKING_DIRECTORY "${relocated}"
+    RESULT_VARIABLE testing_result OUTPUT_VARIABLE testing_output ERROR_VARIABLE testing_error
+)
+if(NOT testing_result EQUAL 0 OR NOT testing_output MATCHES "project=WhereBirdsNest.*items=1163")
+    message(FATAL_ERROR "Testing1 validation failed:\n${testing_output}\n${testing_error}")
 endif()

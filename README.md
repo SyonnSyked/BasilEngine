@@ -182,8 +182,9 @@ Language rules can be selected without editing the generator:
 ```
 
 Generated projects contain a versioned `.basilproject` manifest, editable CMake
-configuration, an engine lifecycle entry point, empty asset/content directories,
-and a suitable `.gitignore`. Configure one by supplying the current engine
+configuration, developer source using only `BGame.h`, empty asset/content
+directories, and a suitable `.gitignore`. Basil supplies the executable entry
+point and native-module registration glue. Configure one by supplying the current engine
 source location and the same dependency hints used by BasilEngine:
 
 ```powershell

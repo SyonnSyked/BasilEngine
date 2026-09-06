@@ -12,13 +12,14 @@ if(NOT BASIL_ENGINE_ROOT)
     message(FATAL_ERROR "Set BASIL_ENGINE_ROOT to the BasilEngine source tree.")
 endif()
 
-set(BASIL_BUILD_REFERENCE_GAME OFF CACHE BOOL "" FORCE)
 set(BASIL_BUILD_PROJECT_TOOL OFF CACHE BOOL "" FORCE)
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 add_subdirectory("${BASIL_ENGINE_ROOT}" "${CMAKE_BINARY_DIR}/_basilengine")
 
-add_executable(WhereBirdsNest source/main.c)
-add_library(WhereBirdsNestGame MODULE source/game.c)
+add_executable(WhereBirdsNest "${BASIL_ENGINE_ROOT}/engine/runtime/BGeneratedRuntimeMain.c")
+add_library(WhereBirdsNestGame MODULE source/game.c source/WBNGameplay.c
+    "${BASIL_ENGINE_ROOT}/engine/runtime/BGameModuleGlue.c"
+)
 set_target_properties(WhereBirdsNestGame PROPERTIES PREFIX "" OUTPUT_NAME "WhereBirdsNest.candidate")
 target_link_libraries(WhereBirdsNest PRIVATE BasilEngine)
 target_link_libraries(WhereBirdsNestGame PRIVATE BasilGameAPI)

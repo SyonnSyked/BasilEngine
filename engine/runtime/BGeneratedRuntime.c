@@ -271,17 +271,17 @@ static int Host_InputBindingDevice(void *context, const char *action)
     return (int)BInput_GetActionDevice(action);
 }
 
-static void Host_UIBegin(void *context, int *selection)
+static void Host_UIBegin(void *context, int *selection, BGameUIInput input)
 {
-    BGameUIContext_Begin(&((BGeneratedRuntimeState *)context)->ui, selection);
+    BGameUIContext_Begin(&((BGeneratedRuntimeState *)context)->ui, selection, input);
 }
 static void Host_UILabel(void *context, BGameUIPosition position, const char *text)
 {
     BGameUIContext_Label(&((BGeneratedRuntimeState *)context)->ui, position, text);
 }
-static void Host_UIBox(void *context, BGameUIRect rect)
+static BGameUICell Host_UIBox(void *context, BGameUIRect rect)
 {
-    BGameUIContext_Box(&((BGeneratedRuntimeState *)context)->ui, rect);
+    return BGameUIContext_Box(&((BGeneratedRuntimeState *)context)->ui, rect);
 }
 static bool Host_UIChoice(void *context, BGameUIPosition position, const char *text)
 {
@@ -514,11 +514,7 @@ static void Runtime_OnRender(void *userData, BEngine *engine)
     int mouseCellX = mouse.x >= 0.0f ? (int)mouse.x / cellWidth : -1;
     int mouseCellY = mouse.y >= 0.0f ? (int)mouse.y / cellHeight : -1;
     BGameUIContext_BeginFrame(&state->ui, GetScreenWidth() / cellWidth,
-                              GetScreenHeight() / cellHeight, mouseCellX, mouseCellY,
-                              BInput_IsActionPressed("move_up"),
-                              BInput_IsActionPressed("move_down"),
-                              BInput_IsActionPressed("confirm"),
-                              BInput_IsActionPressed("primary_action"));
+                              GetScreenHeight() / cellHeight, mouseCellX, mouseCellY);
     if (state->moduleInitialized && state->gameModule.onRender)
         state->gameModule.onRender(state->gameState);
 

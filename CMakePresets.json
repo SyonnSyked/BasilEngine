@@ -21,7 +21,6 @@
             "cacheVariables": {
                 "BASIL_BUILD_EDITOR_DEPS": "ON",
                 "BASIL_BUILD_PROJECT_TOOL": "ON",
-                "BASIL_BUILD_REFERENCE_GAME": "ON",
                 "BUILD_TESTING": "ON"
             }
         },
@@ -34,7 +33,6 @@
             "cacheVariables": {
                 "BASIL_BUILD_EDITOR_DEPS": "OFF",
                 "BASIL_BUILD_PROJECT_TOOL": "ON",
-                "BASIL_BUILD_REFERENCE_GAME": "ON",
                 "BUILD_TESTING": "ON"
             }
         }

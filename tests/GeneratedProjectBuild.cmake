@@ -4,6 +4,15 @@ if(NOT PROJECT_TOOL
     message(FATAL_ERROR "Generated project test is missing required paths.")
 endif()
 
+file(READ "${ENGINE_SOURCE_DIR}/engine/runtime/BGameModule.h" game_module_header)
+string(REGEX MATCH "#define BGAME_API_VERSION ([0-9]+)u" api_version_match
+       "${game_module_header}")
+if(NOT api_version_match OR NOT CMAKE_MATCH_1 EQUAL 2)
+    message(FATAL_ERROR "The current expanded game host ABI must be version 2")
+endif()
+set(current_api_version "${CMAKE_MATCH_1}")
+math(EXPR incompatible_api_version "${current_api_version} + 1")
+
 file(REMOVE_RECURSE "${TEST_ROOT}")
 file(MAKE_DIRECTORY "${TEST_ROOT}")
 
@@ -120,7 +129,7 @@ foreach(language_mode IN ITEMS mixed c cpp)
     (void)BGame_RequestWorkspace(host, "workspaces/Next.basilworkspace");
     (void)BGame_WorkspaceGeneration(host);
     int uiSelection = 0;
-    BGameUI_Begin(host, &uiSelection);
+    BGameUI_Begin(host, &uiSelection, (BGameUIInput){0});
     BGameUI_Label(host, (BGameUIPosition){BGAME_UI_TOP_LEFT, 1, 1}, "HUD");
     BGameUI_Box(host, (BGameUIRect){BGAME_UI_BOTTOM, 0, -1, 20, 5});
     (void)BGameUI_Choice(host, (BGameUIPosition){BGAME_UI_BOTTOM, -8, -3}, "Continue");
@@ -264,7 +273,8 @@ foreach(language_mode IN ITEMS mixed c cpp)
     if(NOT incompatible_configure_result EQUAL 0
        OR NOT incompatible_build_result EQUAL 0
        OR incompatible_result EQUAL 0
-       OR NOT incompatible_error MATCHES "API mismatch: host requires 1, module provided 2")
+       OR NOT incompatible_error MATCHES
+          "API mismatch: host requires ${current_api_version}, module provided ${incompatible_api_version}")
         message(
             FATAL_ERROR
                 "${language_mode} incompatible module was not rejected clearly:\n${incompatible_output}\n${incompatible_error}"

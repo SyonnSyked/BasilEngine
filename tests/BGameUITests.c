@@ -28,9 +28,11 @@ int main(void)
     BGameUIContext ui;
     BGameUIContext_Init(&ui);
     int selection = 0;
-    BGameUIContext_BeginFrame(&ui, 20, 10, -1, -1, false, false, false, false);
-    BGameUIContext_Begin(&ui, &selection);
-    BGameUIContext_Box(&ui, (BGameUIRect){BGAME_UI_TOP_LEFT, -2, -1, 6, 4});
+    BGameUIContext_BeginFrame(&ui, 20, 10, -1, -1);
+    BGameUIContext_Begin(&ui, &selection, (BGameUIInput){0});
+    BGameUICell panel =
+        BGameUIContext_Box(&ui, (BGameUIRect){BGAME_UI_TOP_LEFT, -2, -1, 6, 4});
+    failures += Check(panel.x == -2 && panel.y == -1, "box returns its resolved origin");
     BGameUIContext_Label(&ui, (BGameUIPosition){BGAME_UI_TOP_LEFT, 18, 9}, "ABCD");
     (void)BGameUIContext_Choice(&ui, (BGameUIPosition){BGAME_UI_TOP_LEFT, 2, 2}, "Yes");
     (void)BGameUIContext_Choice(&ui, (BGameUIPosition){BGAME_UI_TOP_LEFT, 2, 3}, "No");
@@ -41,19 +43,51 @@ int main(void)
                               ui.commands[i].y >= 0 && ui.commands[i].y < 10,
                           "commands are clipped to the grid");
 
-    BGameUIContext_BeginFrame(&ui, 20, 10, -1, -1, false, true, true, false);
-    BGameUIContext_Begin(&ui, &selection);
+    BGameUIContext_BeginFrame(&ui, 20, 10, -1, -1);
+    BGameUIContext_Begin(&ui, &selection,
+                         (BGameUIInput){.next = true, .confirm = true});
     bool yes = BGameUIContext_Choice(&ui, (BGameUIPosition){BGAME_UI_TOP_LEFT, 2, 2}, "Yes");
     bool no = BGameUIContext_Choice(&ui, (BGameUIPosition){BGAME_UI_TOP_LEFT, 2, 3}, "No");
     failures += Check(BGameUIContext_End(&ui) && selection == 1 && !yes && no,
                       "next and confirm activate the selected choice and consume input");
 
-    BGameUIContext_BeginFrame(&ui, 20, 10, 3, 2, false, false, false, true);
-    BGameUIContext_Begin(&ui, &selection);
+    BGameUIContext_BeginFrame(&ui, 20, 10, 3, 2);
+    BGameUIContext_Begin(&ui, &selection, (BGameUIInput){.pointerActivate = true});
     yes = BGameUIContext_Choice(&ui, (BGameUIPosition){BGAME_UI_TOP_LEFT, 2, 2}, "Yes");
     no = BGameUIContext_Choice(&ui, (BGameUIPosition){BGAME_UI_TOP_LEFT, 2, 3}, "No");
     failures += Check(BGameUIContext_End(&ui) && selection == 0 && yes && !no,
                       "mouse hover selects and click activates");
+
+    BGameUIContext_BeginFrame(&ui, 80, 30, -1, -1);
+    BGameUIContext_Begin(&ui, NULL, (BGameUIInput){0});
+    panel = BGameUIContext_Box(&ui, (BGameUIRect){BGAME_UI_BOTTOM, 0, 0, 40, 10});
+    BGameUIContext_Label(&ui, (BGameUIPosition){BGAME_UI_TOP_LEFT, panel.x + 2, panel.y + 1},
+                         "Short");
+    BGameUIContext_Label(&ui, (BGameUIPosition){BGAME_UI_TOP_LEFT, panel.x + 2, panel.y + 2},
+                         "A much wider child");
+    failures += Check(panel.x == 20 && panel.y == 20, "bottom panel resolves once");
+    size_t shortStart = 400;
+    size_t wideStart = 405;
+    failures += Check(ui.commands[shortStart].x == panel.x + 2 &&
+                          ui.commands[wideStart].x == panel.x + 2,
+                      "panel-relative children share an origin regardless of text width");
+    failures += Check(!ui.overflowed, "ordinary full-grid box fits command capacity");
+    (void)BGameUIContext_End(&ui);
+
+    BGameUIContext_BeginFrame(&ui, 80, 30, -1, -1);
+    BGameUIContext_Begin(&ui, NULL, (BGameUIInput){0});
+    (void)BGameUIContext_Box(&ui, (BGameUIRect){BGAME_UI_TOP_LEFT, 0, 0, 80, 30});
+    failures += Check(ui.commandCount == 2400 && !ui.overflowed &&
+                          ui.commands[0].glyph == '+' && ui.commands[79].glyph == '+' &&
+                          ui.commands[2320].glyph == '+' && ui.commands[2399].glyph == '+',
+                      "ordinary full-screen panel retains every border corner");
+
+    BGameUIContext_BeginFrame(&ui, 80, 30, -1, -1);
+    BGameUIContext_Begin(&ui, NULL, (BGameUIInput){0});
+    (void)BGameUIContext_Box(&ui, (BGameUIRect){BGAME_UI_TOP_LEFT, -100000, -100000,
+                                                200000, 200000});
+    failures += Check(ui.commandCount == 2400 && !ui.overflowed,
+                      "huge boxes iterate only the visible clipped grid");
 
     if (failures == 0)
         printf("BGameUITests passed.\n");

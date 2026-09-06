@@ -33,12 +33,16 @@ Nine screen anchors use cell offsets and visible-grid clipping. The runtime
 draws these commands after the world draw list with a top-left screen-space
 origin, so camera/world movement cannot move HUD or dialogue content.
 
-Choice selection wraps through the existing `move_up` and `move_down` actions;
-`confirm` activates the selection. The existing `primary_action` mouse binding
-supports cell hover, selection, and click activation. `BGameUI_End` reports
-whether navigation or activation input was handled, allowing game code to
-avoid applying the same action to gameplay. Choice meaning and dialogue state
-remain owned by the game. This is an immediate-mode game overlay, not an editor
-UI or retained GUI framework.
+The game queries its own named actions and passes previous, next, confirm, and
+pointer-activation intent in `BGameUIInput`; Basil does not impose action names.
+The runtime owns physical pointer-to-cell mapping. `BGameUI_End` reports input
+handled during UI construction only; it cannot retroactively consume input
+already processed during Update. Modal gameplay such as WBN dialogue therefore
+suppresses movement explicitly in game-owned state.
 
-Bounded sound/music playback remains a later Stage 6 slice.
+Anchored boxes return their resolved screen-cell origin for panel-local child
+offsets. Box generation clips before iteration, and ordinary full-screen panels
+fit the bounded command buffer. Where Birds Nest combines Collider2D room
+walls, a Seamus trigger, modal HUD/dialogue, dialogue-requested Workspace
+replacement, generation detection, handle reacquisition, and continued movement
+in a visible second room. Audio is the remaining Stage 6 runtime-service slice.

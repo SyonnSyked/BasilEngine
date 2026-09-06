@@ -35,6 +35,12 @@ typedef enum BGameUIAnchor {
 } BGameUIAnchor;
 typedef struct BGameUIPosition { BGameUIAnchor anchor; int x, y; } BGameUIPosition;
 typedef struct BGameUIRect { BGameUIAnchor anchor; int x, y, width, height; } BGameUIRect;
+typedef struct BGameUIInput {
+    bool previous;
+    bool next;
+    bool confirm;
+    bool pointerActivate;
+} BGameUIInput;
 
 typedef struct BGameHostAPI {
     uint32_t version;
@@ -62,9 +68,9 @@ typedef struct BGameHostAPI {
     int (*inputBindingDevice)(void *context, const char *action);
     bool (*requestWorkspace)(void *context, const char *workspacePath);
     uint32_t (*workspaceGeneration)(void *context);
-    void (*uiBegin)(void *context, int *selection);
+    void (*uiBegin)(void *context, int *selection, BGameUIInput input);
     void (*uiLabel)(void *context, BGameUIPosition position, const char *text);
-    void (*uiBox)(void *context, BGameUIRect rect);
+    BGameUICell (*uiBox)(void *context, BGameUIRect rect);
     bool (*uiChoice)(void *context, BGameUIPosition position, const char *text);
     bool (*uiEnd)(void *context);
 } BGameHostAPI;
@@ -82,13 +88,13 @@ static inline uint32_t BGame_WorkspaceGeneration(const BGameHostAPI *host)
                : 0;
 }
 
-static inline void BGameUI_Begin(const BGameHostAPI *host, int *selection)
-{ if (host && host->uiBegin) host->uiBegin(host->context, selection); }
+static inline void BGameUI_Begin(const BGameHostAPI *host, int *selection, BGameUIInput input)
+{ if (host && host->uiBegin) host->uiBegin(host->context, selection, input); }
 static inline void BGameUI_Label(const BGameHostAPI *host, BGameUIPosition position,
                                  const char *text)
 { if (host && host->uiLabel) host->uiLabel(host->context, position, text); }
-static inline void BGameUI_Box(const BGameHostAPI *host, BGameUIRect rect)
-{ if (host && host->uiBox) host->uiBox(host->context, rect); }
+static inline BGameUICell BGameUI_Box(const BGameHostAPI *host, BGameUIRect rect)
+{ return host && host->uiBox ? host->uiBox(host->context, rect) : (BGameUICell){0, 0}; }
 static inline bool BGameUI_Choice(const BGameHostAPI *host, BGameUIPosition position,
                                   const char *text)
 { return host && host->uiChoice && host->uiChoice(host->context, position, text); }

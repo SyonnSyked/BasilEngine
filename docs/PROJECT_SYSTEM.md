@@ -85,19 +85,20 @@ MyGame/
 |-- workspaces/
 |   `-- Main.basilworkspace
 `-- source/
-    `-- main.c or main.cpp
+    `-- game.c or game.cpp
 ```
 
 Empty files or directories are included only when they serve an immediate
 workflow purpose.
 
 Project schema version 2 uses a `startupWorkspace` path and generated Projects
-store `workspaces/Main.basilworkspace`. Workspace schema version 3 contains its
-identity, next stable entity ID, a bounded flat entity list, and bounded
-versioned component envelopes. Transform2D position and ASCII Renderable data
-are the first typed components. Unknown optional component JSON is owned and
+store `workspaces/Main.basilworkspace`. Workspace schema version 4 contains its
+identity, next stable entity ID, a bounded flat entity list, stable AssetRefs,
+and bounded versioned component envelopes including Transform2D, ASCII
+Renderable, and Collider2D. Unknown optional component JSON is owned and
 preserved; unknown required components are rejected. Parent/child relationships
-are not part of the contract.
+are not part of the contract. Schema 3 remains supported for legacy path-based
+asset references.
 
 Text Sprite assets are decoded by a shared C service from normalized paths
 relative to the Project root. Version 1 accepts printable ASCII with LF or CRLF
@@ -146,10 +147,11 @@ without an active renderable. Preview failure retains the last valid draw list.
 
 Where Birds Nest provides the first maintained reference Project at
 `projects/wherebirdsnest/WhereBirdsNest.basilproject`. Its startup Workspace is
-ordinary schema-3 data and demonstrates a layered environment Text Sprite,
-multi-line player Text Sprite, enemy glyph, and transform-only editor marker.
-The older hand-coded combat arena remains a separate feasibility spike until a
-later gameplay-model migration is justified.
+ordinary schema-4 data and demonstrates a layered environment, Collider2D
+walls, a multi-line player, enemy glyph, Seamus interaction trigger,
+HUD/dialogue, and safe replacement with a visible second room. Game code
+detects generation changes and reacquires invalidated handles. The older
+hand-coded combat arena remains a separate feasibility spike.
 
 BasilEditor loads the startup Workspace into an explicitly owned, lifecycle-safe
 document held by the editor session. Loads and clones are transactional, so a
@@ -174,11 +176,12 @@ process is not hosted in the editor Viewport; separate-window stop/build/run is
 the required alpha workflow, while in-Viewport simulation remains a later
 product direction.
 
-Schema version 3 rejects unknown and duplicate structural fields. It preserves
+Schema version 4 is current and stores stable AssetRefs. It rejects unknown and
+duplicate structural fields and preserves
 bounded unknown optional component `data` without interpreting it, while
 rejecting required component types or versions it cannot execute. Schema-1 empty
-Workspaces and schema-2 entity Workspaces remain loadable and are represented as
-version 3 in memory without inventing components. Their first save retains the
+Workspaces, schema-2 entity Workspaces, and schema-3 path-reference Workspaces
+remain loadable without inventing components. Their first save retains the
 original file as a backup and writes the current schema.
 
 Project schema version 1 remains loadable. Its `startupScene` path is preserved
