@@ -11,6 +11,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BASIL_BUILD_EDITOR_DEPS "Build BasilEditor and its ImGui dependencies" OFF)
 option(BASIL_BUILD_PROJECT_TOOL "Build the headless BasilEngine project tool" ON)
+option(BASIL_ENABLE_GLM "Provide GLM for C++ game Project targets" OFF)
+option(BASIL_FETCH_GLM "Fetch the pinned GLM release when no local package is available" OFF)
+set(BASIL_GLM_ROOT "" CACHE PATH "Optional GLM installation or source-tree root")
 
 function(basil_enable_warnings target)
     if(MSVC)
@@ -114,6 +117,35 @@ add_library(
 
 add_library(BasilGameAPI INTERFACE)
 target_include_directories(BasilGameAPI INTERFACE engine/runtime)
+
+if(BASIL_ENABLE_GLM)
+    find_package(glm 1.0.3 EXACT CONFIG QUIET HINTS "${BASIL_GLM_ROOT}")
+
+    if(NOT TARGET glm::glm AND BASIL_GLM_ROOT AND EXISTS "${BASIL_GLM_ROOT}/CMakeLists.txt")
+        set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        add_subdirectory("${BASIL_GLM_ROOT}" "${CMAKE_BINARY_DIR}/_basil_glm" EXCLUDE_FROM_ALL)
+    endif()
+
+    if(NOT TARGET glm::glm AND BASIL_FETCH_GLM)
+        include(FetchContent)
+        set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        FetchContent_Declare(
+            basil_glm
+            GIT_REPOSITORY https://github.com/g-truc/glm.git
+            GIT_TAG 8d1fd52e5ab5590e2c81768ace50c72bae28f2ed
+            GIT_SHALLOW FALSE)
+        FetchContent_MakeAvailable(basil_glm)
+    endif()
+
+    if(NOT TARGET glm::glm)
+        message(FATAL_ERROR
+                "GLM 1.0.3 was requested but could not be resolved. Install GLM 1.0.3, set BASIL_GLM_ROOT "
+                "to a GLM install/source tree, or enable BASIL_FETCH_GLM.")
+    endif()
+
+    add_library(BasilGLM INTERFACE)
+    target_link_libraries(BasilGLM INTERFACE glm::glm)
+endif()
 
 target_include_directories(BasilEngine PUBLIC engine/core engine/rendering engine/debug
                                               engine/input engine/runtime)
@@ -263,6 +295,7 @@ if(BUILD_TESTING)
                 -DTEST_GENERATOR=${CMAKE_GENERATOR} -DTEST_C_COMPILER=${CMAKE_C_COMPILER}
                 -DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                 -DTEST_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} -DRAYLIB_ROOT=${BASIL_RAYLIB_ROOT}
+                -DTEST_GLM_ROOT=${BASIL_GLM_ROOT}
                 -DRAYLIB_INCLUDE_DIR=${BASIL_RAYLIB_INCLUDE_DIR}
                 -DRAYLIB_LIBRARY=${BASIL_RAYLIB_LIBRARY} -P
                 ${CMAKE_CURRENT_SOURCE_DIR}/tests/GeneratedProjectBuild.cmake)

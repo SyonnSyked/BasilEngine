@@ -128,7 +128,9 @@ static bool BProjectGenerator_WriteCMake(const BProject *project, const char *pa
         fprintf(file,
                 "set(CMAKE_CXX_STANDARD %d)\n"
                 "set(CMAKE_CXX_STANDARD_REQUIRED ON)\n"
-                "set(CMAKE_CXX_EXTENSIONS OFF)\n\n",
+                "set(CMAKE_CXX_EXTENSIONS OFF)\n\n"
+                "set(BASIL_ENABLE_GLM ON CACHE BOOL \"Enable GLM for C++ game code\" FORCE)\n"
+                "option(BASIL_FETCH_GLM \"Fetch pinned GLM when it is not installed\" ON)\n\n",
                 project->cppStandard);
     }
 
@@ -152,7 +154,7 @@ static bool BProjectGenerator_WriteCMake(const BProject *project, const char *pa
             ")\n"
             "set_target_properties(%sGame PROPERTIES PREFIX \"\" OUTPUT_NAME \"%s.candidate\")\n"
             "target_link_libraries(%s PRIVATE BasilEngine)\n"
-            "target_link_libraries(%sGame PRIVATE BasilGameAPI)\n"
+            "target_link_libraries(%sGame PRIVATE BasilGameAPI%s)\n"
             "add_dependencies(%s %sGame)\n"
             "add_custom_command(TARGET %sGame POST_BUILD\n"
             "    COMMAND ${CMAKE_COMMAND} -E copy_if_different\n"
@@ -160,6 +162,7 @@ static bool BProjectGenerator_WriteCMake(const BProject *project, const char *pa
             "        \"$<TARGET_FILE_DIR:%s>/%s.game${CMAKE_SHARED_MODULE_SUFFIX}\"\n"
             ")\n",
             project->identifier, project->identifier, project->identifier, project->identifier,
+            project->languageMode == BPROJECT_LANGUAGE_C ? "" : " BasilGLM",
             project->identifier, project->identifier, project->identifier, project->identifier,
             project->identifier, project->identifier);
 

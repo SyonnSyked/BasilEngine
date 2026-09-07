@@ -68,6 +68,13 @@ must not silently downgrade.
 Public BasilEngine APIs remain C-compatible so they can be consumed naturally
 from either language.
 
+GLM 1.0.3 is the supported Project-side C++ math library. Generated C++ and
+mixed Projects link the `BasilGLM` interface target automatically; C-only
+Projects neither resolve nor link it. Projects may use an installed GLM CMake
+package, set `BASIL_GLM_ROOT` to an install/source tree, or use the generated
+Project's pinned FetchContent fallback. GLM types remain outside `BGame.h`, the
+game-module ABI, Workspace data, and C runtime structures.
+
 ## Manifest and files
 
 Project metadata is stored in a human-readable, versioned JSON

@@ -42,6 +42,16 @@ foreach(language_mode IN ITEMS mixed c cpp)
     endif()
 
     file(READ "${game_source}" generated_game_source)
+    file(READ "${source_directory}/CMakeLists.txt" generated_project_cmake)
+
+    if(language_mode STREQUAL "c")
+        if(generated_project_cmake MATCHES "BasilGLM|BASIL_ENABLE_GLM")
+            message(FATAL_ERROR "C generated Project unexpectedly enables GLM")
+        endif()
+    elseif(NOT generated_project_cmake MATCHES
+               "target_link_libraries\\(${identifier}Game PRIVATE BasilGameAPI BasilGLM\\)")
+        message(FATAL_ERROR "${language_mode} generated Project does not link BasilGLM")
+    endif()
 
     if(EXISTS "${source_directory}/source/main.c"
        OR EXISTS "${source_directory}/source/main.cpp")
@@ -63,6 +73,14 @@ foreach(language_mode IN ITEMS mixed c cpp)
         "-DCMAKE_CXX_COMPILER=${TEST_CXX_COMPILER}")
     if(TEST_TOOLCHAIN_FILE)
         list(APPEND configure_command "-DCMAKE_TOOLCHAIN_FILE=${TEST_TOOLCHAIN_FILE}")
+    endif()
+    if(language_mode STREQUAL "c")
+        list(APPEND configure_command "-DBASIL_ENABLE_GLM=OFF" "-DBASIL_FETCH_GLM=OFF")
+    else()
+        list(APPEND configure_command "-DFETCHCONTENT_BASE_DIR=${TEST_ROOT}/glm-deps")
+        if(TEST_GLM_ROOT)
+            list(APPEND configure_command "-DBASIL_GLM_ROOT=${TEST_GLM_ROOT}")
+        endif()
     endif()
     execute_process(COMMAND ${configure_command} RESULT_VARIABLE untouched_configure_result
                     OUTPUT_VARIABLE untouched_configure_output ERROR_VARIABLE untouched_configure_error)
@@ -91,6 +109,31 @@ foreach(language_mode IN ITEMS mixed c cpp)
        NOT untouched_validate_output MATCHES "BASIL_RUNTIME_READY.*items=0")
         message(FATAL_ERROR
                 "${language_mode} untouched runtime validation failed:\n${untouched_validate_output}\n${untouched_validate_error}")
+    endif()
+
+    if(language_mode STREQUAL "cpp")
+        string(PREPEND generated_game_source "#include <glm/glm.hpp>\n")
+        set(glm_smoke
+            [=[
+    glm::vec2 glmPosition{0.0f, 0.0f};
+    const glm::vec2 glmVelocity = glm::normalize(glm::vec2{2.0f, -1.0f});
+    glmPosition += glmVelocity * 0.016f;
+    (void)glmPosition;
+]=])
+        string(REPLACE "    *gameState = &state;\n"
+                       "    *gameState = &state;\n${glm_smoke}"
+                       generated_game_source "${generated_game_source}")
+    elseif(language_mode STREQUAL "mixed")
+        file(WRITE "${source_directory}/source/ProjectExtension.cpp"
+             "#include \"ProjectExtension.h\"\n"
+             "#include <glm/glm.hpp>\n\n"
+             "extern \"C\" const char* BasilProject_GetTitle(void)\n"
+             "{\n"
+             "    glm::vec2 position{0.0f, 0.0f};\n"
+             "    const glm::vec2 velocity = glm::normalize(glm::vec2{2.0f, -1.0f});\n"
+             "    position += velocity * 0.016f;\n"
+             "    return position.x > 0.0f ? \"Empty BasilEngine Project (C + C++)\" : \"\";\n"
+             "}\n")
     endif()
 
     set(input_api_smoke
@@ -169,6 +212,14 @@ foreach(language_mode IN ITEMS mixed c cpp)
 
     if(TEST_TOOLCHAIN_FILE)
         list(APPEND configure_command "-DCMAKE_TOOLCHAIN_FILE=${TEST_TOOLCHAIN_FILE}")
+    endif()
+    if(language_mode STREQUAL "c")
+        list(APPEND configure_command "-DBASIL_ENABLE_GLM=OFF" "-DBASIL_FETCH_GLM=OFF")
+    else()
+        list(APPEND configure_command "-DFETCHCONTENT_BASE_DIR=${TEST_ROOT}/glm-deps")
+        if(TEST_GLM_ROOT)
+            list(APPEND configure_command "-DBASIL_GLM_ROOT=${TEST_GLM_ROOT}")
+        endif()
     endif()
 
     execute_process(

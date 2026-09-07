@@ -29,6 +29,7 @@ int main()
         ));
     fs::create_directories(parent);
     BProject project = BProject_Default("Build Service Test", "BuildServiceTest");
+    project.languageMode = BPROJECT_LANGUAGE_C;
     BProjectError projectError{};
     failures += Check(
         BProjectGenerator_Create(&project, parent.string().c_str(), &projectError),

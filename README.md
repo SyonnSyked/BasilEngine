@@ -193,6 +193,23 @@ cmake -S C:\Projects\MyGame -B C:\Projects\MyGame\build `
 cmake --build C:\Projects\MyGame\build
 ```
 
+Generated C++ and mixed Projects also enable `BasilGLM`, backed by GLM 1.0.3
+at pinned commit `8d1fd52e5ab5590e2c81768ace50c72bae28f2ed`. C-only Projects do not resolve
+or link GLM. C++ game code can use it directly:
+
+```cpp
+#include <glm/glm.hpp>
+
+glm::vec2 position{0.0f, 0.0f};
+glm::vec2 velocity{2.0f, -1.0f};
+position += velocity * deltaTime;
+```
+
+An installed GLM package is preferred. `BASIL_GLM_ROOT` can identify a local
+install or source tree, while generated C++/mixed Projects enable the pinned
+FetchContent fallback by default. `BGame.h` and the native game ABI remain
+C-compatible and expose no GLM types.
+
 ## Repository layout
 
 ```text
