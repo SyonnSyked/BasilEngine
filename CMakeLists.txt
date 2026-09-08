@@ -320,15 +320,8 @@ if(BUILD_TESTING)
 
     add_test(NAME WBNCombatTests COMMAND WBNCombatTests)
 
-    add_executable(WBNGameplayTests tests/WBNGameplayTests.c
-                                    projects/wherebirdsnest/source/WBNGameplay.c)
-    target_include_directories(WBNGameplayTests PRIVATE projects/wherebirdsnest/source
-                                                       engine/runtime)
-    basil_enable_warnings(WBNGameplayTests)
-    add_test(NAME WBNGameplayTests COMMAND WBNGameplayTests)
-
     add_executable(WBNGameIntegrationTests tests/WBNGameIntegrationTests.c
-        projects/wherebirdsnest/source/game.c projects/wherebirdsnest/source/WBNGameplay.c)
+        projects/wherebirdsnest/source/game.c)
     target_include_directories(WBNGameIntegrationTests PRIVATE projects/wherebirdsnest/source
                                                                engine/runtime)
     basil_enable_warnings(WBNGameIntegrationTests)

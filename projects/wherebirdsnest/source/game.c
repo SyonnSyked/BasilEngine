@@ -1,5 +1,4 @@
 #include "BGame.h"
-#include "WBNGameplay.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -71,7 +70,7 @@ void BasilGame_Update(void *gameState, float deltaTime)
     if (state->dialogueOpen)
         return;
     if (state->seamus.value != 0 && BGame_InputPressed(host, "confirm") &&
-        WBN_IsTriggerOverlapping(host, state->player, state->seamus)) {
+        BGame_IsTriggerOverlapping(host, state->player, state->seamus)) {
         state->dialogueOpen = true;
         state->dialogueOpenedThisFrame = true;
         state->dialogueSelection = 0;
@@ -88,8 +87,8 @@ void BasilGame_Update(void *gameState, float deltaTime)
     if (BGame_InputDown(host, "move_right"))
         moveX += 1.0f;
     const float speed = 8.0f;
-    (void)WBN_MoveWithCollision(host, state->player, moveX * speed * deltaTime,
-                                moveY * speed * deltaTime);
+    (void)BGame_MoveWithCollision(host, state->player, moveX * speed * deltaTime,
+                                  moveY * speed * deltaTime);
 }
 
 void BasilGame_Render(void *gameState)

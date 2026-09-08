@@ -214,6 +214,46 @@ static size_t Host_QueryColliders(void *context, const BGameAABB *area, BGameEnt
     return hitCount;
 }
 
+static bool Host_MoveWithCollision(void *context, BGameEntity entity, float deltaX, float deltaY)
+{
+    BGeneratedRuntimeState *state = context;
+    BWorkspaceEntity *value = Runtime_Entity(state, entity);
+    if (value == NULL)
+        return false;
+
+    size_t index = (size_t)(value - state->document.entities);
+    BTransform2D resolved;
+    if (!BCollision2D_ResolveMovement(&state->document, index, deltaX, deltaY, &resolved))
+        return false;
+
+    const BWorkspaceComponent *transform =
+        BWorkspaceEntity_FindComponentConst(value, BWORKSPACE_TRANSFORM2D_TYPE);
+    if (transform == NULL || transform->kind != BWORKSPACE_COMPONENT_TRANSFORM2D)
+        return false;
+    if (transform->data.transform2d.x == resolved.x && transform->data.transform2d.y == resolved.y)
+        return true;
+
+    BDiagnosticList diagnostics = {0};
+    if (!BWorkspaceDocument_SetTransform2D(&state->document, index, resolved, &diagnostics))
+        return false;
+    state->drawDirty = true;
+    return true;
+}
+
+static bool Host_IsTriggerOverlapping(void *context, BGameEntity entity,
+                                      BGameEntity triggerEntity)
+{
+    BGeneratedRuntimeState *state = context;
+    BWorkspaceEntity *value = Runtime_Entity(state, entity);
+    BWorkspaceEntity *triggerValue = Runtime_Entity(state, triggerEntity);
+    if (value == NULL || triggerValue == NULL)
+        return false;
+
+    return BCollision2D_TriggerOverlapping(
+        &state->document, (size_t)(value - state->document.entities),
+        (size_t)(triggerValue - state->document.entities));
+}
+
 static const char *Host_ComponentJson(void *context, BGameEntity entity, const char *type)
 {
     BWorkspaceEntity *value = Runtime_Entity(context, entity);
@@ -383,6 +423,8 @@ static bool Runtime_LoadModule(BGeneratedRuntimeState *state, int argc, char **a
                                     .setPosition = Host_SetPosition,
                                     .getColliderBounds = Host_GetColliderBounds,
                                     .queryColliders = Host_QueryColliders,
+                                    .moveWithCollision = Host_MoveWithCollision,
+                                    .isTriggerOverlapping = Host_IsTriggerOverlapping,
                                     .componentJson = Host_ComponentJson,
 
                                     .inputPressed = Host_InputPressed,

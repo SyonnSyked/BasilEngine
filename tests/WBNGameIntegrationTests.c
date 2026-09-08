@@ -34,51 +34,21 @@ static const char *EntityName(void *context, BGameEntity entity)
         return "Wayfinder";
     return entity.value == 2 && test->generation == 1 ? "Seamus" : NULL;
 }
-static bool GetPosition(void *context, BGameEntity entity, float *x, float *y)
+static bool MoveWithCollision(void *context, BGameEntity entity, float deltaX, float deltaY)
 {
     TestHost *test = context;
     if (entity.value != Player(test).value)
         return false;
-    *x = test->playerX;
-    *y = test->playerY;
-    return true;
-}
-static bool SetPosition(void *context, BGameEntity entity, float x, float y)
-{
-    TestHost *test = context;
-    if (entity.value != Player(test).value)
-        return false;
-    test->playerX = x;
-    test->playerY = y;
+    test->playerX += deltaX;
+    test->playerY += deltaY;
     test->lastSetEntity = entity;
     return true;
 }
-static bool GetBounds(void *context, BGameEntity entity, BGameAABB *bounds, bool *trigger)
+static bool IsTriggerOverlapping(void *context, BGameEntity entity, BGameEntity triggerEntity)
 {
     TestHost *test = context;
-    if (entity.value == Player(test).value) {
-        *bounds = (BGameAABB){test->playerX - .5f, test->playerY - .5f,
-                              test->playerX + .5f, test->playerY + .5f};
-        if (trigger) *trigger = false;
-        return true;
-    }
-    if (entity.value == 2 && test->generation == 1) {
-        *bounds = (BGameAABB){-2, -2, 2, 2};
-        if (trigger) *trigger = true;
-        return true;
-    }
-    return false;
-}
-static size_t Query(void *context, const BGameAABB *area, BGameEntity ignored,
-                    BGameCollisionHit *hits, size_t capacity)
-{
-    TestHost *test = context;
-    if (test->generation != 1 || ignored.value == 2 || area->maxX <= -2 || area->minX >= 2 ||
-        area->maxY <= -2 || area->minY >= 2)
-        return 0;
-    if (hits && capacity)
-        hits[0] = (BGameCollisionHit){(BGameEntity){2}, (BGameAABB){-2, -2, 2, 2}, true};
-    return 1;
+    return test->generation == 1 && entity.value == Player(test).value &&
+           triggerEntity.value == 2;
 }
 static bool InputPressed(void *context, const char *action)
 {
@@ -131,8 +101,9 @@ int main(void)
     int failures = 0;
     TestHost test = {.generation = 1};
     BGameHostAPI host = {.context = &test, .log = Log, .entityCount = EntityCount,
-        .entityAt = EntityAt, .entityName = EntityName, .getPosition = GetPosition,
-        .setPosition = SetPosition, .getColliderBounds = GetBounds, .queryColliders = Query,
+        .entityAt = EntityAt, .entityName = EntityName,
+        .moveWithCollision = MoveWithCollision,
+        .isTriggerOverlapping = IsTriggerOverlapping,
         .inputPressed = InputPressed, .inputDown = InputDown, .requestWorkspace = Request,
         .workspaceGeneration = Generation, .uiBegin = UIBegin, .uiLabel = UILabel,
         .uiBox = UIBox, .uiChoice = UIChoice, .uiEnd = UIEnd};
