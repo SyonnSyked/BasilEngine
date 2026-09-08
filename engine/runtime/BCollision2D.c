@@ -128,3 +128,63 @@ size_t BCollision2D_Query(const BWorkspaceDocument *document, const BCollisionAA
 
     return hitCount;
 }
+
+static bool AxisBlocked(const BGameHostAPI *host, BGameEntity entity, BGameAABB bounds)
+{
+    BGameCollisionHit hits[32];
+    size_t count = BGame_QueryColliders(host, &bounds, entity, hits, 32);
+    size_t stored = count < 32 ? count : 32;
+    for (size_t i = 0; i < stored; ++i)
+        if (!hits[i].trigger)
+            return true;
+    return false;
+}
+
+bool MoveWithCollision(const BGameHostAPI *host, BGameEntity entity, float deltaX, float deltaY)
+{
+    if (host == NULL)
+        return false;
+    float x = 0.0f;
+    float y = 0.0f;
+    BGameAABB bounds;
+    if (!BGame_GetPosition(host, entity, &x, &y) ||
+        !BGame_GetColliderBounds(host, entity, &bounds, NULL))
+        return false;
+    bool moved = false;
+    if (deltaX != 0.0f) {
+        BGameAABB candidate = bounds;
+        candidate.minX += deltaX;
+        candidate.maxX += deltaX;
+        if (!AxisBlocked(host, entity, candidate)) {
+            x += deltaX;
+            bounds = candidate;
+            moved = true;
+        }
+    }
+    if (deltaY != 0.0f) {
+        BGameAABB candidate = bounds;
+        candidate.minY += deltaY;
+        candidate.maxY += deltaY;
+        if (!AxisBlocked(host, entity, candidate)) {
+            y += deltaY;
+            moved = true;
+        }
+    }
+    return moved && BGame_SetPosition(host, entity, x, y);
+}
+
+bool IsTriggerOverlapping(const BGameHostAPI *host, BGameEntity entity, BGameEntity triggerEntity)
+{
+    if (host == NULL || triggerEntity.value == 0)
+        return false;
+    BGameAABB bounds;
+    if (!BGame_GetColliderBounds(host, entity, &bounds, NULL))
+        return false;
+    BGameCollisionHit hits[32];
+    size_t count = BGame_QueryColliders(host, &bounds, entity, hits, 32);
+    size_t stored = count < 32 ? count : 32;
+    for (size_t i = 0; i < stored; ++i)
+        if (hits[i].entity.value == triggerEntity.value && hits[i].trigger)
+            return true;
+    return false;
+}
