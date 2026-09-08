@@ -157,28 +157,100 @@
 					}
 				}]
 		}, {
-			"id": "entity-0000000000000007", "name": "North Wall", "enabled": true,
-			"components": [
-				{ "type": "basil.transform2d", "version": 1, "required": true, "data": { "x": -0.5, "y": -12 } },
-				{ "type": "basil.collider2d", "version": 1, "required": true, "data": { "offsetX": 0, "offsetY": 0, "width": 48, "height": 1, "trigger": false } }
-			]
+			"id":	"entity-0000000000000007",
+			"name":	"North Wall",
+			"enabled":	true,
+			"components":	[{
+					"type":	"basil.transform2d",
+					"version":	1,
+					"required":	true,
+					"data":	{
+						"x":	-0.5,
+						"y":	-12
+					}
+				}, {
+					"type":	"basil.collider2d",
+					"version":	1,
+					"required":	true,
+					"data":	{
+						"offsetX":	0,
+						"offsetY":	0,
+						"width":	48,
+						"height":	1,
+						"trigger":	false
+					}
+				}]
 		}, {
-			"id": "entity-0000000000000008", "name": "South Wall", "enabled": true,
-			"components": [
-				{ "type": "basil.transform2d", "version": 1, "required": true, "data": { "x": -0.5, "y": 11 } },
-				{ "type": "basil.collider2d", "version": 1, "required": true, "data": { "offsetX": 0, "offsetY": 0, "width": 48, "height": 1, "trigger": false } }
-			]
+			"id":	"entity-0000000000000008",
+			"name":	"South Wall",
+			"enabled":	true,
+			"components":	[{
+					"type":	"basil.transform2d",
+					"version":	1,
+					"required":	true,
+					"data":	{
+						"x":	-0.5,
+						"y":	11
+					}
+				}, {
+					"type":	"basil.collider2d",
+					"version":	1,
+					"required":	true,
+					"data":	{
+						"offsetX":	0,
+						"offsetY":	0,
+						"width":	48,
+						"height":	1,
+						"trigger":	false
+					}
+				}]
 		}, {
-			"id": "entity-0000000000000009", "name": "West Wall", "enabled": true,
-			"components": [
-				{ "type": "basil.transform2d", "version": 1, "required": true, "data": { "x": -24, "y": -0.5 } },
-				{ "type": "basil.collider2d", "version": 1, "required": true, "data": { "offsetX": 0, "offsetY": 0, "width": 1, "height": 24, "trigger": false } }
-			]
+			"id":	"entity-0000000000000009",
+			"name":	"West Wall",
+			"enabled":	true,
+			"components":	[{
+					"type":	"basil.transform2d",
+					"version":	1,
+					"required":	true,
+					"data":	{
+						"x":	-24,
+						"y":	-0.5
+					}
+				}, {
+					"type":	"basil.collider2d",
+					"version":	1,
+					"required":	true,
+					"data":	{
+						"offsetX":	0,
+						"offsetY":	0,
+						"width":	1,
+						"height":	24,
+						"trigger":	false
+					}
+				}]
 		}, {
-			"id": "entity-0000000000000010", "name": "East Wall", "enabled": true,
-			"components": [
-				{ "type": "basil.transform2d", "version": 1, "required": true, "data": { "x": 23, "y": -0.5 } },
-				{ "type": "basil.collider2d", "version": 1, "required": true, "data": { "offsetX": 0, "offsetY": 0, "width": 1, "height": 24, "trigger": false } }
-			]
+			"id":	"entity-0000000000000010",
+			"name":	"East Wall",
+			"enabled":	true,
+			"components":	[{
+					"type":	"basil.transform2d",
+					"version":	1,
+					"required":	true,
+					"data":	{
+						"x":	23,
+						"y":	-0.5
+					}
+				}, {
+					"type":	"basil.collider2d",
+					"version":	1,
+					"required":	true,
+					"data":	{
+						"offsetX":	0,
+						"offsetY":	0,
+						"width":	1,
+						"height":	24,
+						"trigger":	false
+					}
+				}]
 		}]
 }

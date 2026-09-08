@@ -1,6 +1,7 @@
 #ifndef BASIL_ENGINE_COLLISION_2D_H
 #define BASIL_ENGINE_COLLISION_2D_H
 
+#include "BGame.h"
 #include "BWorkspace.h"
 
 #include <stdbool.h>
@@ -34,6 +35,9 @@ bool BCollision2D_Overlaps(const BCollisionAABB *left, const BCollisionAABB *rig
 
 size_t BCollision2D_Query(const BWorkspaceDocument *document, const BCollisionAABB *area,
                           size_t ignoreEntityIndex, BCollisionHit *hits, size_t hitCapacity);
+
+bool MoveWithCollision(const BGameHostAPI *host, BGameEntity entity, float deltaX, float deltaY);
+bool IsTriggerOverlapping(const BGameHostAPI *host, BGameEntity entity, BGameEntity triggerEntity);
 
 #ifdef __cplusplus
 }
