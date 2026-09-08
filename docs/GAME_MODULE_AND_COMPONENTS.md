@@ -10,12 +10,13 @@ host executable and one platform-native game module. Developer source includes
 `BGame.h` and implements the four `BasilGame_Initialize`, `BasilGame_Update`,
 `BasilGame_Render`, and `BasilGame_Shutdown` callbacks. Basil owns the executable
 entry point and internal `BasilGame_Query`/`BGameModule.h` registration glue.
-The current internal ABI is version 2.
+The current internal ABI is version 3.
 
 The host owns engine state. Project code receives a versioned function table,
 opaque entity handles, and bounded values; it does not receive pointers to
 engine-owned Workspace objects. The current public host table exposes logging, the Project root,
-entity enumeration and identity, position access, collision queries, named
+entity enumeration and identity, position access, collision queries and common
+kinematic AABB movement/trigger checks, named
 input, safe Workspace replacement/generation, transient screen-space UI, and
 read-only custom-component JSON. C++ uses the same ABI and ownership rules as C.
 Thin `BGame_*` helpers in `BGame.h` are the normal call surface; they consistently

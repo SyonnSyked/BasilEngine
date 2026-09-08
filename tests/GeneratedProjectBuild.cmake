@@ -151,6 +151,8 @@ foreach(language_mode IN ITEMS mixed c cpp)
     BGameAABB smokeBounds = {0};
     (void)BGame_GetColliderBounds(host, smokeEntity, &smokeBounds, 0);
     (void)BGame_QueryColliders(host, &smokeBounds, smokeEntity, 0, 0);
+    (void)BGame_MoveWithCollision(host, smokeEntity, 0.0f, 0.0f);
+    (void)BGame_IsTriggerOverlapping(host, smokeEntity, smokeEntity);
     (void)BGame_ComponentJson(host, smokeEntity, "example.component");
     (void)BGame_InputPressed(host, "confirm");
     (void)BGame_InputDown(host, "move_up");

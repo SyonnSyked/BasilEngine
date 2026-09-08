@@ -129,62 +129,96 @@ size_t BCollision2D_Query(const BWorkspaceDocument *document, const BCollisionAA
     return hitCount;
 }
 
-static bool AxisBlocked(const BGameHostAPI *host, BGameEntity entity, BGameAABB bounds)
+static bool BCollision2D_AxisBlocked(const BWorkspaceDocument *document, size_t entityIndex,
+                                     const BCollisionAABB *candidate)
 {
-    BGameCollisionHit hits[32];
-    size_t count = BGame_QueryColliders(host, &bounds, entity, hits, 32);
-    size_t stored = count < 32 ? count : 32;
-    for (size_t i = 0; i < stored; ++i)
-        if (!hits[i].trigger)
+    for (size_t otherIndex = 0; otherIndex < document->entityCount; ++otherIndex) {
+        if (otherIndex == entityIndex || !document->entities[otherIndex].enabled)
+            continue;
+
+        BCollisionAABB otherBounds;
+        bool trigger = false;
+        if (BCollision2D_EntityAABB(&document->entities[otherIndex], &otherBounds, &trigger) &&
+            !trigger && BCollision2D_Overlaps(candidate, &otherBounds)) {
             return true;
+        }
+    }
     return false;
 }
 
-bool MoveWithCollision(const BGameHostAPI *host, BGameEntity entity, float deltaX, float deltaY)
+bool BCollision2D_ResolveMovement(const BWorkspaceDocument *document, size_t entityIndex,
+                                  float deltaX, float deltaY, BTransform2D *resolvedTransform)
 {
-    if (host == NULL)
+    if (document == NULL || resolvedTransform == NULL || entityIndex >= document->entityCount ||
+        !isfinite(deltaX) || !isfinite(deltaY)) {
         return false;
-    float x = 0.0f;
-    float y = 0.0f;
-    BGameAABB bounds;
-    if (!BGame_GetPosition(host, entity, &x, &y) ||
-        !BGame_GetColliderBounds(host, entity, &bounds, NULL))
+    }
+
+    const BWorkspaceEntity *entity = &document->entities[entityIndex];
+    if (!entity->enabled)
         return false;
-    bool moved = false;
+
+    const BWorkspaceComponent *transformComponent =
+        BWorkspaceEntity_FindComponentConst(entity, BWORKSPACE_TRANSFORM2D_TYPE);
+    const BWorkspaceComponent *colliderComponent =
+        BWorkspaceEntity_FindComponentConst(entity, BWORKSPACE_COLLIDER2D_TYPE);
+    if (transformComponent == NULL || colliderComponent == NULL ||
+        transformComponent->kind != BWORKSPACE_COMPONENT_TRANSFORM2D ||
+        colliderComponent->kind != BWORKSPACE_COMPONENT_COLLIDER2D) {
+        return false;
+    }
+
+    BTransform2D accepted = transformComponent->data.transform2d;
+    BCollisionAABB bounds;
+    if (!BCollision2D_MakeAABB(&accepted, &colliderComponent->data.collider2d, &bounds))
+        return false;
+
     if (deltaX != 0.0f) {
-        BGameAABB candidate = bounds;
-        candidate.minX += deltaX;
-        candidate.maxX += deltaX;
-        if (!AxisBlocked(host, entity, candidate)) {
-            x += deltaX;
-            bounds = candidate;
-            moved = true;
+        BTransform2D candidateTransform = accepted;
+        candidateTransform.x += deltaX;
+        BCollisionAABB candidate;
+        if (!BCollision2D_MakeAABB(&candidateTransform, &colliderComponent->data.collider2d,
+                                   &candidate)) {
+            return false;
+        }
+        if (!BCollision2D_AxisBlocked(document, entityIndex, &candidate)) {
+            accepted = candidateTransform;
         }
     }
     if (deltaY != 0.0f) {
-        BGameAABB candidate = bounds;
-        candidate.minY += deltaY;
-        candidate.maxY += deltaY;
-        if (!AxisBlocked(host, entity, candidate)) {
-            y += deltaY;
-            moved = true;
+        BTransform2D candidateTransform = accepted;
+        candidateTransform.y += deltaY;
+        BCollisionAABB candidate;
+        if (!BCollision2D_MakeAABB(&candidateTransform, &colliderComponent->data.collider2d,
+                                   &candidate)) {
+            return false;
+        }
+        if (!BCollision2D_AxisBlocked(document, entityIndex, &candidate)) {
+            accepted = candidateTransform;
         }
     }
-    return moved && BGame_SetPosition(host, entity, x, y);
+
+    *resolvedTransform = accepted;
+    return true;
 }
 
-bool IsTriggerOverlapping(const BGameHostAPI *host, BGameEntity entity, BGameEntity triggerEntity)
+bool BCollision2D_TriggerOverlapping(const BWorkspaceDocument *document, size_t entityIndex,
+                                     size_t triggerEntityIndex)
 {
-    if (host == NULL || triggerEntity.value == 0)
+    if (document == NULL || entityIndex >= document->entityCount ||
+        triggerEntityIndex >= document->entityCount) {
         return false;
-    BGameAABB bounds;
-    if (!BGame_GetColliderBounds(host, entity, &bounds, NULL))
+    }
+
+    const BWorkspaceEntity *entity = &document->entities[entityIndex];
+    const BWorkspaceEntity *triggerEntity = &document->entities[triggerEntityIndex];
+    if (!entity->enabled || !triggerEntity->enabled)
         return false;
-    BGameCollisionHit hits[32];
-    size_t count = BGame_QueryColliders(host, &bounds, entity, hits, 32);
-    size_t stored = count < 32 ? count : 32;
-    for (size_t i = 0; i < stored; ++i)
-        if (hits[i].entity.value == triggerEntity.value && hits[i].trigger)
-            return true;
-    return false;
+
+    BCollisionAABB entityBounds;
+    BCollisionAABB triggerBounds;
+    bool targetIsTrigger = false;
+    return BCollision2D_EntityAABB(entity, &entityBounds, NULL) &&
+           BCollision2D_EntityAABB(triggerEntity, &triggerBounds, &targetIsTrigger) &&
+           targetIsTrigger && BCollision2D_Overlaps(&entityBounds, &triggerBounds);
 }

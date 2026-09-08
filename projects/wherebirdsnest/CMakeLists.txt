@@ -17,7 +17,7 @@ set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 add_subdirectory("${BASIL_ENGINE_ROOT}" "${CMAKE_BINARY_DIR}/_basilengine")
 
 add_executable(WhereBirdsNest "${BASIL_ENGINE_ROOT}/engine/runtime/BGeneratedRuntimeMain.c")
-add_library(WhereBirdsNestGame MODULE source/game.c source/WBNGameplay.c
+add_library(WhereBirdsNestGame MODULE source/game.c
     "${BASIL_ENGINE_ROOT}/engine/runtime/BGameModuleGlue.c"
 )
 set_target_properties(WhereBirdsNestGame PROPERTIES PREFIX "" OUTPUT_NAME "WhereBirdsNest.candidate")

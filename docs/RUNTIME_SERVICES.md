@@ -25,6 +25,16 @@ Replacement is deferred until after game callbacks; failure retains the active
 Workspace, and successful replacement advances the generation used to reject
 stale entity handles.
 
+For ordinary solid-blocking movement, Project code calls
+`BGame_MoveWithCollision(host, entity, deltaX, deltaY)` on an enabled entity with
+Transform2D and Collider2D. Resolution is deterministic and axis-separated (X,
+then Y); trigger and disabled colliders do not block, and Collider2D remains
+attached to Transform2D rather than owning a separate position.
+`BGame_IsTriggerOverlapping` directly checks a requested trigger entity.
+`BGame_QueryColliders` remains available for games that need custom collision
+behavior. These conveniences are kinematic AABB services, not a rigid-body
+physics system.
+
 ## Screen-space ASCII UI
 
 Project code uses the `BGame.h` boundary to begin a transient UI pass, draw

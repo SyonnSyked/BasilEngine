@@ -85,7 +85,7 @@ stretch are defined in the [Alpha Product Contract](docs/ALPHA_PRODUCT_CONTRACT.
   with compatibility checks and last-valid artifact preservation
 - Strict Project component metadata and human-readable custom Workspace data,
   inspected without executing Project code
-- Public collision queries and safe transactional replacement of the one active
+- Public collision queries, one-call kinematic AABB movement/trigger checks, and safe transactional replacement of the one active
   Workspace, including generation-safe entity handles
 - Screen-space ASCII labels, panels, anchored HUDs, and keyboard/mouse choices
   through the public C/C++ game API
